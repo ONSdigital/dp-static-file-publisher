@@ -13,7 +13,7 @@ import (
 // Service contains all the configs, server and clients to run the Image API
 type Service struct {
 	Config      *config.Config
-	server      HTTPServer
+	Server      HTTPServer
 	Router      *mux.Router
 	API         *api.API
 	ServiceList *ExternalServiceList
@@ -53,7 +53,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 
 	return &Service{
 		Config:      cfg,
-		server:      s,
+		Server:      s,
 		Router:      r,
 		API:         a,
 		HealthCheck: hc,
@@ -80,7 +80,7 @@ func (svc *Service) Close(ctx context.Context) error {
 		}
 
 		// stop any incoming requests before closing any outbound connections
-		if err := svc.server.Shutdown(ctx); err != nil {
+		if err := svc.Server.Shutdown(ctx); err != nil {
 			log.Event(ctx, "failed to shutdown http server", log.Error(err), log.ERROR)
 			hasShutdownError = true
 		}
