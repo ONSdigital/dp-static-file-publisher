@@ -1,0 +1,21 @@
+---
+
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: golang
+    tag: 
+
+inputs:
+  - name: dp-static-file-publisher
+
+outputs:
+  - name: build
+
+caches:
+  - path: go/
+
+run:
+  path: dp-static-file-publisher/ci/scripts/build.sh
