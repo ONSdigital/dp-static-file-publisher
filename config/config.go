@@ -14,7 +14,8 @@ type Config struct {
 	HealthCheckCriticalTimeout time.Duration `envconfig:"HEALTHCHECK_CRITICAL_TIMEOUT"`
 	VaultToken                 string        `envconfig:"VAULT_TOKEN"`
 	VaultAddress               string        `envconfig:"VAULT_ADDR"`
-	VaulRetries                int           `envconfig:"VAULT_RETRIES"`
+	VaultRetries               int           `envconfig:"VAULT_RETRIES"`
+	ImageAPIURL                string        `envconfig:"IMAGE_API_URL"`
 }
 
 var cfg *Config
@@ -33,7 +34,8 @@ func Get() (*Config, error) {
 		HealthCheckCriticalTimeout: 90 * time.Second,
 		VaultToken:                 "",
 		VaultAddress:               "",
-		VaulRetries:                3,
+		VaultRetries:               3,
+		ImageAPIURL:                "http://localhost:24700",
 	}
 
 	return cfg, envconfig.Process("", cfg)

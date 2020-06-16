@@ -47,6 +47,8 @@ func TestRun(t *testing.T) {
 
 		vaultMock := &serviceMock.VaultClientMock{}
 
+		imageAPIClientMock := &serviceMock.ImageAPIClientMock{}
+
 		hcMock := &serviceMock.HealthCheckerMock{
 			AddCheckFunc: func(name string, checker healthcheck.Checker) error { return nil },
 			StartFunc:    func(ctx context.Context) {},
@@ -71,6 +73,10 @@ func TestRun(t *testing.T) {
 			return vaultMock, nil
 		}
 
+		funcDoGetImageAPIClientFuncOk := func(imageAPIURL string) service.ImageAPIClient {
+			return imageAPIClientMock
+		}
+
 		funcDoGetHealthcheckOk := func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 			return hcMock, nil
 		}
@@ -85,9 +91,10 @@ func TestRun(t *testing.T) {
 
 		Convey("Given that initialising vault returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:  funcDoGetHTTPServerNil,
-				DoGetVaultFunc:       funcDoGetVaultErr,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
+				DoGetVaultFunc:          funcDoGetVaultErr,
+				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOk,
+				DoGetHealthCheckFunc:    funcDoGetHealthcheckOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -101,9 +108,10 @@ func TestRun(t *testing.T) {
 
 		Convey("Given that initialising healthcheck returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:  funcDoGetHTTPServerNil,
-				DoGetVaultFunc:       funcDoGetVaultOK,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckErr,
+				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
+				DoGetVaultFunc:          funcDoGetVaultOK,
+				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOk,
+				DoGetHealthCheckFunc:    funcDoGetHealthcheckErr,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -123,8 +131,9 @@ func TestRun(t *testing.T) {
 			}
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc: funcDoGetHTTPServerNil,
-				DoGetVaultFunc:      funcDoGetVaultOK,
+				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
+				DoGetVaultFunc:          funcDoGetVaultOK,
+				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOk,
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMockAddFail, nil
 				},
@@ -137,17 +146,19 @@ func TestRun(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddheckFail.Error()))
 				So(svcList.HealthCheck, ShouldBeTrue)
-				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 1)
+				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 2)
 				So(hcMockAddFail.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
+				So(hcMockAddFail.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
 			})
 		})
 
 		Convey("Given that all dependencies are successfully initialised", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:  funcDoGetHTTPServer,
-				DoGetVaultFunc:       funcDoGetVaultOK,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:     funcDoGetHTTPServer,
+				DoGetVaultFunc:          funcDoGetVaultOK,
+				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOk,
+				DoGetHealthCheckFunc:    funcDoGetHealthcheckOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -172,9 +183,10 @@ func TestRun(t *testing.T) {
 		Convey("Given that all dependencies are successfully initialised but the http server fails", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:  funcDoGetFailingHTTPSerer,
-				DoGetVaultFunc:       funcDoGetVaultOK,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:     funcDoGetFailingHTTPSerer,
+				DoGetVaultFunc:          funcDoGetVaultOK,
+				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOk,
+				DoGetHealthCheckFunc:    funcDoGetHealthcheckOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)

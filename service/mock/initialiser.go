@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	lockInitialiserMockDoGetHTTPServer  sync.RWMutex
-	lockInitialiserMockDoGetHealthCheck sync.RWMutex
-	lockInitialiserMockDoGetVault       sync.RWMutex
+	lockInitialiserMockDoGetHTTPServer     sync.RWMutex
+	lockInitialiserMockDoGetHealthCheck    sync.RWMutex
+	lockInitialiserMockDoGetImageAPIClient sync.RWMutex
+	lockInitialiserMockDoGetVault          sync.RWMutex
 )
 
 // Ensure, that InitialiserMock does implement service.Initialiser.
@@ -32,6 +33,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 // 	               panic("mock out the DoGetHealthCheck method")
 //             },
+//             DoGetImageAPIClientFunc: func(imageAPIURL string) service.ImageAPIClient {
+// 	               panic("mock out the DoGetImageAPIClient method")
+//             },
 //             DoGetVaultFunc: func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
 // 	               panic("mock out the DoGetVault method")
 //             },
@@ -47,6 +51,9 @@ type InitialiserMock struct {
 
 	// DoGetHealthCheckFunc mocks the DoGetHealthCheck method.
 	DoGetHealthCheckFunc func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error)
+
+	// DoGetImageAPIClientFunc mocks the DoGetImageAPIClient method.
+	DoGetImageAPIClientFunc func(imageAPIURL string) service.ImageAPIClient
 
 	// DoGetVaultFunc mocks the DoGetVault method.
 	DoGetVaultFunc func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error)
@@ -70,6 +77,11 @@ type InitialiserMock struct {
 			GitCommit string
 			// Version is the version argument value.
 			Version string
+		}
+		// DoGetImageAPIClient holds details about calls to the DoGetImageAPIClient method.
+		DoGetImageAPIClient []struct {
+			// ImageAPIURL is the imageAPIURL argument value.
+			ImageAPIURL string
 		}
 		// DoGetVault holds details about calls to the DoGetVault method.
 		DoGetVault []struct {
@@ -158,6 +170,37 @@ func (mock *InitialiserMock) DoGetHealthCheckCalls() []struct {
 	lockInitialiserMockDoGetHealthCheck.RLock()
 	calls = mock.calls.DoGetHealthCheck
 	lockInitialiserMockDoGetHealthCheck.RUnlock()
+	return calls
+}
+
+// DoGetImageAPIClient calls DoGetImageAPIClientFunc.
+func (mock *InitialiserMock) DoGetImageAPIClient(imageAPIURL string) service.ImageAPIClient {
+	if mock.DoGetImageAPIClientFunc == nil {
+		panic("InitialiserMock.DoGetImageAPIClientFunc: method is nil but Initialiser.DoGetImageAPIClient was just called")
+	}
+	callInfo := struct {
+		ImageAPIURL string
+	}{
+		ImageAPIURL: imageAPIURL,
+	}
+	lockInitialiserMockDoGetImageAPIClient.Lock()
+	mock.calls.DoGetImageAPIClient = append(mock.calls.DoGetImageAPIClient, callInfo)
+	lockInitialiserMockDoGetImageAPIClient.Unlock()
+	return mock.DoGetImageAPIClientFunc(imageAPIURL)
+}
+
+// DoGetImageAPIClientCalls gets all the calls that were made to DoGetImageAPIClient.
+// Check the length with:
+//     len(mockedInitialiser.DoGetImageAPIClientCalls())
+func (mock *InitialiserMock) DoGetImageAPIClientCalls() []struct {
+	ImageAPIURL string
+} {
+	var calls []struct {
+		ImageAPIURL string
+	}
+	lockInitialiserMockDoGetImageAPIClient.RLock()
+	calls = mock.calls.DoGetImageAPIClient
+	lockInitialiserMockDoGetImageAPIClient.RUnlock()
 	return calls
 }
 

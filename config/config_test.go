@@ -24,7 +24,8 @@ func TestConfig(t *testing.T) {
 				So(cfg.HealthCheckCriticalTimeout, ShouldEqual, 90*time.Second)
 				So(cfg.VaultToken, ShouldEqual, "")
 				So(cfg.VaultAddress, ShouldEqual, "")
-				So(cfg.VaulRetries, ShouldEqual, 3)
+				So(cfg.VaultRetries, ShouldEqual, 3)
+				So(cfg.ImageAPIURL, ShouldEqual, "http://localhost:24700")
 			})
 
 			Convey("Then a second call to config should return the same config", func() {

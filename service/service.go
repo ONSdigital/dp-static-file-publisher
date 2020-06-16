@@ -18,6 +18,8 @@ type Service struct {
 	API         *api.API
 	ServiceList *ExternalServiceList
 	HealthCheck HealthChecker
+	VaultCli    VaultClient
+	ImageAPICli ImageAPIClient
 }
 
 // Run the service
@@ -38,13 +40,16 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 
+	// Get Image API Client
+	ic := serviceList.GetImageAPIClient(cfg)
+
 	// Get HealthCheck
 	hc, err := serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
 	if err != nil {
 		log.Event(ctx, "could not instantiate healthcheck", log.FATAL, log.Error(err))
 		return nil, err
 	}
-	if err := registerCheckers(ctx, hc, vc); err != nil {
+	if err := registerCheckers(ctx, hc, vc, ic); err != nil {
 		return nil, errors.Wrap(err, "unable to register checkers")
 	}
 
@@ -65,6 +70,8 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		API:         a,
 		HealthCheck: hc,
 		ServiceList: serviceList,
+		VaultCli:    vc,
+		ImageAPICli: ic,
 	}, nil
 }
 
@@ -116,12 +123,17 @@ func (svc *Service) Close(ctx context.Context) error {
 	return nil
 }
 
-func registerCheckers(ctx context.Context, hc HealthChecker, vc VaultClient) (err error) {
+func registerCheckers(ctx context.Context, hc HealthChecker, vc VaultClient, ic ImageAPIClient) (err error) {
 	hasErrors := false
 
 	if err = hc.AddCheck("Vault", vc.Checker); err != nil {
 		hasErrors = true
 		log.Event(ctx, "failed to add vault client checker", log.ERROR, log.Error(err))
+	}
+
+	if err = hc.AddCheck("Image API", ic.Checker); err != nil {
+		hasErrors = true
+		log.Event(ctx, "failed to add image api client checker", log.ERROR, log.Error(err))
 	}
 
 	if hasErrors {

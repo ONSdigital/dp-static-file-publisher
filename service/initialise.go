@@ -3,6 +3,7 @@ package service
 import (
 	"net/http"
 
+	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/http"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
@@ -41,13 +42,14 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 	return hc, nil
 }
 
-// GetVault creates a vault client
+// GetVault creates a new vault client
 func (e *ExternalServiceList) GetVault(cfg *config.Config) (VaultClient, error) {
-	vc, err := e.Init.DoGetVault(cfg.VaultToken, cfg.VaultAddress, 3)
-	if err != nil {
-		return nil, err
-	}
-	return vc, nil
+	return e.Init.DoGetVault(cfg.VaultToken, cfg.VaultAddress, 3)
+}
+
+// GetImageAPIClient creates a new image API client
+func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) ImageAPIClient {
+	return e.Init.DoGetImageAPIClient(cfg.ImageAPIURL)
 }
 
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
@@ -70,4 +72,9 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 // DoGetVault creates a new vault client using dp-vault library
 func (e *Init) DoGetVault(vaultToken, vaultAddress string, retries int) (VaultClient, error) {
 	return vault.CreateClient(vaultToken, vaultAddress, retries)
+}
+
+// DoGetImageAPIClient creates a new image api client using dp-api-clients-go library
+func (e *Init) DoGetImageAPIClient(imageAPIURL string) ImageAPIClient {
+	return image.NewAPIClient(imageAPIURL)
 }
