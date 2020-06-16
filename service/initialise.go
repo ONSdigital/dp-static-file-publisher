@@ -1,10 +1,12 @@
 package service
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
+	kafka "github.com/ONSdigital/dp-kafka"
 	dphttp "github.com/ONSdigital/dp-net/http"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	vault "github.com/ONSdigital/dp-vault"
@@ -12,8 +14,9 @@ import (
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
-	HealthCheck bool
-	Init        Initialiser
+	HealthCheck            bool
+	KafkaConsumerPublished bool
+	Init                   Initialiser
 }
 
 // NewServiceList creates a new service list with the provided initialiser
@@ -52,6 +55,16 @@ func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) ImageAPIClie
 	return e.Init.DoGetImageAPIClient(cfg.ImageAPIURL)
 }
 
+// GetKafkaConsumer returns a kafka consumer group
+func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafkaConsumer kafka.IConsumerGroup, err error) {
+	kafkaConsumer, err = e.Init.DoGetKafkaConsumer(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	e.KafkaConsumerPublished = true
+	return kafkaConsumer, nil
+}
+
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
 func (e *Init) DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
 	s := dphttp.NewServer(bindAddr, router)
@@ -77,4 +90,10 @@ func (e *Init) DoGetVault(vaultToken, vaultAddress string, retries int) (VaultCl
 // DoGetImageAPIClient creates a new image api client using dp-api-clients-go library
 func (e *Init) DoGetImageAPIClient(imageAPIURL string) ImageAPIClient {
 	return image.NewAPIClient(imageAPIURL)
+}
+
+// DoGetKafkaConsumer creates a new Kafka  Consumer Group using dp-kafka library
+func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+	cgChannels := kafka.CreateConsumerGroupChannels(true)
+	return kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.OffsetNewest, true, cgChannels)
 }

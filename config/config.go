@@ -16,12 +16,14 @@ type Config struct {
 	VaultAddress               string        `envconfig:"VAULT_ADDR"`
 	VaultRetries               int           `envconfig:"VAULT_RETRIES"`
 	ImageAPIURL                string        `envconfig:"IMAGE_API_URL"`
+	KafkaAddr                  []string      `envconfig:"KAFKA_ADDR"`
+	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
+	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
 }
 
 var cfg *Config
 
-// Get returns the default config with any modifications through environment
-// variables
+// Get returns the default config with any modifications through environment variables
 func Get() (*Config, error) {
 	if cfg != nil {
 		return cfg, nil
@@ -36,6 +38,9 @@ func Get() (*Config, error) {
 		VaultAddress:               "",
 		VaultRetries:               3,
 		ImageAPIURL:                "http://localhost:24700",
+		KafkaAddr:                  []string{"localhost:9092"},
+		StaticFilePublishedTopic:   "static-file-published",
+		ConsumerGroup:              "dp-static-file-publisher",
 	}
 
 	return cfg, envconfig.Process("", cfg)

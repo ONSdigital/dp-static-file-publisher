@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
+	kafka "github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 )
 
@@ -20,6 +21,7 @@ type Initialiser interface {
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
 	DoGetVault(vaultToken, vaultAddress string, retries int) (VaultClient, error)
 	DoGetImageAPIClient(imageAPIURL string) ImageAPIClient
+	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
 }
 
 // HTTPServer defines the required methods from the HTTP server

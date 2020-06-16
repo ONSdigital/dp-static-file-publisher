@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	kafka "github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/api"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/log.go/log"
@@ -12,67 +13,70 @@ import (
 
 // Service contains all the configs, server and clients to run the Image API
 type Service struct {
-	Config      *config.Config
-	Server      HTTPServer
-	Router      *mux.Router
-	API         *api.API
-	ServiceList *ExternalServiceList
-	HealthCheck HealthChecker
-	VaultCli    VaultClient
-	ImageAPICli ImageAPIClient
+	Config        *config.Config
+	Server        HTTPServer
+	Router        *mux.Router
+	API           *api.API
+	ServiceList   *ExternalServiceList
+	HealthCheck   HealthChecker
+	VaultCli      VaultClient
+	ImageAPICli   ImageAPIClient
+	KafkaConsumer kafka.IConsumerGroup
 }
 
 // Run the service
-func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, buildTime, gitCommit, version string, svcErrors chan error) (*Service, error) {
+func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, buildTime, gitCommit, version string, svcErrors chan error) (svc *Service, err error) {
 	log.Event(ctx, "got service configuration", log.Data{"config": cfg}, log.INFO)
 
-	// Get HTTP Server
-	r := mux.NewRouter()
-	s := serviceList.GetHTTPServer(cfg.BindAddr, r)
+	svc = &Service{
+		Config: cfg,
+		// HealthCheck: hc,
+		ServiceList: serviceList,
+	}
 
-	// Setup the API
-	a := api.Setup(ctx, r)
+	// Get HTTP Router, Server and API
+	svc.Router = mux.NewRouter()
+	svc.Server = serviceList.GetHTTPServer(cfg.BindAddr, svc.Router)
+	svc.API = api.Setup(ctx, svc.Router)
 
 	// Get Vault Client
-	vc, err := serviceList.GetVault(cfg)
+	svc.VaultCli, err = serviceList.GetVault(cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate vault client", log.FATAL, log.Error(err))
 		return nil, err
 	}
 
 	// Get Image API Client
-	ic := serviceList.GetImageAPIClient(cfg)
+	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
+
+	// Get Kafka Consumer
+	svc.KafkaConsumer, err = serviceList.GetKafkaConsumer(ctx, cfg)
+	if err != nil {
+		log.Event(ctx, "could not instantiate kafka consumer", log.FATAL, log.Error(err))
+		return nil, err
+	}
 
 	// Get HealthCheck
-	hc, err := serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
+	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
 	if err != nil {
 		log.Event(ctx, "could not instantiate healthcheck", log.FATAL, log.Error(err))
 		return nil, err
 	}
-	if err := registerCheckers(ctx, hc, vc, ic); err != nil {
+	if err := svc.registerCheckers(ctx); err != nil {
 		return nil, errors.Wrap(err, "unable to register checkers")
 	}
 
-	r.StrictSlash(true).Path("/health").HandlerFunc(hc.Handler)
-	hc.Start(ctx)
+	svc.Router.StrictSlash(true).Path("/health").HandlerFunc(svc.HealthCheck.Handler)
+	svc.HealthCheck.Start(ctx)
 
 	// Run the http server in a new go-routine
 	go func() {
-		if err := s.ListenAndServe(); err != nil {
+		if err := svc.Server.ListenAndServe(); err != nil {
 			svcErrors <- errors.Wrap(err, "failure in http listen and serve")
 		}
 	}()
 
-	return &Service{
-		Config:      cfg,
-		Server:      s,
-		Router:      r,
-		API:         a,
-		HealthCheck: hc,
-		ServiceList: serviceList,
-		VaultCli:    vc,
-		ImageAPICli: ic,
-	}, nil
+	return svc, nil
 }
 
 // Close gracefully shuts the service down in the required order, with timeout
@@ -99,6 +103,14 @@ func (svc *Service) Close(ctx context.Context) error {
 			hasShutdownError = true
 		}
 
+		// Close Kafka Consumer, if present (previous stop listening not required)
+		if svc.ServiceList.KafkaConsumerPublished {
+			if err := svc.KafkaConsumer.Close(ctx); err != nil {
+				log.Event(ctx, "failed to shutdown kafka consumer group", log.Error(err), log.ERROR)
+				hasShutdownError = true
+			}
+		}
+
 		// close API
 		if err := svc.API.Close(ctx); err != nil {
 			log.Event(ctx, "error closing API", log.Error(err), log.ERROR)
@@ -123,17 +135,23 @@ func (svc *Service) Close(ctx context.Context) error {
 	return nil
 }
 
-func registerCheckers(ctx context.Context, hc HealthChecker, vc VaultClient, ic ImageAPIClient) (err error) {
+// registerCheckers adds all the necessary checkers to healthcheck. Please, only call this function after all dependencies are instanciated
+func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	hasErrors := false
 
-	if err = hc.AddCheck("Vault", vc.Checker); err != nil {
+	if err = svc.HealthCheck.AddCheck("Vault", svc.VaultCli.Checker); err != nil {
 		hasErrors = true
 		log.Event(ctx, "failed to add vault client checker", log.ERROR, log.Error(err))
 	}
 
-	if err = hc.AddCheck("Image API", ic.Checker); err != nil {
+	if err = svc.HealthCheck.AddCheck("Image API", svc.ImageAPICli.Checker); err != nil {
 		hasErrors = true
 		log.Event(ctx, "failed to add image api client checker", log.ERROR, log.Error(err))
+	}
+
+	if err = svc.HealthCheck.AddCheck("Kafka Consumer", svc.KafkaConsumer.Checker); err != nil {
+		hasErrors = true
+		log.Event(ctx, "failed to add kafka consumer checker", log.ERROR, log.Error(err))
 	}
 
 	if hasErrors {
