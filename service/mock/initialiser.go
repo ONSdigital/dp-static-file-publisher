@@ -13,6 +13,7 @@ import (
 var (
 	lockInitialiserMockDoGetHTTPServer  sync.RWMutex
 	lockInitialiserMockDoGetHealthCheck sync.RWMutex
+	lockInitialiserMockDoGetVault       sync.RWMutex
 )
 
 // Ensure, that InitialiserMock does implement service.Initialiser.
@@ -31,6 +32,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 // 	               panic("mock out the DoGetHealthCheck method")
 //             },
+//             DoGetVaultFunc: func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
+// 	               panic("mock out the DoGetVault method")
+//             },
 //         }
 //
 //         // use mockedInitialiser in code that requires service.Initialiser
@@ -43,6 +47,9 @@ type InitialiserMock struct {
 
 	// DoGetHealthCheckFunc mocks the DoGetHealthCheck method.
 	DoGetHealthCheckFunc func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error)
+
+	// DoGetVaultFunc mocks the DoGetVault method.
+	DoGetVaultFunc func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -63,6 +70,15 @@ type InitialiserMock struct {
 			GitCommit string
 			// Version is the version argument value.
 			Version string
+		}
+		// DoGetVault holds details about calls to the DoGetVault method.
+		DoGetVault []struct {
+			// VaultToken is the vaultToken argument value.
+			VaultToken string
+			// VaultAddress is the vaultAddress argument value.
+			VaultAddress string
+			// Retries is the retries argument value.
+			Retries int
 		}
 	}
 }
@@ -142,5 +158,44 @@ func (mock *InitialiserMock) DoGetHealthCheckCalls() []struct {
 	lockInitialiserMockDoGetHealthCheck.RLock()
 	calls = mock.calls.DoGetHealthCheck
 	lockInitialiserMockDoGetHealthCheck.RUnlock()
+	return calls
+}
+
+// DoGetVault calls DoGetVaultFunc.
+func (mock *InitialiserMock) DoGetVault(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
+	if mock.DoGetVaultFunc == nil {
+		panic("InitialiserMock.DoGetVaultFunc: method is nil but Initialiser.DoGetVault was just called")
+	}
+	callInfo := struct {
+		VaultToken   string
+		VaultAddress string
+		Retries      int
+	}{
+		VaultToken:   vaultToken,
+		VaultAddress: vaultAddress,
+		Retries:      retries,
+	}
+	lockInitialiserMockDoGetVault.Lock()
+	mock.calls.DoGetVault = append(mock.calls.DoGetVault, callInfo)
+	lockInitialiserMockDoGetVault.Unlock()
+	return mock.DoGetVaultFunc(vaultToken, vaultAddress, retries)
+}
+
+// DoGetVaultCalls gets all the calls that were made to DoGetVault.
+// Check the length with:
+//     len(mockedInitialiser.DoGetVaultCalls())
+func (mock *InitialiserMock) DoGetVaultCalls() []struct {
+	VaultToken   string
+	VaultAddress string
+	Retries      int
+} {
+	var calls []struct {
+		VaultToken   string
+		VaultAddress string
+		Retries      int
+	}
+	lockInitialiserMockDoGetVault.RLock()
+	calls = mock.calls.DoGetVault
+	lockInitialiserMockDoGetVault.RUnlock()
 	return calls
 }

@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/ONSdigital/dp-healthcheck v1.0.4
 	github.com/ONSdigital/dp-net v1.0.3
+	github.com/ONSdigital/dp-vault v1.1.1
 	github.com/ONSdigital/log.go v1.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/kelseyhightower/envconfig v1.4.0

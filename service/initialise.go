@@ -6,6 +6,7 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/http"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
+	vault "github.com/ONSdigital/dp-vault"
 )
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
@@ -40,6 +41,15 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 	return hc, nil
 }
 
+// GetVault creates a vault client
+func (e *ExternalServiceList) GetVault(cfg *config.Config) (VaultClient, error) {
+	vc, err := e.Init.DoGetVault(cfg.VaultToken, cfg.VaultAddress, 3)
+	if err != nil {
+		return nil, err
+	}
+	return vc, nil
+}
+
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
 func (e *Init) DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
 	s := dphttp.NewServer(bindAddr, router)
@@ -55,4 +65,9 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 	}
 	hc := healthcheck.New(versionInfo, cfg.HealthCheckCriticalTimeout, cfg.HealthCheckInterval)
 	return &hc, nil
+}
+
+// DoGetVault creates a new vault client using dp-vault library
+func (e *Init) DoGetVault(vaultToken, vaultAddress string, retries int) (VaultClient, error) {
+	return vault.CreateClient(vaultToken, vaultAddress, retries)
 }

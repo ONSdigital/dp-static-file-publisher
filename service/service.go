@@ -31,13 +31,20 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Setup the API
 	a := api.Setup(ctx, r)
 
+	// Get Vault Client
+	vc, err := serviceList.GetVault(cfg)
+	if err != nil {
+		log.Event(ctx, "could not instantiate vault client", log.FATAL, log.Error(err))
+		return nil, err
+	}
+
 	// Get HealthCheck
 	hc, err := serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
 	if err != nil {
 		log.Event(ctx, "could not instantiate healthcheck", log.FATAL, log.Error(err))
 		return nil, err
 	}
-	if err := registerCheckers(ctx, hc); err != nil {
+	if err := registerCheckers(ctx, hc, vc); err != nil {
 		return nil, errors.Wrap(err, "unable to register checkers")
 	}
 
@@ -109,7 +116,16 @@ func (svc *Service) Close(ctx context.Context) error {
 	return nil
 }
 
-func registerCheckers(ctx context.Context, hc HealthChecker) (err error) {
-	// TODO ADD HEALTH CHECKS HERE
-	return
+func registerCheckers(ctx context.Context, hc HealthChecker, vc VaultClient) (err error) {
+	hasErrors := false
+
+	if err = hc.AddCheck("Vault", vc.Checker); err != nil {
+		hasErrors = true
+		log.Event(ctx, "failed to add vault client checker", log.ERROR, log.Error(err))
+	}
+
+	if hasErrors {
+		return errors.New("Error(s) registering checkers for healthcheck")
+	}
+	return nil
 }
