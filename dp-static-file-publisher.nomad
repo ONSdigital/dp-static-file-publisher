@@ -3,7 +3,7 @@ job "dp-static-file-publisher" {
   region      = "eu"
   type        = "service"
 
-  // Make sure that this API is only ran on the publishing nodes
+  // Make sure that this API runs on publishing nodes only
   constraint {
     attribute = "${node.class}"
     value     = "publishing"
