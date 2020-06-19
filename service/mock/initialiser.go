@@ -4,6 +4,8 @@
 package mock
 
 import (
+	"context"
+	"github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
 	"net/http"
@@ -11,8 +13,11 @@ import (
 )
 
 var (
-	lockInitialiserMockDoGetHTTPServer  sync.RWMutex
-	lockInitialiserMockDoGetHealthCheck sync.RWMutex
+	lockInitialiserMockDoGetHTTPServer     sync.RWMutex
+	lockInitialiserMockDoGetHealthCheck    sync.RWMutex
+	lockInitialiserMockDoGetImageAPIClient sync.RWMutex
+	lockInitialiserMockDoGetKafkaConsumer  sync.RWMutex
+	lockInitialiserMockDoGetVault          sync.RWMutex
 )
 
 // Ensure, that InitialiserMock does implement service.Initialiser.
@@ -31,6 +36,15 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 // 	               panic("mock out the DoGetHealthCheck method")
 //             },
+//             DoGetImageAPIClientFunc: func(imageAPIURL string) service.ImageAPIClient {
+// 	               panic("mock out the DoGetImageAPIClient method")
+//             },
+//             DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+// 	               panic("mock out the DoGetKafkaConsumer method")
+//             },
+//             DoGetVaultFunc: func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
+// 	               panic("mock out the DoGetVault method")
+//             },
 //         }
 //
 //         // use mockedInitialiser in code that requires service.Initialiser
@@ -43,6 +57,15 @@ type InitialiserMock struct {
 
 	// DoGetHealthCheckFunc mocks the DoGetHealthCheck method.
 	DoGetHealthCheckFunc func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error)
+
+	// DoGetImageAPIClientFunc mocks the DoGetImageAPIClient method.
+	DoGetImageAPIClientFunc func(imageAPIURL string) service.ImageAPIClient
+
+	// DoGetKafkaConsumerFunc mocks the DoGetKafkaConsumer method.
+	DoGetKafkaConsumerFunc func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
+
+	// DoGetVaultFunc mocks the DoGetVault method.
+	DoGetVaultFunc func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -63,6 +86,27 @@ type InitialiserMock struct {
 			GitCommit string
 			// Version is the version argument value.
 			Version string
+		}
+		// DoGetImageAPIClient holds details about calls to the DoGetImageAPIClient method.
+		DoGetImageAPIClient []struct {
+			// ImageAPIURL is the imageAPIURL argument value.
+			ImageAPIURL string
+		}
+		// DoGetKafkaConsumer holds details about calls to the DoGetKafkaConsumer method.
+		DoGetKafkaConsumer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg *config.Config
+		}
+		// DoGetVault holds details about calls to the DoGetVault method.
+		DoGetVault []struct {
+			// VaultToken is the vaultToken argument value.
+			VaultToken string
+			// VaultAddress is the vaultAddress argument value.
+			VaultAddress string
+			// Retries is the retries argument value.
+			Retries int
 		}
 	}
 }
@@ -142,5 +186,110 @@ func (mock *InitialiserMock) DoGetHealthCheckCalls() []struct {
 	lockInitialiserMockDoGetHealthCheck.RLock()
 	calls = mock.calls.DoGetHealthCheck
 	lockInitialiserMockDoGetHealthCheck.RUnlock()
+	return calls
+}
+
+// DoGetImageAPIClient calls DoGetImageAPIClientFunc.
+func (mock *InitialiserMock) DoGetImageAPIClient(imageAPIURL string) service.ImageAPIClient {
+	if mock.DoGetImageAPIClientFunc == nil {
+		panic("InitialiserMock.DoGetImageAPIClientFunc: method is nil but Initialiser.DoGetImageAPIClient was just called")
+	}
+	callInfo := struct {
+		ImageAPIURL string
+	}{
+		ImageAPIURL: imageAPIURL,
+	}
+	lockInitialiserMockDoGetImageAPIClient.Lock()
+	mock.calls.DoGetImageAPIClient = append(mock.calls.DoGetImageAPIClient, callInfo)
+	lockInitialiserMockDoGetImageAPIClient.Unlock()
+	return mock.DoGetImageAPIClientFunc(imageAPIURL)
+}
+
+// DoGetImageAPIClientCalls gets all the calls that were made to DoGetImageAPIClient.
+// Check the length with:
+//     len(mockedInitialiser.DoGetImageAPIClientCalls())
+func (mock *InitialiserMock) DoGetImageAPIClientCalls() []struct {
+	ImageAPIURL string
+} {
+	var calls []struct {
+		ImageAPIURL string
+	}
+	lockInitialiserMockDoGetImageAPIClient.RLock()
+	calls = mock.calls.DoGetImageAPIClient
+	lockInitialiserMockDoGetImageAPIClient.RUnlock()
+	return calls
+}
+
+// DoGetKafkaConsumer calls DoGetKafkaConsumerFunc.
+func (mock *InitialiserMock) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+	if mock.DoGetKafkaConsumerFunc == nil {
+		panic("InitialiserMock.DoGetKafkaConsumerFunc: method is nil but Initialiser.DoGetKafkaConsumer was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg *config.Config
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	lockInitialiserMockDoGetKafkaConsumer.Lock()
+	mock.calls.DoGetKafkaConsumer = append(mock.calls.DoGetKafkaConsumer, callInfo)
+	lockInitialiserMockDoGetKafkaConsumer.Unlock()
+	return mock.DoGetKafkaConsumerFunc(ctx, cfg)
+}
+
+// DoGetKafkaConsumerCalls gets all the calls that were made to DoGetKafkaConsumer.
+// Check the length with:
+//     len(mockedInitialiser.DoGetKafkaConsumerCalls())
+func (mock *InitialiserMock) DoGetKafkaConsumerCalls() []struct {
+	Ctx context.Context
+	Cfg *config.Config
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg *config.Config
+	}
+	lockInitialiserMockDoGetKafkaConsumer.RLock()
+	calls = mock.calls.DoGetKafkaConsumer
+	lockInitialiserMockDoGetKafkaConsumer.RUnlock()
+	return calls
+}
+
+// DoGetVault calls DoGetVaultFunc.
+func (mock *InitialiserMock) DoGetVault(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
+	if mock.DoGetVaultFunc == nil {
+		panic("InitialiserMock.DoGetVaultFunc: method is nil but Initialiser.DoGetVault was just called")
+	}
+	callInfo := struct {
+		VaultToken   string
+		VaultAddress string
+		Retries      int
+	}{
+		VaultToken:   vaultToken,
+		VaultAddress: vaultAddress,
+		Retries:      retries,
+	}
+	lockInitialiserMockDoGetVault.Lock()
+	mock.calls.DoGetVault = append(mock.calls.DoGetVault, callInfo)
+	lockInitialiserMockDoGetVault.Unlock()
+	return mock.DoGetVaultFunc(vaultToken, vaultAddress, retries)
+}
+
+// DoGetVaultCalls gets all the calls that were made to DoGetVault.
+// Check the length with:
+//     len(mockedInitialiser.DoGetVaultCalls())
+func (mock *InitialiserMock) DoGetVaultCalls() []struct {
+	VaultToken   string
+	VaultAddress string
+	Retries      int
+} {
+	var calls []struct {
+		VaultToken   string
+		VaultAddress string
+		Retries      int
+	}
+	lockInitialiserMockDoGetVault.RLock()
+	calls = mock.calls.DoGetVault
+	lockInitialiserMockDoGetVault.RUnlock()
 	return calls
 }
