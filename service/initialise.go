@@ -8,14 +8,17 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	kafka "github.com/ONSdigital/dp-kafka"
 	dphttp "github.com/ONSdigital/dp-net/http"
+	s3client "github.com/ONSdigital/dp-s3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	vault "github.com/ONSdigital/dp-vault"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
 	HealthCheck            bool
 	KafkaConsumerPublished bool
+	S3                     bool
 	Init                   Initialiser
 }
 
@@ -65,6 +68,17 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 	return kafkaConsumer, nil
 }
 
+// GetS3Clients returns S3 clients public and private. They share the same AWS session.
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public S3Client, s3Private S3Client, err error) {
+	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, true, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	s3Private, _ = e.Init.DoGetS3Client("", cfg.PrivateBucketName, true, s3Public.Session())
+	e.S3 = true
+	return
+}
+
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
 func (e *Init) DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
 	s := dphttp.NewServer(bindAddr, router)
@@ -92,8 +106,16 @@ func (e *Init) DoGetImageAPIClient(imageAPIURL string) ImageAPIClient {
 	return image.NewAPIClient(imageAPIURL)
 }
 
-// DoGetKafkaConsumer creates a new Kafka  Consumer Group using dp-kafka library
+// DoGetKafkaConsumer creates a new Kafka Consumer Group using dp-kafka library
 func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	cgChannels := kafka.CreateConsumerGroupChannels(true)
 	return kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.OffsetNewest, true, cgChannels)
+}
+
+// DoGetS3Client creates a new S3Client. If an AWS session is provided, it will be reused to create the new client
+func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool, s *session.Session) (S3Client, error) {
+	if s == nil {
+		return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
+	}
+	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s), nil
 }

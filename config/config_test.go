@@ -29,6 +29,9 @@ func TestConfig(t *testing.T) {
 				So(cfg.KafkaAddr, ShouldResemble, []string{"localhost:9092"})
 				So(cfg.StaticFilePublishedTopic, ShouldEqual, "static-file-published")
 				So(cfg.ConsumerGroup, ShouldEqual, "dp-static-file-publisher")
+				So(cfg.AwsRegion, ShouldEqual, "eu-west-1")
+				So(cfg.PrivateBucketName, ShouldEqual, "dp-frontend-florence-file-uploads")
+				So(cfg.PublicBucketName, ShouldEqual, "dp-frontend-florence-file-uploads")
 			})
 
 			Convey("Then a second call to config should return the same config", func() {

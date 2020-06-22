@@ -8,6 +8,7 @@ import (
 	"github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"net/http"
 	"sync"
 )
@@ -17,6 +18,7 @@ var (
 	lockInitialiserMockDoGetHealthCheck    sync.RWMutex
 	lockInitialiserMockDoGetImageAPIClient sync.RWMutex
 	lockInitialiserMockDoGetKafkaConsumer  sync.RWMutex
+	lockInitialiserMockDoGetS3Client       sync.RWMutex
 	lockInitialiserMockDoGetVault          sync.RWMutex
 )
 
@@ -42,6 +44,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 // 	               panic("mock out the DoGetKafkaConsumer method")
 //             },
+//             DoGetS3ClientFunc: func(awsRegion string, bucketName string, encryptionEnabled bool, s *session.Session) (service.S3Client, error) {
+// 	               panic("mock out the DoGetS3Client method")
+//             },
 //             DoGetVaultFunc: func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
 // 	               panic("mock out the DoGetVault method")
 //             },
@@ -63,6 +68,9 @@ type InitialiserMock struct {
 
 	// DoGetKafkaConsumerFunc mocks the DoGetKafkaConsumer method.
 	DoGetKafkaConsumerFunc func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
+
+	// DoGetS3ClientFunc mocks the DoGetS3Client method.
+	DoGetS3ClientFunc func(awsRegion string, bucketName string, encryptionEnabled bool, s *session.Session) (service.S3Client, error)
 
 	// DoGetVaultFunc mocks the DoGetVault method.
 	DoGetVaultFunc func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error)
@@ -98,6 +106,17 @@ type InitialiserMock struct {
 			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg *config.Config
+		}
+		// DoGetS3Client holds details about calls to the DoGetS3Client method.
+		DoGetS3Client []struct {
+			// AwsRegion is the awsRegion argument value.
+			AwsRegion string
+			// BucketName is the bucketName argument value.
+			BucketName string
+			// EncryptionEnabled is the encryptionEnabled argument value.
+			EncryptionEnabled bool
+			// S is the s argument value.
+			S *session.Session
 		}
 		// DoGetVault holds details about calls to the DoGetVault method.
 		DoGetVault []struct {
@@ -252,6 +271,49 @@ func (mock *InitialiserMock) DoGetKafkaConsumerCalls() []struct {
 	lockInitialiserMockDoGetKafkaConsumer.RLock()
 	calls = mock.calls.DoGetKafkaConsumer
 	lockInitialiserMockDoGetKafkaConsumer.RUnlock()
+	return calls
+}
+
+// DoGetS3Client calls DoGetS3ClientFunc.
+func (mock *InitialiserMock) DoGetS3Client(awsRegion string, bucketName string, encryptionEnabled bool, s *session.Session) (service.S3Client, error) {
+	if mock.DoGetS3ClientFunc == nil {
+		panic("InitialiserMock.DoGetS3ClientFunc: method is nil but Initialiser.DoGetS3Client was just called")
+	}
+	callInfo := struct {
+		AwsRegion         string
+		BucketName        string
+		EncryptionEnabled bool
+		S                 *session.Session
+	}{
+		AwsRegion:         awsRegion,
+		BucketName:        bucketName,
+		EncryptionEnabled: encryptionEnabled,
+		S:                 s,
+	}
+	lockInitialiserMockDoGetS3Client.Lock()
+	mock.calls.DoGetS3Client = append(mock.calls.DoGetS3Client, callInfo)
+	lockInitialiserMockDoGetS3Client.Unlock()
+	return mock.DoGetS3ClientFunc(awsRegion, bucketName, encryptionEnabled, s)
+}
+
+// DoGetS3ClientCalls gets all the calls that were made to DoGetS3Client.
+// Check the length with:
+//     len(mockedInitialiser.DoGetS3ClientCalls())
+func (mock *InitialiserMock) DoGetS3ClientCalls() []struct {
+	AwsRegion         string
+	BucketName        string
+	EncryptionEnabled bool
+	S                 *session.Session
+} {
+	var calls []struct {
+		AwsRegion         string
+		BucketName        string
+		EncryptionEnabled bool
+		S                 *session.Session
+	}
+	lockInitialiserMockDoGetS3Client.RLock()
+	calls = mock.calls.DoGetS3Client
+	lockInitialiserMockDoGetS3Client.RUnlock()
 	return calls
 }
 

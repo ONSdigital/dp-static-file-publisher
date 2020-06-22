@@ -22,6 +22,8 @@ type Service struct {
 	VaultCli      VaultClient
 	ImageAPICli   ImageAPIClient
 	KafkaConsumer kafka.IConsumerGroup
+	S3Public      S3Client
+	S3Private     S3Client
 }
 
 // Run the service
@@ -53,6 +55,13 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.KafkaConsumer, err = serviceList.GetKafkaConsumer(ctx, cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate kafka consumer", log.FATAL, log.Error(err))
+		return nil, err
+	}
+
+	// Get S3 Clients
+	svc.S3Private, svc.S3Private, err = serviceList.GetS3Clients(cfg)
+	if err != nil {
+		log.Event(ctx, "could not instantiate S3 clients", log.FATAL, log.Error(err))
 		return nil, err
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	kafka "github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
@@ -14,6 +15,7 @@ import (
 //go:generate moq -out mock/healthcheck.go -pkg mock . HealthChecker
 //go:generate moq -out mock/vault.go -pkg mock . VaultClient
 //go:generate moq -out mock/image.go -pkg mock . ImageAPIClient
+//go:generate moq -out mock/s3.go -pkg mock . S3Client
 
 // Initialiser defines the methods to initialise external services
 type Initialiser interface {
@@ -22,6 +24,7 @@ type Initialiser interface {
 	DoGetVault(vaultToken, vaultAddress string, retries int) (VaultClient, error)
 	DoGetImageAPIClient(imageAPIURL string) ImageAPIClient
 	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
+	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool, s *session.Session) (S3Client, error)
 }
 
 // HTTPServer defines the required methods from the HTTP server
@@ -46,4 +49,10 @@ type VaultClient interface {
 // ImageAPIClient defines the required methods from dp-api-clients-go ImageAPI
 type ImageAPIClient interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
+}
+
+// S3Client defines the required methods from dp-s3 to interact with a particular bucket of AWS S3
+type S3Client interface {
+	Checker(ctx context.Context, state *healthcheck.CheckState) error
+	Session() *session.Session
 }

@@ -19,6 +19,9 @@ type Config struct {
 	KafkaAddr                  []string      `envconfig:"KAFKA_ADDR"`
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
+	AwsRegion                  string        `envconfig:"AWS_REGION"`
+	PrivateBucketName          string        `envconfig:"PRIVATE_BUCKET_NAME"`
+	PublicBucketName           string        `envconfig:"PUBLIC_BUCKET_NAME"`
 }
 
 var cfg *Config
@@ -41,6 +44,9 @@ func Get() (*Config, error) {
 		KafkaAddr:                  []string{"localhost:9092"},
 		StaticFilePublishedTopic:   "static-file-published",
 		ConsumerGroup:              "dp-static-file-publisher",
+		AwsRegion:                  "eu-west-1",
+		PrivateBucketName:          "dp-frontend-florence-file-uploads",
+		PublicBucketName:           "dp-frontend-florence-file-uploads",
 	}
 
 	return cfg, envconfig.Process("", cfg)
