@@ -59,7 +59,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	}
 
 	// Get S3 Clients
-	svc.S3Private, svc.S3Private, err = serviceList.GetS3Clients(cfg)
+	svc.S3Public, svc.S3Private, err = serviceList.GetS3Clients(cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate S3 clients", log.FATAL, log.Error(err))
 		return nil, err
@@ -161,6 +161,16 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	if err = svc.HealthCheck.AddCheck("Kafka Consumer", svc.KafkaConsumer.Checker); err != nil {
 		hasErrors = true
 		log.Event(ctx, "failed to add kafka consumer checker", log.ERROR, log.Error(err))
+	}
+
+	if err = svc.HealthCheck.AddCheck("S3 Public", svc.S3Public.Checker); err != nil {
+		hasErrors = true
+		log.Event(ctx, "failed to add public s3 client checker", log.ERROR, log.Error(err))
+	}
+
+	if err = svc.HealthCheck.AddCheck("S3 Private", svc.S3Private.Checker); err != nil {
+		hasErrors = true
+		log.Event(ctx, "failed to add private s3 client checker", log.ERROR, log.Error(err))
 	}
 
 	if hasErrors {

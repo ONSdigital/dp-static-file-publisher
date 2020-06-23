@@ -45,8 +45,8 @@ func Get() (*Config, error) {
 		StaticFilePublishedTopic:   "static-file-published",
 		ConsumerGroup:              "dp-static-file-publisher",
 		AwsRegion:                  "eu-west-1",
-		PrivateBucketName:          "dp-frontend-florence-file-uploads",
-		PublicBucketName:           "dp-frontend-florence-file-uploads",
+		PrivateBucketName:          "csv-exported",
+		PublicBucketName:           "static-develop",
 	}
 
 	return cfg, envconfig.Process("", cfg)

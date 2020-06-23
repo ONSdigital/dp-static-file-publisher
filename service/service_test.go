@@ -219,10 +219,12 @@ func TestRun(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddheckFail.Error()))
 				So(svcList.HealthCheck, ShouldBeTrue)
-				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 3)
+				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 5)
 				So(hcMockAddFail.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
 				So(hcMockAddFail.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
 				So(hcMockAddFail.AddCheckCalls()[2].Name, ShouldResemble, "Kafka Consumer")
+				So(hcMockAddFail.AddCheckCalls()[3].Name, ShouldResemble, "S3 Public")
+				So(hcMockAddFail.AddCheckCalls()[4].Name, ShouldResemble, "S3 Private")
 			})
 		})
 
@@ -244,7 +246,17 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run succeeds and all the flags are set", func() {
 				So(err, ShouldBeNil)
 				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
+				So(svcList.S3, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
+
+				Convey("And all healthcheck checks are registered", func() {
+					So(len(hcMock.AddCheckCalls()), ShouldEqual, 5)
+					So(hcMock.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
+					So(hcMock.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
+					So(hcMock.AddCheckCalls()[2].Name, ShouldResemble, "Kafka Consumer")
+					So(hcMock.AddCheckCalls()[3].Name, ShouldResemble, "S3 Public")
+					So(hcMock.AddCheckCalls()[4].Name, ShouldResemble, "S3 Private")
+				})
 			})
 
 			Convey("The http server and healchecker start", func() {
@@ -280,7 +292,6 @@ func TestRun(t *testing.T) {
 			})
 		})
 	})
-
 }
 
 func TestClose(t *testing.T) {
