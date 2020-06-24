@@ -18,7 +18,8 @@ import (
 type ExternalServiceList struct {
 	HealthCheck            bool
 	KafkaConsumerPublished bool
-	S3                     bool
+	S3Public               bool
+	S3Private              bool
 	Init                   Initialiser
 }
 
@@ -74,8 +75,12 @@ func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public S3Clien
 	if err != nil {
 		return nil, nil, err
 	}
-	s3Private, _ = e.Init.DoGetS3Client("", cfg.PrivateBucketName, true, s3Public.Session())
-	e.S3 = true
+	e.S3Public = true
+	s3Private, err = e.Init.DoGetS3Client("", cfg.PrivateBucketName, true, s3Public.Session())
+	if err != nil {
+		return s3Public, nil, err
+	}
+	e.S3Private = true
 	return
 }
 

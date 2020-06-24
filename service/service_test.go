@@ -129,7 +129,8 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errVault)
 				So(svcList.KafkaConsumerPublished, ShouldBeFalse)
-				So(svcList.S3, ShouldBeFalse)
+				So(svcList.S3Public, ShouldBeFalse)
+				So(svcList.S3Private, ShouldBeFalse)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
@@ -148,7 +149,8 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errKafkaConsumer)
 				So(svcList.KafkaConsumerPublished, ShouldBeFalse)
-				So(svcList.S3, ShouldBeFalse)
+				So(svcList.S3Public, ShouldBeFalse)
+				So(svcList.S3Private, ShouldBeFalse)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
@@ -168,7 +170,8 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errS3)
 				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
-				So(svcList.S3, ShouldBeFalse)
+				So(svcList.S3Public, ShouldBeFalse)
+				So(svcList.S3Private, ShouldBeFalse)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
@@ -189,7 +192,8 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run fails with the same error and the flag is not set", func() {
 				So(err, ShouldResemble, errHealthcheck)
 				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
-				So(svcList.S3, ShouldBeTrue)
+				So(svcList.S3Public, ShouldBeTrue)
+				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
@@ -246,7 +250,8 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run succeeds and all the flags are set", func() {
 				So(err, ShouldBeNil)
 				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
-				So(svcList.S3, ShouldBeTrue)
+				So(svcList.S3Public, ShouldBeTrue)
+				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
 
 				Convey("And all healthcheck checks are registered", func() {
