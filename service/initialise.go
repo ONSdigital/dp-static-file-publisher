@@ -119,7 +119,7 @@ func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled boo
 	return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
 }
 
-// DoGetS3ClientWithSession creates a new S3Client for the provided AWS region, using an existing AWS session
+// DoGetS3ClientWithSession creates a new S3Client for the provided bucket name, using an existing AWS session
 func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) S3Client {
 	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s)
 }
