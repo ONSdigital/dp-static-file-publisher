@@ -20,8 +20,8 @@ type Config struct {
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
 	AwsRegion                  string        `envconfig:"AWS_REGION"`
-	PrivateBucketName          string        `envconfig:"PRIVATE_BUCKET_NAME"`
-	PublicBucketName           string        `envconfig:"PUBLIC_BUCKET_NAME"`
+	PrivateBucketName          string        `envconfig:"S3_PRIVATE_BUCKET_NAME"`
+	PublicBucketName           string        `envconfig:"S3_PUBLIC_BUCKET_NAME"`
 }
 
 var cfg *Config
