@@ -24,7 +24,8 @@ type Initialiser interface {
 	DoGetVault(vaultToken, vaultAddress string, retries int) (VaultClient, error)
 	DoGetImageAPIClient(imageAPIURL string) ImageAPIClient
 	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
-	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool, s *session.Session) (S3Client, error)
+	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (S3Client, error)
+	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) S3Client
 }
 
 // HTTPServer defines the required methods from the HTTP server

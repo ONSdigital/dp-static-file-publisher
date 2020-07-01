@@ -71,15 +71,12 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 
 // GetS3Clients returns S3 clients public and private. They share the same AWS session.
 func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public S3Client, s3Private S3Client, err error) {
-	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, true, nil)
+	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, true)
 	if err != nil {
 		return nil, nil, err
 	}
 	e.S3Public = true
-	s3Private, err = e.Init.DoGetS3Client("", cfg.PrivateBucketName, true, s3Public.Session())
-	if err != nil {
-		return s3Public, nil, err
-	}
+	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, true, s3Public.Session())
 	e.S3Private = true
 	return
 }
@@ -117,10 +114,12 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafk
 	return kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.OffsetNewest, true, cgChannels)
 }
 
-// DoGetS3Client creates a new S3Client. If an AWS session is provided, it will be reused to create the new client
-func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool, s *session.Session) (S3Client, error) {
-	if s == nil {
-		return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
-	}
-	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s), nil
+// DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
+func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (S3Client, error) {
+	return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
+}
+
+// DoGetS3ClientWithSession creates a new S3Client for the provided AWS region, using an existing AWS session
+func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) S3Client {
+	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s)
 }

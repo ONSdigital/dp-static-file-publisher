@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	lockInitialiserMockDoGetHTTPServer     sync.RWMutex
-	lockInitialiserMockDoGetHealthCheck    sync.RWMutex
-	lockInitialiserMockDoGetImageAPIClient sync.RWMutex
-	lockInitialiserMockDoGetKafkaConsumer  sync.RWMutex
-	lockInitialiserMockDoGetS3Client       sync.RWMutex
-	lockInitialiserMockDoGetVault          sync.RWMutex
+	lockInitialiserMockDoGetHTTPServer          sync.RWMutex
+	lockInitialiserMockDoGetHealthCheck         sync.RWMutex
+	lockInitialiserMockDoGetImageAPIClient      sync.RWMutex
+	lockInitialiserMockDoGetKafkaConsumer       sync.RWMutex
+	lockInitialiserMockDoGetS3Client            sync.RWMutex
+	lockInitialiserMockDoGetS3ClientWithSession sync.RWMutex
+	lockInitialiserMockDoGetVault               sync.RWMutex
 )
 
 // Ensure, that InitialiserMock does implement service.Initialiser.
@@ -44,8 +45,11 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 // 	               panic("mock out the DoGetKafkaConsumer method")
 //             },
-//             DoGetS3ClientFunc: func(awsRegion string, bucketName string, encryptionEnabled bool, s *session.Session) (service.S3Client, error) {
+//             DoGetS3ClientFunc: func(awsRegion string, bucketName string, encryptionEnabled bool) (service.S3Client, error) {
 // 	               panic("mock out the DoGetS3Client method")
+//             },
+//             DoGetS3ClientWithSessionFunc: func(bucketName string, encryptionEnabled bool, s *session.Session) service.S3Client {
+// 	               panic("mock out the DoGetS3ClientWithSession method")
 //             },
 //             DoGetVaultFunc: func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error) {
 // 	               panic("mock out the DoGetVault method")
@@ -70,7 +74,10 @@ type InitialiserMock struct {
 	DoGetKafkaConsumerFunc func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
 
 	// DoGetS3ClientFunc mocks the DoGetS3Client method.
-	DoGetS3ClientFunc func(awsRegion string, bucketName string, encryptionEnabled bool, s *session.Session) (service.S3Client, error)
+	DoGetS3ClientFunc func(awsRegion string, bucketName string, encryptionEnabled bool) (service.S3Client, error)
+
+	// DoGetS3ClientWithSessionFunc mocks the DoGetS3ClientWithSession method.
+	DoGetS3ClientWithSessionFunc func(bucketName string, encryptionEnabled bool, s *session.Session) service.S3Client
 
 	// DoGetVaultFunc mocks the DoGetVault method.
 	DoGetVaultFunc func(vaultToken string, vaultAddress string, retries int) (service.VaultClient, error)
@@ -111,6 +118,13 @@ type InitialiserMock struct {
 		DoGetS3Client []struct {
 			// AwsRegion is the awsRegion argument value.
 			AwsRegion string
+			// BucketName is the bucketName argument value.
+			BucketName string
+			// EncryptionEnabled is the encryptionEnabled argument value.
+			EncryptionEnabled bool
+		}
+		// DoGetS3ClientWithSession holds details about calls to the DoGetS3ClientWithSession method.
+		DoGetS3ClientWithSession []struct {
 			// BucketName is the bucketName argument value.
 			BucketName string
 			// EncryptionEnabled is the encryptionEnabled argument value.
@@ -275,7 +289,7 @@ func (mock *InitialiserMock) DoGetKafkaConsumerCalls() []struct {
 }
 
 // DoGetS3Client calls DoGetS3ClientFunc.
-func (mock *InitialiserMock) DoGetS3Client(awsRegion string, bucketName string, encryptionEnabled bool, s *session.Session) (service.S3Client, error) {
+func (mock *InitialiserMock) DoGetS3Client(awsRegion string, bucketName string, encryptionEnabled bool) (service.S3Client, error) {
 	if mock.DoGetS3ClientFunc == nil {
 		panic("InitialiserMock.DoGetS3ClientFunc: method is nil but Initialiser.DoGetS3Client was just called")
 	}
@@ -283,17 +297,15 @@ func (mock *InitialiserMock) DoGetS3Client(awsRegion string, bucketName string, 
 		AwsRegion         string
 		BucketName        string
 		EncryptionEnabled bool
-		S                 *session.Session
 	}{
 		AwsRegion:         awsRegion,
 		BucketName:        bucketName,
 		EncryptionEnabled: encryptionEnabled,
-		S:                 s,
 	}
 	lockInitialiserMockDoGetS3Client.Lock()
 	mock.calls.DoGetS3Client = append(mock.calls.DoGetS3Client, callInfo)
 	lockInitialiserMockDoGetS3Client.Unlock()
-	return mock.DoGetS3ClientFunc(awsRegion, bucketName, encryptionEnabled, s)
+	return mock.DoGetS3ClientFunc(awsRegion, bucketName, encryptionEnabled)
 }
 
 // DoGetS3ClientCalls gets all the calls that were made to DoGetS3Client.
@@ -303,17 +315,54 @@ func (mock *InitialiserMock) DoGetS3ClientCalls() []struct {
 	AwsRegion         string
 	BucketName        string
 	EncryptionEnabled bool
-	S                 *session.Session
 } {
 	var calls []struct {
 		AwsRegion         string
 		BucketName        string
 		EncryptionEnabled bool
-		S                 *session.Session
 	}
 	lockInitialiserMockDoGetS3Client.RLock()
 	calls = mock.calls.DoGetS3Client
 	lockInitialiserMockDoGetS3Client.RUnlock()
+	return calls
+}
+
+// DoGetS3ClientWithSession calls DoGetS3ClientWithSessionFunc.
+func (mock *InitialiserMock) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) service.S3Client {
+	if mock.DoGetS3ClientWithSessionFunc == nil {
+		panic("InitialiserMock.DoGetS3ClientWithSessionFunc: method is nil but Initialiser.DoGetS3ClientWithSession was just called")
+	}
+	callInfo := struct {
+		BucketName        string
+		EncryptionEnabled bool
+		S                 *session.Session
+	}{
+		BucketName:        bucketName,
+		EncryptionEnabled: encryptionEnabled,
+		S:                 s,
+	}
+	lockInitialiserMockDoGetS3ClientWithSession.Lock()
+	mock.calls.DoGetS3ClientWithSession = append(mock.calls.DoGetS3ClientWithSession, callInfo)
+	lockInitialiserMockDoGetS3ClientWithSession.Unlock()
+	return mock.DoGetS3ClientWithSessionFunc(bucketName, encryptionEnabled, s)
+}
+
+// DoGetS3ClientWithSessionCalls gets all the calls that were made to DoGetS3ClientWithSession.
+// Check the length with:
+//     len(mockedInitialiser.DoGetS3ClientWithSessionCalls())
+func (mock *InitialiserMock) DoGetS3ClientWithSessionCalls() []struct {
+	BucketName        string
+	EncryptionEnabled bool
+	S                 *session.Session
+} {
+	var calls []struct {
+		BucketName        string
+		EncryptionEnabled bool
+		S                 *session.Session
+	}
+	lockInitialiserMockDoGetS3ClientWithSession.RLock()
+	calls = mock.calls.DoGetS3ClientWithSession
+	lockInitialiserMockDoGetS3ClientWithSession.RUnlock()
 	return calls
 }
 
