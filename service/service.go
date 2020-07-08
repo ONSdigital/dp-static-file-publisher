@@ -20,12 +20,12 @@ type Service struct {
 	API           *api.API
 	ServiceList   *ExternalServiceList
 	HealthCheck   HealthChecker
-	VaultCli      VaultClient
 	ImageAPICli   ImageAPIClient
 	KafkaConsumer kafka.IConsumerGroup
 	EventConsumer EventConsumer
-	S3Public      event.S3Client
+	S3Public      event.S3Uploader
 	S3Private     event.S3Client
+	VaultCli      event.VaultClient
 }
 
 // Run the service
@@ -67,11 +67,13 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 
-	// Event Handler for Kafka Consumer with the created S3 Clients
+	// Event Handler for Kafka Consumer with the created S3 Clients and Vault
 	svc.EventConsumer = event.NewConsumer()
 	svc.EventConsumer.Consume(ctx, svc.KafkaConsumer, event.ImagePublishedHandler{
 		S3Private: svc.S3Private,
 		S3Public:  svc.S3Public,
+		VaultCli:  svc.VaultCli,
+		VaultPath: cfg.VaultPath,
 	})
 
 	// Get HealthCheck

@@ -8,12 +8,15 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"io"
 	"sync"
 )
 
 var (
-	lockS3ClientMockChecker sync.RWMutex
-	lockS3ClientMockSession sync.RWMutex
+	lockS3ClientMockBucketName sync.RWMutex
+	lockS3ClientMockChecker    sync.RWMutex
+	lockS3ClientMockGetWithPSK sync.RWMutex
+	lockS3ClientMockSession    sync.RWMutex
 )
 
 // Ensure, that S3ClientMock does implement event.S3Client.
@@ -26,8 +29,14 @@ var _ event.S3Client = &S3ClientMock{}
 //
 //         // make and configure a mocked event.S3Client
 //         mockedS3Client := &S3ClientMock{
+//             BucketNameFunc: func() string {
+// 	               panic("mock out the BucketName method")
+//             },
 //             CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 // 	               panic("mock out the Checker method")
+//             },
+//             GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+// 	               panic("mock out the GetWithPSK method")
 //             },
 //             SessionFunc: func() *session.Session {
 // 	               panic("mock out the Session method")
@@ -39,14 +48,23 @@ var _ event.S3Client = &S3ClientMock{}
 //
 //     }
 type S3ClientMock struct {
+	// BucketNameFunc mocks the BucketName method.
+	BucketNameFunc func() string
+
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
+
+	// GetWithPSKFunc mocks the GetWithPSK method.
+	GetWithPSKFunc func(key string, psk []byte) (io.ReadCloser, *int64, error)
 
 	// SessionFunc mocks the Session method.
 	SessionFunc func() *session.Session
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// BucketName holds details about calls to the BucketName method.
+		BucketName []struct {
+		}
 		// Checker holds details about calls to the Checker method.
 		Checker []struct {
 			// Ctx is the ctx argument value.
@@ -54,10 +72,43 @@ type S3ClientMock struct {
 			// State is the state argument value.
 			State *healthcheck.CheckState
 		}
+		// GetWithPSK holds details about calls to the GetWithPSK method.
+		GetWithPSK []struct {
+			// Key is the key argument value.
+			Key string
+			// Psk is the psk argument value.
+			Psk []byte
+		}
 		// Session holds details about calls to the Session method.
 		Session []struct {
 		}
 	}
+}
+
+// BucketName calls BucketNameFunc.
+func (mock *S3ClientMock) BucketName() string {
+	if mock.BucketNameFunc == nil {
+		panic("S3ClientMock.BucketNameFunc: method is nil but S3Client.BucketName was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockS3ClientMockBucketName.Lock()
+	mock.calls.BucketName = append(mock.calls.BucketName, callInfo)
+	lockS3ClientMockBucketName.Unlock()
+	return mock.BucketNameFunc()
+}
+
+// BucketNameCalls gets all the calls that were made to BucketName.
+// Check the length with:
+//     len(mockedS3Client.BucketNameCalls())
+func (mock *S3ClientMock) BucketNameCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockS3ClientMockBucketName.RLock()
+	calls = mock.calls.BucketName
+	lockS3ClientMockBucketName.RUnlock()
+	return calls
 }
 
 // Checker calls CheckerFunc.
@@ -92,6 +143,41 @@ func (mock *S3ClientMock) CheckerCalls() []struct {
 	lockS3ClientMockChecker.RLock()
 	calls = mock.calls.Checker
 	lockS3ClientMockChecker.RUnlock()
+	return calls
+}
+
+// GetWithPSK calls GetWithPSKFunc.
+func (mock *S3ClientMock) GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error) {
+	if mock.GetWithPSKFunc == nil {
+		panic("S3ClientMock.GetWithPSKFunc: method is nil but S3Client.GetWithPSK was just called")
+	}
+	callInfo := struct {
+		Key string
+		Psk []byte
+	}{
+		Key: key,
+		Psk: psk,
+	}
+	lockS3ClientMockGetWithPSK.Lock()
+	mock.calls.GetWithPSK = append(mock.calls.GetWithPSK, callInfo)
+	lockS3ClientMockGetWithPSK.Unlock()
+	return mock.GetWithPSKFunc(key, psk)
+}
+
+// GetWithPSKCalls gets all the calls that were made to GetWithPSK.
+// Check the length with:
+//     len(mockedS3Client.GetWithPSKCalls())
+func (mock *S3ClientMock) GetWithPSKCalls() []struct {
+	Key string
+	Psk []byte
+} {
+	var calls []struct {
+		Key string
+		Psk []byte
+	}
+	lockS3ClientMockGetWithPSK.RLock()
+	calls = mock.calls.GetWithPSK
+	lockS3ClientMockGetWithPSK.RUnlock()
 	return calls
 }
 

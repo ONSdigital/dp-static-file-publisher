@@ -6,36 +6,43 @@ package mock
 import (
 	"context"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	"github.com/ONSdigital/dp-static-file-publisher/service"
+	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"sync"
 )
 
 var (
 	lockVaultClientMockChecker sync.RWMutex
+	lockVaultClientMockReadKey sync.RWMutex
 )
 
-// Ensure, that VaultClientMock does implement service.VaultClient.
+// Ensure, that VaultClientMock does implement event.VaultClient.
 // If this is not the case, regenerate this file with moq.
-var _ service.VaultClient = &VaultClientMock{}
+var _ event.VaultClient = &VaultClientMock{}
 
-// VaultClientMock is a mock implementation of service.VaultClient.
+// VaultClientMock is a mock implementation of event.VaultClient.
 //
 //     func TestSomethingThatUsesVaultClient(t *testing.T) {
 //
-//         // make and configure a mocked service.VaultClient
+//         // make and configure a mocked event.VaultClient
 //         mockedVaultClient := &VaultClientMock{
 //             CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 // 	               panic("mock out the Checker method")
 //             },
+//             ReadKeyFunc: func(path string, key string) (string, error) {
+// 	               panic("mock out the ReadKey method")
+//             },
 //         }
 //
-//         // use mockedVaultClient in code that requires service.VaultClient
+//         // use mockedVaultClient in code that requires event.VaultClient
 //         // and then make assertions.
 //
 //     }
 type VaultClientMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
+
+	// ReadKeyFunc mocks the ReadKey method.
+	ReadKeyFunc func(path string, key string) (string, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -45,6 +52,13 @@ type VaultClientMock struct {
 			Ctx context.Context
 			// State is the state argument value.
 			State *healthcheck.CheckState
+		}
+		// ReadKey holds details about calls to the ReadKey method.
+		ReadKey []struct {
+			// Path is the path argument value.
+			Path string
+			// Key is the key argument value.
+			Key string
 		}
 	}
 }
@@ -81,5 +95,40 @@ func (mock *VaultClientMock) CheckerCalls() []struct {
 	lockVaultClientMockChecker.RLock()
 	calls = mock.calls.Checker
 	lockVaultClientMockChecker.RUnlock()
+	return calls
+}
+
+// ReadKey calls ReadKeyFunc.
+func (mock *VaultClientMock) ReadKey(path string, key string) (string, error) {
+	if mock.ReadKeyFunc == nil {
+		panic("VaultClientMock.ReadKeyFunc: method is nil but VaultClient.ReadKey was just called")
+	}
+	callInfo := struct {
+		Path string
+		Key  string
+	}{
+		Path: path,
+		Key:  key,
+	}
+	lockVaultClientMockReadKey.Lock()
+	mock.calls.ReadKey = append(mock.calls.ReadKey, callInfo)
+	lockVaultClientMockReadKey.Unlock()
+	return mock.ReadKeyFunc(path, key)
+}
+
+// ReadKeyCalls gets all the calls that were made to ReadKey.
+// Check the length with:
+//     len(mockedVaultClient.ReadKeyCalls())
+func (mock *VaultClientMock) ReadKeyCalls() []struct {
+	Path string
+	Key  string
+} {
+	var calls []struct {
+		Path string
+		Key  string
+	}
+	lockVaultClientMockReadKey.RLock()
+	calls = mock.calls.ReadKey
+	lockVaultClientMockReadKey.RUnlock()
 	return calls
 }

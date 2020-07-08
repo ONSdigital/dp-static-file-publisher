@@ -51,7 +51,7 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 }
 
 // GetVault creates a new vault client
-func (e *ExternalServiceList) GetVault(cfg *config.Config) (VaultClient, error) {
+func (e *ExternalServiceList) GetVault(cfg *config.Config) (event.VaultClient, error) {
 	return e.Init.DoGetVault(cfg.VaultToken, cfg.VaultAddress, 3)
 }
 
@@ -71,14 +71,14 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 }
 
 // GetS3Clients returns S3 clients public and private. They share the same AWS session.
-func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public, s3Private event.S3Client, err error) {
-	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, true)
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public event.S3Uploader, s3Private event.S3Client, err error) {
+	s3Private, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PrivateBucketName, true)
 	if err != nil {
 		return nil, nil, err
 	}
-	e.S3Public = true
-	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, true, s3Public.Session())
 	e.S3Private = true
+	s3Public = e.Init.DoGetS3UploaderWithSession(cfg.PublicBucketName, true, s3Private.Session())
+	e.S3Public = true
 	return
 }
 
@@ -100,7 +100,7 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 }
 
 // DoGetVault creates a new vault client using dp-vault library
-func (e *Init) DoGetVault(vaultToken, vaultAddress string, retries int) (VaultClient, error) {
+func (e *Init) DoGetVault(vaultToken, vaultAddress string, retries int) (event.VaultClient, error) {
 	return vault.CreateClient(vaultToken, vaultAddress, retries)
 }
 
@@ -120,7 +120,8 @@ func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled boo
 	return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
 }
 
-// DoGetS3ClientWithSession creates a new S3Client for the provided bucket name, using an existing AWS session
-func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Client {
-	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s)
+// DoGetS3UploaderWithSession creates a new S3Uploader (extension of S3Client with Upload operations)
+// for the provided bucket name, using an existing AWS session
+func (e *Init) DoGetS3UploaderWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Uploader {
+	return s3client.NewUploaderWithSession(bucketName, encryptionEnabled, s)
 }

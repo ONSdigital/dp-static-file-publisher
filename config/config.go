@@ -15,6 +15,7 @@ type Config struct {
 	VaultToken                 string        `envconfig:"VAULT_TOKEN"                   json:"-"`
 	VaultAddress               string        `envconfig:"VAULT_ADDR"`
 	VaultRetries               int           `envconfig:"VAULT_RETRIES"`
+	VaultPath                  string        `envconfig:"VAULT_PATH"`
 	ImageAPIURL                string        `envconfig:"IMAGE_API_URL"`
 	KafkaAddr                  []string      `envconfig:"KAFKA_ADDR"`
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
@@ -40,6 +41,7 @@ func Get() (*Config, error) {
 		VaultToken:                 "",
 		VaultAddress:               "",
 		VaultRetries:               3,
+		VaultPath:                  "secret/shared/psk",
 		ImageAPIURL:                "http://localhost:24700",
 		KafkaAddr:                  []string{"localhost:9092"},
 		StaticFilePublishedTopic:   "static-file-published",

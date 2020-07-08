@@ -25,6 +25,7 @@ func TestConfig(t *testing.T) {
 				So(cfg.VaultToken, ShouldEqual, "")
 				So(cfg.VaultAddress, ShouldEqual, "")
 				So(cfg.VaultRetries, ShouldEqual, 3)
+				So(cfg.VaultPath, ShouldEqual, "secret/shared/psk")
 				So(cfg.ImageAPIURL, ShouldEqual, "http://localhost:24700")
 				So(cfg.KafkaAddr, ShouldResemble, []string{"localhost:9092"})
 				So(cfg.StaticFilePublishedTopic, ShouldEqual, "static-file-published")
