@@ -11,8 +11,9 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-kafka/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
+	"github.com/ONSdigital/dp-static-file-publisher/event"
+	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
-	"github.com/ONSdigital/dp-static-file-publisher/service/mock"
 	serviceMock "github.com/ONSdigital/dp-static-file-publisher/service/mock"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
@@ -43,12 +44,20 @@ var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (k
 	return nil, errKafkaConsumer
 }
 
-var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string, encryptionEnabled bool) (service.S3Client, error) {
+var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Client, error) {
 	return nil, errS3
 }
 
 var funcDoGetHTTPServerNil = func(bindAddr string, router http.Handler) service.HTTPServer {
 	return nil
+}
+
+// kafkaStubConsumer mock which exposes Channels function returning empty channels
+// to be used on tests that are not supposed to receive any kafka message
+var kafkaStubConsumer = &kafkatest.IConsumerGroupMock{
+	ChannelsFunc: func() *kafka.ConsumerGroupChannels {
+		return &kafka.ConsumerGroupChannels{}
+	},
 }
 
 func TestRun(t *testing.T) {
@@ -67,10 +76,8 @@ func TestRun(t *testing.T) {
 			StartFunc:    func(ctx context.Context) {},
 		}
 
-		kafkaConsumerMock := &kafkatest.IConsumerGroupMock{}
-
 		s3Session := &session.Session{}
-		s3Mock := &serviceMock.S3ClientMock{
+		s3Mock := &eventMock.S3ClientMock{
 			SessionFunc: func() *session.Session { return s3Session },
 		}
 
@@ -98,14 +105,14 @@ func TestRun(t *testing.T) {
 		}
 
 		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
-			return kafkaConsumerMock, nil
+			return kafkaStubConsumer, nil
 		}
 
-		funcDoGetS3ClientOK := func(awsRegion string, bucketName string, encryptionEnabled bool) (service.S3Client, error) {
+		funcDoGetS3ClientOK := func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Client, error) {
 			return s3Mock, nil
 		}
 
-		funcDoGetS3ClientWithSessionOK := func(buketName string, encryptionEnabled bool, s *session.Session) service.S3Client {
+		funcDoGetS3ClientWithSessionOK := func(buketName string, encryptionEnabled bool, s *session.Session) event.S3Client {
 			return s3Mock
 		}
 
@@ -316,6 +323,7 @@ func TestClose(t *testing.T) {
 
 		hcStopped := false
 		serverStopped := false
+		kafkaConsumerListening := true
 
 		// healthcheck Stop does not depend on any other service being closed/stopped
 		hcMock := &serviceMock.HealthCheckerMock{
@@ -325,8 +333,7 @@ func TestClose(t *testing.T) {
 		}
 
 		// server Shutdown will fail if healthcheck is not stopped
-		serverMock := &mock.HTTPServerMock{
-			// ListenAndServeFunc: func() error { return nil },
+		serverMock := &serviceMock.HTTPServerMock{
 			ShutdownFunc: func(ctx context.Context) error {
 				if !hcStopped {
 					return errors.New("Server stopped before healthcheck")
@@ -336,8 +343,15 @@ func TestClose(t *testing.T) {
 			},
 		}
 
-		// consumer group Close will fail if healthcheck or http server are not stopped
+		// consumer group Close and StopListeningToConsumer will fail if healthcheck or http server are not stopped
 		kafkaConsumerMock := &kafkatest.IConsumerGroupMock{
+			StopListeningToConsumerFunc: func(ctx context.Context) error {
+				if !hcStopped || !serverStopped {
+					return errors.New("Kafka Consumer StopListening before healthcheck or HTTP server")
+				}
+				kafkaConsumerListening = false
+				return nil
+			},
 			CloseFunc: func(ctx context.Context) error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer stopped before healthcheck or HTTP server")
@@ -346,9 +360,19 @@ func TestClose(t *testing.T) {
 			},
 		}
 
+		// eventConsumer Close will fail if kafka consumer is still listening
+		eventConsumerMock := &serviceMock.EventConsumerMock{
+			CloseFunc: func(ctx context.Context) error {
+				if kafkaConsumerListening {
+					return errors.New("Event Consumer closed before Kafka StopListeningToConsumer")
+				}
+				return nil
+			},
+		}
+
 		Convey("Closing the service results in all the dependencies being closed in the expected order", func() {
 
-			initMock := &mock.InitialiserMock{
+			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc: func(bindAddr string, router http.Handler) service.HTTPServer {
 					return serverMock
 				},
@@ -369,19 +393,21 @@ func TestClose(t *testing.T) {
 				Server:        serverMock,
 				HealthCheck:   hcMock,
 				KafkaConsumer: kafkaConsumerMock,
+				EventConsumer: eventConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
 			So(err, ShouldBeNil)
 			So(len(hcMock.StopCalls()), ShouldEqual, 1)
 			So(len(serverMock.ShutdownCalls()), ShouldEqual, 1)
+			So(len(kafkaConsumerMock.StopListeningToConsumerCalls()), ShouldEqual, 1)
 			So(len(kafkaConsumerMock.CloseCalls()), ShouldEqual, 1)
-
+			So(len(eventConsumerMock.CloseCalls()), ShouldEqual, 1)
 		})
 
 		Convey("If services fail to stop, the Close operation tries to close all dependencies and returns an error", func() {
 
-			failingserverMock := &mock.HTTPServerMock{
+			failingserverMock := &serviceMock.HTTPServerMock{
 				ListenAndServeFunc: func() error { return nil },
 				ShutdownFunc: func(ctx context.Context) error {
 					return errors.New("Failed to stop http server")
@@ -392,9 +418,18 @@ func TestClose(t *testing.T) {
 				CloseFunc: func(ctx context.Context) error {
 					return errors.New("Failed to stop Kafka Consumer")
 				},
+				StopListeningToConsumerFunc: func(ctx context.Context) error {
+					return errors.New("Failed to stop listening to consumer")
+				},
 			}
 
-			initMock := &mock.InitialiserMock{
+			failingEventConsumerMock := &serviceMock.EventConsumerMock{
+				CloseFunc: func(ctx context.Context) error {
+					return errors.New("Failed to close EventConsumer")
+				},
+			}
+
+			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc: func(bindAddr string, router http.Handler) service.HTTPServer {
 					return failingserverMock
 				},
@@ -415,13 +450,16 @@ func TestClose(t *testing.T) {
 				Server:        failingserverMock,
 				HealthCheck:   hcMock,
 				KafkaConsumer: failingKafkaConsumerMock,
+				EventConsumer: failingEventConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
 			So(err, ShouldNotBeNil)
 			So(len(hcMock.StopCalls()), ShouldEqual, 1)
 			So(len(failingserverMock.ShutdownCalls()), ShouldEqual, 1)
+			So(len(failingKafkaConsumerMock.StopListeningToConsumerCalls()), ShouldEqual, 1)
 			So(len(failingKafkaConsumerMock.CloseCalls()), ShouldEqual, 1)
+			So(len(failingEventConsumerMock.CloseCalls()), ShouldEqual, 1)
 		})
 	})
 }

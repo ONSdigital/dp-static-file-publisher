@@ -6,7 +6,7 @@ package mock
 import (
 	"context"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	"github.com/ONSdigital/dp-static-file-publisher/service"
+	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"sync"
 )
@@ -16,15 +16,15 @@ var (
 	lockS3ClientMockSession sync.RWMutex
 )
 
-// Ensure, that S3ClientMock does implement service.S3Client.
+// Ensure, that S3ClientMock does implement event.S3Client.
 // If this is not the case, regenerate this file with moq.
-var _ service.S3Client = &S3ClientMock{}
+var _ event.S3Client = &S3ClientMock{}
 
-// S3ClientMock is a mock implementation of service.S3Client.
+// S3ClientMock is a mock implementation of event.S3Client.
 //
 //     func TestSomethingThatUsesS3Client(t *testing.T) {
 //
-//         // make and configure a mocked service.S3Client
+//         // make and configure a mocked event.S3Client
 //         mockedS3Client := &S3ClientMock{
 //             CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 // 	               panic("mock out the Checker method")
@@ -34,7 +34,7 @@ var _ service.S3Client = &S3ClientMock{}
 //             },
 //         }
 //
-//         // use mockedS3Client in code that requires service.S3Client
+//         // use mockedS3Client in code that requires event.S3Client
 //         // and then make assertions.
 //
 //     }

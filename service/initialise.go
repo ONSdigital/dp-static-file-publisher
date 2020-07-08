@@ -10,6 +10,7 @@ import (
 	dphttp "github.com/ONSdigital/dp-net/http"
 	s3client "github.com/ONSdigital/dp-s3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
+	"github.com/ONSdigital/dp-static-file-publisher/event"
 	vault "github.com/ONSdigital/dp-vault"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
@@ -70,7 +71,7 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 }
 
 // GetS3Clients returns S3 clients public and private. They share the same AWS session.
-func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public S3Client, s3Private S3Client, err error) {
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public, s3Private event.S3Client, err error) {
 	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, true)
 	if err != nil {
 		return nil, nil, err
@@ -115,11 +116,11 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafk
 }
 
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
-func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (S3Client, error) {
+func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Client, error) {
 	return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
 }
 
 // DoGetS3ClientWithSession creates a new S3Client for the provided bucket name, using an existing AWS session
-func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) S3Client {
+func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Client {
 	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s)
 }

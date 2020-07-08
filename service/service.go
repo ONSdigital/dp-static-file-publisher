@@ -6,6 +6,7 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/api"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
+	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/log.go/log"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -22,8 +23,9 @@ type Service struct {
 	VaultCli      VaultClient
 	ImageAPICli   ImageAPIClient
 	KafkaConsumer kafka.IConsumerGroup
-	S3Public      S3Client
-	S3Private     S3Client
+	EventConsumer EventConsumer
+	S3Public      event.S3Client
+	S3Private     event.S3Client
 }
 
 // Run the service
@@ -64,6 +66,13 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		log.Event(ctx, "could not instantiate S3 clients", log.FATAL, log.Error(err))
 		return nil, err
 	}
+
+	// Event Handler for Kafka Consumer with the created S3 Clients
+	svc.EventConsumer = event.NewConsumer()
+	svc.EventConsumer.Consume(ctx, svc.KafkaConsumer, event.ImagePublishedHandler{
+		S3Private: svc.S3Private,
+		S3Public:  svc.S3Public,
+	})
 
 	// Get HealthCheck
 	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
@@ -112,7 +121,21 @@ func (svc *Service) Close(ctx context.Context) error {
 			hasShutdownError = true
 		}
 
-		// Close Kafka Consumer, if present (previous stop listening not required)
+		// Stop listening Kafka Consumer, if present
+		if svc.ServiceList.KafkaConsumerPublished {
+			if err := svc.KafkaConsumer.StopListeningToConsumer(ctx); err != nil {
+				log.Event(ctx, "failed to stop listening kafka consumer", log.Error(err), log.ERROR)
+				hasShutdownError = true
+			}
+		}
+
+		// Close EventConsumer
+		if err := svc.EventConsumer.Close(ctx); err != nil {
+			log.Event(ctx, "error closing event consumer", log.ERROR, log.Error(err))
+			hasShutdownError = true
+		}
+
+		// Close Kafka Consumer, if present
 		if svc.ServiceList.KafkaConsumerPublished {
 			if err := svc.KafkaConsumer.Close(ctx); err != nil {
 				log.Event(ctx, "failed to shutdown kafka consumer group", log.Error(err), log.ERROR)
