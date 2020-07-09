@@ -8,8 +8,20 @@ var imagePublishedEvent = `{
   "type": "record",
   "name": "image-published",
   "fields": [
-    {"name": "src_path", "type": "string", "default": ""},
-    {"name": "dst_path", "type": "string", "default": ""}
+    {
+      "name": "downloads",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "download-variant",
+          "fields": [
+            {"name": "src_path", "type": "string", "default": ""},
+            {"name": "dst_path", "type": "string", "default": ""}
+          ]
+        }
+      }
+    }
   ]
 }`
 
