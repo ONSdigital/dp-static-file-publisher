@@ -8,7 +8,8 @@ var imagePublishedEvent = `{
   "type": "record",
   "name": "image-published",
   "fields": [
-    {"name": "image_id", "type": "string", "default": ""}
+    {"name": "src_path", "type": "string", "default": ""},
+    {"name": "dst_path", "type": "string", "default": ""}
   ]
 }`
 

@@ -18,7 +18,10 @@ var testCtx = context.Background()
 
 var errHandler = errors.New("Handler Error")
 
-var testEvent = event.ImagePublished{ImageID: "image-123"}
+var testEvent = event.ImagePublished{
+	SrcPath:  "private/path/image.png",
+	DestPath: "public/path/something.png",
+}
 
 // kafkaStubConsumer mock which exposes Channels function returning empty channels
 // to be used on tests that are not supposed to receive any kafka message

@@ -49,7 +49,7 @@ type VaultClient interface {
 }
 
 // Handle takes a single event. It reads the PSK from Vault, uses it to decrypt the encrypted file
-// from the private S3 bucket, and writes it to the public static bucket without encryption
+// from the private S3 bucket, and writes it to the public static bucket without using the vault psk for encryption.
 func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished) error {
 	publicBucket := h.S3Public.BucketName()
 	logData := log.Data{
@@ -72,11 +72,8 @@ func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished
 		return err
 	}
 
-	// TODO where do we get filename from? Shall it be part of the event?
-	filename := "filename"
-
 	// Decrypt image from private bucket using PSK obtained from Vault
-	reader, _, err := h.S3Private.GetWithPSK(filename, psk)
+	reader, _, err := h.S3Private.GetWithPSK(event.SrcPath, psk)
 	if err != nil {
 		log.Event(ctx, "error getting s3 object with psk", log.ERROR, log.Error(err), logData)
 		return err
@@ -87,7 +84,7 @@ func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished
 	result, err := h.S3Public.Upload(&s3manager.UploadInput{
 		Body:   reader,
 		Bucket: &publicBucket,
-		Key:    &filename,
+		Key:    &event.DestPath,
 	})
 	if err != nil {
 		log.Event(ctx, "error uploading s3 object with psk", log.ERROR, log.Error(err), logData)
