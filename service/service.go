@@ -89,6 +89,9 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.Router.StrictSlash(true).Path("/health").HandlerFunc(svc.HealthCheck.Handler)
 	svc.HealthCheck.Start(ctx)
 
+	// kafka error channel logging go-routine
+	svc.KafkaConsumer.Channels().LogErrors(ctx, "kafka StaticFilePublished Consumer")
+
 	// Run the http server in a new go-routine
 	go func() {
 		if err := svc.Server.ListenAndServe(); err != nil {
