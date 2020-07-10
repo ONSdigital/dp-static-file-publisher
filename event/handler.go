@@ -3,7 +3,9 @@ package event
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"io"
+	"path"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/log.go/log"
@@ -17,6 +19,9 @@ import (
 
 // VaultKey is the key under the vault that contains the PSK needed to decrypt files from the encrypted private S3 bucket
 const VaultKey = "key"
+
+//ErrVaultFilenameEmpty is an error returned when trying to obtain a PSK for an empty file name
+var ErrVaultFilenameEmpty = errors.New("vault filename required but was empty")
 
 // ImagePublishedHandler ...
 type ImagePublishedHandler struct {
@@ -50,7 +55,7 @@ type VaultClient interface {
 
 // Handle takes a single event. It reads the PSK from Vault, uses it to decrypt the encrypted file
 // from the private S3 bucket, and writes it to the public static bucket without using the vault psk for encryption.
-func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished) error {
+func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished) error {
 	publicBucket := h.S3Public.BucketName()
 	logData := log.Data{
 		"event":          event,
@@ -61,14 +66,9 @@ func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished
 	log.Event(ctx, "event handler called", log.INFO, logData)
 
 	// Get PSK from Vault
-	pskStr, err := h.VaultCli.ReadKey(h.VaultPath, VaultKey)
+	psk, err := h.getVaultKeyForFile(event.SrcPath)
 	if err != nil {
 		log.Event(ctx, "error reading key from vault", log.ERROR, log.Error(err), logData)
-		return err
-	}
-	psk, err := hex.DecodeString(pskStr)
-	if err != nil {
-		log.Event(ctx, "error decoding vault key", log.ERROR, log.Error(err), logData)
 		return err
 	}
 
@@ -93,4 +93,24 @@ func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished
 
 	log.Event(ctx, "event successfully handled", log.INFO, logData)
 	return nil
+}
+
+// getVaultKeyForFile reads the encryption key from Vault for the provided filename
+func (h *ImagePublishedHandler) getVaultKeyForFile(filePath string) ([]byte, error) {
+	if len(filePath) == 0 {
+		return nil, ErrVaultFilenameEmpty
+	}
+
+	vp := path.Join(h.VaultPath, filePath)
+	pskStr, err := h.VaultCli.ReadKey(vp, VaultKey)
+	if err != nil {
+		return nil, err
+	}
+
+	psk, err := hex.DecodeString(pskStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return psk, nil
 }

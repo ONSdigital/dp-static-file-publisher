@@ -69,7 +69,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 
 	// Event Handler for Kafka Consumer with the created S3 Clients and Vault
 	svc.EventConsumer = event.NewConsumer()
-	svc.EventConsumer.Consume(ctx, svc.KafkaConsumer, event.ImagePublishedHandler{
+	svc.EventConsumer.Consume(ctx, svc.KafkaConsumer, &event.ImagePublishedHandler{
 		S3Private: svc.S3Private,
 		S3Public:  svc.S3Public,
 		VaultCli:  svc.VaultCli,

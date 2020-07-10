@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	testVaultPath = "/vault/path/for/testing"
+	testVaultPath     = "/vault/path/for/testing"
+	testVaultFilePath = "/vault/path/for/testing/images/ID1/original/private.png"
 )
 
 var (
@@ -70,7 +71,7 @@ func TestDataImportCompleteHandler_Handle_HierarchyStoreError(t *testing.T) {
 
 			Convey("Encryption key is read from Vault with the expected path", func() {
 				So(len(mockVault.ReadKeyCalls()), ShouldEqual, 1)
-				So(mockVault.ReadKeyCalls()[0].Path, ShouldEqual, testVaultPath)
+				So(mockVault.ReadKeyCalls()[0].Path, ShouldEqual, testVaultFilePath)
 				So(mockVault.ReadKeyCalls()[0].Key, ShouldEqual, "key")
 			})
 

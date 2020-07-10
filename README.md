@@ -6,6 +6,10 @@ Static file publisher
 
 * Run `make debug`
 
+* You can use the provided kafka producer to send kafka messages that will trigger a file publishing event, for testing proposes.
+You can use it by running `go run cmd/producer/main.go`
+Then you will need to introduce the source and destination paths, and the message will be sent.
+
 ### Dependencies
 
 * No further dependencies other than those defined in `go.mod`
