@@ -19,16 +19,8 @@ var testCtx = context.Background()
 var errHandler = errors.New("Handler Error")
 
 var testEvent = event.ImagePublished{
-	[]event.ImageDownloadPublished{
-		{
-			SrcPath: "images/ID1/original/private.png",
-			DstPath: "images/ID1/original/public.png",
-		},
-		{
-			SrcPath: "images/ID2/png_bw/private.png",
-			DstPath: "images/ID2/png_bw/public.png",
-		},
-	},
+	SrcPath: "images/ID1/original/private.png",
+	DstPath: "images/ID1/original/public.png",
 }
 
 // kafkaStubConsumer mock which exposes Channels function returning empty channels

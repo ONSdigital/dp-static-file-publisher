@@ -74,25 +74,18 @@ func TestDataImportCompleteHandler_Handle_HierarchyStoreError(t *testing.T) {
 				So(mockVault.ReadKeyCalls()[0].Key, ShouldEqual, "key")
 			})
 
-			Convey("All downloads variants are obtained from the private bucket and decrypted with the psk obtained from Vault", func() {
-				So(len(mockS3Private.GetWithPSKCalls()), ShouldEqual, 2)
-				So(mockS3Private.GetWithPSKCalls()[0].Key, ShouldEqual, testEvent.Downloads[0].SrcPath)
-				So(mockS3Private.GetWithPSKCalls()[1].Key, ShouldEqual, testEvent.Downloads[1].SrcPath)
-				So(mockS3Private.GetWithPSKCalls()[0].Psk, ShouldResemble, psk)
+			Convey("The file is obtained from the private bucket and decrypted with the psk obtained from Vault", func() {
+				So(len(mockS3Private.GetWithPSKCalls()), ShouldEqual, 1)
+				So(mockS3Private.GetWithPSKCalls()[0].Key, ShouldEqual, testEvent.SrcPath)
 				So(mockS3Private.GetWithPSKCalls()[0].Psk, ShouldResemble, psk)
 			})
 
-			Convey("All download variants are uploaded to the public bucket", func() {
-				So(len(mockS3Public.UploadCalls()), ShouldEqual, 2)
+			Convey("The file is uploaded to the public bucket", func() {
+				So(len(mockS3Public.UploadCalls()), ShouldEqual, 1)
 				So(*mockS3Public.UploadCalls()[0].Input, ShouldResemble, s3manager.UploadInput{
 					Body:   testFileContent,
 					Bucket: &testPublicBucket,
-					Key:    &testEvent.Downloads[0].DstPath,
-				})
-				So(*mockS3Public.UploadCalls()[1].Input, ShouldResemble, s3manager.UploadInput{
-					Body:   testFileContent,
-					Bucket: &testPublicBucket,
-					Key:    &testEvent.Downloads[1].DstPath,
+					Key:    &testEvent.DstPath,
 				})
 			})
 		})

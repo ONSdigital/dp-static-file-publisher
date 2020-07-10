@@ -72,28 +72,23 @@ func (h ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished
 		return err
 	}
 
-	for _, eventVariant := range event.Downloads {
+	// Decrypt image from private bucket using PSK obtained from Vault
+	reader, _, err := h.S3Private.GetWithPSK(event.SrcPath, psk)
+	if err != nil {
+		log.Event(ctx, "error getting s3 object with psk", log.ERROR, log.Error(err), logData)
+		return err
+	}
 
-		// Decrypt image from private bucket using PSK obtained from Vault
-		reader, _, err := h.S3Private.GetWithPSK(eventVariant.SrcPath, psk)
-		if err != nil {
-			logData["failed_source_path"] = eventVariant.SrcPath
-			log.Event(ctx, "error getting s3 object with psk", log.ERROR, log.Error(err), logData)
-			return err
-		}
-
-		// Upload file to public bucket
-		log.Event(ctx, "uploading public file to s3", log.INFO, logData)
-		_, err = h.S3Public.Upload(&s3manager.UploadInput{
-			Body:   reader,
-			Bucket: &publicBucket,
-			Key:    &eventVariant.DstPath,
-		})
-		if err != nil {
-			logData["failed_destination_path"] = eventVariant.DstPath
-			log.Event(ctx, "error uploading s3 object", log.ERROR, log.Error(err), logData)
-			return err
-		}
+	// Upload file to public bucket
+	log.Event(ctx, "uploading public file to s3", log.INFO, logData)
+	_, err = h.S3Public.Upload(&s3manager.UploadInput{
+		Body:   reader,
+		Bucket: &publicBucket,
+		Key:    &event.DstPath,
+	})
+	if err != nil {
+		log.Event(ctx, "error uploading s3 object", log.ERROR, log.Error(err), logData)
+		return err
 	}
 
 	log.Event(ctx, "event successfully handled", log.INFO, logData)
