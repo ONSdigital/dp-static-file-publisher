@@ -6,7 +6,7 @@ image_resource:
   type: docker-image
   source:
     repository: golang
-    tag: 
+    tag: 1.15.1
 
 inputs:
   - name: dp-static-file-publisher
