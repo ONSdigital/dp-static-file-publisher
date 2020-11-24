@@ -4,7 +4,6 @@ import (
 	"context"
 
 	kafka "github.com/ONSdigital/dp-kafka"
-	"github.com/ONSdigital/dp-static-file-publisher/api"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/log.go/log"
@@ -17,7 +16,6 @@ type Service struct {
 	Config        *config.Config
 	Server        HTTPServer
 	Router        *mux.Router
-	API           *api.API
 	ServiceList   *ExternalServiceList
 	HealthCheck   HealthChecker
 	ImageAPICli   ImageAPIClient
@@ -41,7 +39,6 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Get HTTP Router, Server and API
 	svc.Router = mux.NewRouter()
 	svc.Server = serviceList.GetHTTPServer(cfg.BindAddr, svc.Router)
-	svc.API = api.Setup(ctx, svc.Router)
 
 	// Get Vault Client
 	svc.VaultCli, err = serviceList.GetVault(cfg)
@@ -146,12 +143,6 @@ func (svc *Service) Close(ctx context.Context) error {
 				log.Event(ctx, "failed to shutdown kafka consumer group", log.Error(err), log.ERROR)
 				hasShutdownError = true
 			}
-		}
-
-		// close API
-		if err := svc.API.Close(ctx); err != nil {
-			log.Event(ctx, "error closing API", log.Error(err), log.ERROR)
-			hasShutdownError = true
 		}
 
 		if !hasShutdownError {
