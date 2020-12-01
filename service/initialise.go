@@ -2,32 +2,40 @@ package service
 
 import (
 	"context"
-	"net/http"
-
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafka "github.com/ONSdigital/dp-kafka"
+	dpkafka "github.com/ONSdigital/dp-kafka"
+	"net/http"
+
 	dphttp "github.com/ONSdigital/dp-net/http"
-	s3client "github.com/ONSdigital/dp-s3"
+	dps3 "github.com/ONSdigital/dp-s3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
-	vault "github.com/ONSdigital/dp-vault"
+	dpvault "github.com/ONSdigital/dp-vault"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
+	Vault                  bool
+	ImageAPI               bool
 	HealthCheck            bool
 	KafkaConsumerPublished bool
-	S3Public               bool
 	S3Private              bool
+	S3Public               bool
 	Init                   Initialiser
 }
 
 // NewServiceList creates a new service list with the provided initialiser
 func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 	return &ExternalServiceList{
-		Init: initialiser,
+		Vault:                  false,
+		ImageAPI:               false,
+		HealthCheck:            false,
+		KafkaConsumerPublished: false,
+		S3Private:              false,
+		S3Public:               false,
+		Init:                   initialiser,
 	}
 }
 
@@ -50,19 +58,26 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 	return hc, nil
 }
 
-// GetVault creates a new vault client
-func (e *ExternalServiceList) GetVault(cfg *config.Config) (event.VaultClient, error) {
-	return e.Init.DoGetVault(cfg.VaultToken, cfg.VaultAddress, 3)
+// GetVault creates a Vault client and sets the Vault flag to true
+func (e *ExternalServiceList) GetVault(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+	vault, err := e.Init.DoGetVault(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	e.Vault = true
+	return vault, nil
 }
 
-// GetImageAPIClient creates a new image API client
-func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) ImageAPIClient {
-	return e.Init.DoGetImageAPIClient(cfg.ImageAPIURL)
+// GetImageAPIClient creates an ImageAPI client and sets the ImageAPI flag to true
+func (e *ExternalServiceList) GetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+	imageAPI := e.Init.DoGetImageAPIClient(ctx, cfg)
+	e.ImageAPI = true
+	return imageAPI
 }
 
-// GetKafkaConsumer returns a kafka consumer group
-func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafkaConsumer kafka.IConsumerGroup, err error) {
-	kafkaConsumer, err = e.Init.DoGetKafkaConsumer(ctx, cfg)
+// GetKafkaConsumer creates a Kafka consumer and sets the consumer flag to true
+func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+	kafkaConsumer, err := e.Init.DoGetKafkaConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -70,15 +85,15 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 	return kafkaConsumer, nil
 }
 
-// GetS3Clients returns S3 clients public and private. They share the same AWS session.
-func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Public event.S3Uploader, s3Private event.S3Client, err error) {
-	s3Private, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PrivateBucketName, true)
+// GetS3Clients returns S3 clients private and public. They share the same AWS session.
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.S3Reader, s3Public event.S3Writer, err error) {
+	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, false)
 	if err != nil {
 		return nil, nil, err
 	}
-	e.S3Private = true
-	s3Public = e.Init.DoGetS3UploaderWithSession(cfg.PublicBucketName, true, s3Private.Session())
 	e.S3Public = true
+	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, !cfg.EncryptionDisabled, s3Public.Session())
+	e.S3Private = true
 	return
 }
 
@@ -99,29 +114,44 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 	return &hc, nil
 }
 
-// DoGetVault creates a new vault client using dp-vault library
-func (e *Init) DoGetVault(vaultToken, vaultAddress string, retries int) (event.VaultClient, error) {
-	return vault.CreateClient(vaultToken, vaultAddress, retries)
+// DoGetVault returns a VaultClient if encryption is enabled
+func (e *Init) DoGetVault(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+	if cfg.EncryptionDisabled {
+		return nil, nil
+	}
+	vault, err := dpvault.CreateClient(cfg.VaultToken, cfg.VaultAddress, 3)
+	if err != nil {
+		return nil, err
+	}
+	return vault, nil
 }
 
-// DoGetImageAPIClient creates a new image api client using dp-api-clients-go library
-func (e *Init) DoGetImageAPIClient(imageAPIURL string) ImageAPIClient {
-	return image.NewAPIClient(imageAPIURL)
+// DoGetImageAPIClient returns an Image API client
+func (e *Init) DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+	return image.NewAPIClient(cfg.ImageAPIURL)
 }
 
-// DoGetKafkaConsumer creates a new Kafka Consumer Group using dp-kafka library
-func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
-	cgChannels := kafka.CreateConsumerGroupChannels(true)
-	return kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.OffsetNewest, true, cgChannels)
+// DoGetKafkaConsumer returns a Kafka Consumer group
+func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+	cgChannels := dpkafka.CreateConsumerGroupChannels(true)
+	return dpkafka.NewConsumerGroup(
+		ctx,
+		cfg.KafkaAddr,
+		cfg.StaticFilePublishedTopic,
+		cfg.ConsumerGroup,
+		dpkafka.OffsetNewest,
+		true,
+		cgChannels,
+	)
 }
 
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
-func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Client, error) {
-	return s3client.NewClient(awsRegion, bucketName, encryptionEnabled)
+func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
+	return dps3.NewUploader(awsRegion, bucketName, encryptionEnabled)
 }
 
-// DoGetS3UploaderWithSession creates a new S3Uploader (extension of S3Client with Upload operations)
+// DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)
 // for the provided bucket name, using an existing AWS session
-func (e *Init) DoGetS3UploaderWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Uploader {
-	return s3client.NewUploaderWithSession(bucketName, encryptionEnabled, s)
+func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
+	return dps3.NewClientWithSession(bucketName, encryptionEnabled, s)
 }

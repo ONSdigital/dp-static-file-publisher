@@ -36,15 +36,15 @@ var funcDoGetHealthcheckErr = func(cfg *config.Config, buildTime string, gitComm
 	return nil, errHealthcheck
 }
 
-var funcDoGetVaultErr = func(vaultToken string, vaultAddress string, retries int) (event.VaultClient, error) {
+var funcDoGetVaultErr = func(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
 	return nil, errVault
 }
 
-var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 	return nil, errKafkaConsumer
 }
 
-var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Client, error) {
+var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 	return nil, errS3
 }
 
@@ -69,7 +69,7 @@ func TestRun(t *testing.T) {
 
 		vaultMock := &eventMock.VaultClientMock{}
 
-		imageAPIClientMock := &serviceMock.ImageAPIClientMock{}
+		imageAPIClientMock := &eventMock.ImageAPIClientMock{}
 
 		hcMock := &serviceMock.HealthCheckerMock{
 			AddCheckFunc: func(name string, checker healthcheck.Checker) error { return nil },
@@ -77,10 +77,10 @@ func TestRun(t *testing.T) {
 		}
 
 		s3Session := &session.Session{}
-		s3ClientMock := &eventMock.S3ClientMock{
+		s3ClientMock := &eventMock.S3WriterMock{
 			SessionFunc: func() *session.Session { return s3Session },
 		}
-		s3UploaderMock := &eventMock.S3UploaderMock{}
+		s3PrivateMock := &eventMock.S3ReaderMock{}
 
 		serverWg := &sync.WaitGroup{}
 		serverMock := &serviceMock.HTTPServerMock{
@@ -97,24 +97,24 @@ func TestRun(t *testing.T) {
 			},
 		}
 
-		funcDoGetVaultOK := func(vaultToken string, vaultAddress string, retries int) (event.VaultClient, error) {
+		funcDoGetVaultOK := func(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
 			return vaultMock, nil
 		}
 
-		funcDoGetImageAPIClientFuncOK := func(imageAPIURL string) service.ImageAPIClient {
+		funcDoGetImageAPIClientFuncOK := func(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
 			return imageAPIClientMock
 		}
 
-		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 			return kafkaStubConsumer, nil
 		}
 
-		funcDoGetS3ClientOK := func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Client, error) {
+		funcDoGetS3ClientOK := func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 			return s3ClientMock, nil
 		}
 
-		funcDoGetS3UploaderWithSessionOK := func(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Uploader {
-			return s3UploaderMock
+		funcDoGetS3UploaderWithSessionOK := func(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
+			return s3PrivateMock
 		}
 
 		funcDoGetHealthcheckOK := func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
@@ -190,13 +190,13 @@ func TestRun(t *testing.T) {
 
 		Convey("Given that initialising healthcheck returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:            funcDoGetHTTPServerNil,
-				DoGetVaultFunc:                 funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:        funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:         funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:              funcDoGetS3ClientOK,
-				DoGetS3UploaderWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:           funcDoGetHealthcheckErr,
+				DoGetHTTPServerFunc:          funcDoGetHTTPServerNil,
+				DoGetVaultFunc:               funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:         funcDoGetHealthcheckErr,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -219,12 +219,12 @@ func TestRun(t *testing.T) {
 			}
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:            funcDoGetHTTPServerNil,
-				DoGetVaultFunc:                 funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:        funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:         funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:              funcDoGetS3ClientOK,
-				DoGetS3UploaderWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
+				DoGetHTTPServerFunc:          funcDoGetHTTPServerNil,
+				DoGetVaultFunc:               funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMockAddFail, nil
 				},
@@ -249,13 +249,13 @@ func TestRun(t *testing.T) {
 		Convey("Given that all dependencies are successfully initialised", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:            funcDoGetHTTPServer,
-				DoGetVaultFunc:                 funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:        funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:         funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:              funcDoGetS3ClientOK,
-				DoGetS3UploaderWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:           funcDoGetHealthcheckOK,
+				DoGetHTTPServerFunc:          funcDoGetHTTPServer,
+				DoGetVaultFunc:               funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -281,7 +281,7 @@ func TestRun(t *testing.T) {
 
 			Convey("The http server and healchecker start", func() {
 				So(len(initMock.DoGetHTTPServerCalls()), ShouldEqual, 1)
-				So(initMock.DoGetHTTPServerCalls()[0].BindAddr, ShouldEqual, ":24900")
+				So(initMock.DoGetHTTPServerCalls()[0].BindAddr, ShouldEqual, "localhost:24900")
 				So(len(initMock.DoGetVaultCalls()), ShouldEqual, 1)
 				So(len(hcMock.StartCalls()), ShouldEqual, 1)
 				serverWg.Wait() // Wait for HTTP server go-routine to finish
@@ -292,13 +292,13 @@ func TestRun(t *testing.T) {
 		Convey("Given that all dependencies are successfully initialised but the http server fails", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:            funcDoGetFailingHTTPSerer,
-				DoGetVaultFunc:                 funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:        funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:         funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:              funcDoGetS3ClientOK,
-				DoGetS3UploaderWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:           funcDoGetHealthcheckOK,
+				DoGetHTTPServerFunc:          funcDoGetFailingHTTPSerer,
+				DoGetVaultFunc:               funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -380,7 +380,7 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+				DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return kafkaConsumerMock, nil
 				},
 			}
@@ -437,7 +437,7 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+				DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return failingKafkaConsumerMock, nil
 				},
 			}

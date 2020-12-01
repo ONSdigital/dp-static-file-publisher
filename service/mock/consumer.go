@@ -10,11 +10,6 @@ import (
 	"sync"
 )
 
-var (
-	lockEventConsumerMockClose   sync.RWMutex
-	lockEventConsumerMockConsume sync.RWMutex
-)
-
 // Ensure, that EventConsumerMock does implement service.EventConsumer.
 // If this is not the case, regenerate this file with moq.
 var _ service.EventConsumer = &EventConsumerMock{}
@@ -61,6 +56,8 @@ type EventConsumerMock struct {
 			Handler event.Handler
 		}
 	}
+	lockClose   sync.RWMutex
+	lockConsume sync.RWMutex
 }
 
 // Close calls CloseFunc.
@@ -73,9 +70,9 @@ func (mock *EventConsumerMock) Close(ctx context.Context) error {
 	}{
 		Ctx: ctx,
 	}
-	lockEventConsumerMockClose.Lock()
+	mock.lockClose.Lock()
 	mock.calls.Close = append(mock.calls.Close, callInfo)
-	lockEventConsumerMockClose.Unlock()
+	mock.lockClose.Unlock()
 	return mock.CloseFunc(ctx)
 }
 
@@ -88,9 +85,9 @@ func (mock *EventConsumerMock) CloseCalls() []struct {
 	var calls []struct {
 		Ctx context.Context
 	}
-	lockEventConsumerMockClose.RLock()
+	mock.lockClose.RLock()
 	calls = mock.calls.Close
-	lockEventConsumerMockClose.RUnlock()
+	mock.lockClose.RUnlock()
 	return calls
 }
 
@@ -108,9 +105,9 @@ func (mock *EventConsumerMock) Consume(ctx context.Context, messageConsumer even
 		MessageConsumer: messageConsumer,
 		Handler:         handler,
 	}
-	lockEventConsumerMockConsume.Lock()
+	mock.lockConsume.Lock()
 	mock.calls.Consume = append(mock.calls.Consume, callInfo)
-	lockEventConsumerMockConsume.Unlock()
+	mock.lockConsume.Unlock()
 	mock.ConsumeFunc(ctx, messageConsumer, handler)
 }
 
@@ -127,8 +124,8 @@ func (mock *EventConsumerMock) ConsumeCalls() []struct {
 		MessageConsumer event.MessageConsumer
 		Handler         event.Handler
 	}
-	lockEventConsumerMockConsume.RLock()
+	mock.lockConsume.RLock()
 	calls = mock.calls.Consume
-	lockEventConsumerMockConsume.RUnlock()
+	mock.lockConsume.RUnlock()
 	return calls
 }

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	kafka "github.com/ONSdigital/dp-kafka"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/log.go/log"
@@ -18,11 +17,11 @@ type Service struct {
 	Router        *mux.Router
 	ServiceList   *ExternalServiceList
 	HealthCheck   HealthChecker
-	ImageAPICli   ImageAPIClient
-	KafkaConsumer kafka.IConsumerGroup
+	ImageAPICli   event.ImageAPIClient
+	KafkaConsumer KafkaConsumer
 	EventConsumer EventConsumer
-	S3Public      event.S3Uploader
-	S3Private     event.S3Client
+	S3Public      event.S3Writer
+	S3Private     event.S3Reader
 	VaultCli      event.VaultClient
 }
 
@@ -41,14 +40,14 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.Server = serviceList.GetHTTPServer(cfg.BindAddr, svc.Router)
 
 	// Get Vault Client
-	svc.VaultCli, err = serviceList.GetVault(cfg)
+	svc.VaultCli, err = serviceList.GetVault(ctx, cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate vault client", log.FATAL, log.Error(err))
 		return nil, err
 	}
 
 	// Get Image API Client
-	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
+	svc.ImageAPICli = serviceList.GetImageAPIClient(ctx, cfg)
 
 	// Get Kafka Consumer
 	svc.KafkaConsumer, err = serviceList.GetKafkaConsumer(ctx, cfg)
@@ -58,7 +57,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	}
 
 	// Get S3 Clients
-	svc.S3Public, svc.S3Private, err = serviceList.GetS3Clients(cfg)
+	svc.S3Private, svc.S3Public, err = serviceList.GetS3Clients(cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate S3 clients", log.FATAL, log.Error(err))
 		return nil, err
@@ -67,10 +66,13 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Event Handler for Kafka Consumer with the created S3 Clients and Vault
 	svc.EventConsumer = event.NewConsumer()
 	svc.EventConsumer.Consume(ctx, svc.KafkaConsumer, &event.ImagePublishedHandler{
-		S3Private: svc.S3Private,
-		S3Public:  svc.S3Public,
-		VaultCli:  svc.VaultCli,
-		VaultPath: cfg.VaultPath,
+		AuthToken:       cfg.ServiceAuthToken,
+		S3Private:       svc.S3Private,
+		S3Public:        svc.S3Public,
+		VaultCli:        svc.VaultCli,
+		VaultPath:       cfg.VaultPath,
+		ImageAPICli:     svc.ImageAPICli,
+		PublicBucketURL: cfg.PublicBucketURL,
 	})
 
 	// Get HealthCheck
@@ -167,9 +169,11 @@ func (svc *Service) Close(ctx context.Context) error {
 func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	hasErrors := false
 
-	if err = svc.HealthCheck.AddCheck("Vault", svc.VaultCli.Checker); err != nil {
-		hasErrors = true
-		log.Event(ctx, "failed to add vault client checker", log.ERROR, log.Error(err))
+	if svc.VaultCli != nil {
+		if err = svc.HealthCheck.AddCheck("Vault", svc.VaultCli.Checker); err != nil {
+			hasErrors = true
+			log.Event(ctx, "failed to add vault client checker", log.ERROR, log.Error(err))
+		}
 	}
 
 	if err = svc.HealthCheck.AddCheck("Image API", svc.ImageAPICli.Checker); err != nil {

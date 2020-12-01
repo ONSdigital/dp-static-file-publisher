@@ -9,6 +9,8 @@ import (
 // Config represents service configuration for dp-static-file-publisher
 type Config struct {
 	BindAddr                   string        `envconfig:"BIND_ADDR"`
+	ServiceAuthToken           string        `envconfig:"SERVICE_AUTH_TOKEN"             json:"-"`
+	EncryptionDisabled         bool          `envconfig:"ENCRYPTION_DISABLED"`
 	GracefulShutdownTimeout    time.Duration `envconfig:"GRACEFUL_SHUTDOWN_TIMEOUT"`
 	HealthCheckInterval        time.Duration `envconfig:"HEALTHCHECK_INTERVAL"`
 	HealthCheckCriticalTimeout time.Duration `envconfig:"HEALTHCHECK_CRITICAL_TIMEOUT"`
@@ -23,6 +25,7 @@ type Config struct {
 	AwsRegion                  string        `envconfig:"AWS_REGION"`
 	PrivateBucketName          string        `envconfig:"S3_PRIVATE_BUCKET_NAME"`
 	PublicBucketName           string        `envconfig:"S3_PUBLIC_BUCKET_NAME"`
+	PublicBucketURL            string        `envconfig:"S3_PUBLIC_BUCKET_URL"`
 }
 
 var cfg *Config
@@ -34,7 +37,9 @@ func Get() (*Config, error) {
 	}
 
 	cfg := &Config{
-		BindAddr:                   ":24900",
+		BindAddr:                   "localhost:24900",
+		ServiceAuthToken:           "4424A9F2-B903-40F4-85F1-240107D1AFAF",
+		EncryptionDisabled:         false,
 		GracefulShutdownTimeout:    5 * time.Second,
 		HealthCheckInterval:        30 * time.Second,
 		HealthCheckCriticalTimeout: 90 * time.Second,
@@ -49,6 +54,7 @@ func Get() (*Config, error) {
 		AwsRegion:                  "eu-west-1",
 		PrivateBucketName:          "csv-exported",
 		PublicBucketName:           "static-develop",
+		PublicBucketURL:            "https://static-develop.s3-eu-west-1.amazonaws.com",
 	}
 
 	return cfg, envconfig.Process("", cfg)

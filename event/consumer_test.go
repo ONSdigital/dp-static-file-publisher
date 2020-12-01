@@ -19,7 +19,7 @@ var testCtx = context.Background()
 var errHandler = errors.New("Handler Error")
 
 var testEvent = event.ImagePublished{
-	SrcPath: "images/ID1/original/private.png",
+	SrcPath: "images/ID1/original",
 	DstPath: "images/ID1/original/public.png",
 }
 
@@ -143,6 +143,14 @@ func TestClose(t *testing.T) {
 
 		Convey("When close is called", func() {
 			err := consumer.Close(context.Background())
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+			})
+		})
+
+		Convey("When close is called without a context", func() {
+			err := consumer.Close(nil)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)

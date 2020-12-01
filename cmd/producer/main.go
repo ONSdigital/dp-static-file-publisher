@@ -70,8 +70,18 @@ func scanEvent(scanner *bufio.Scanner) *event.ImagePublished {
 	scanner.Scan()
 	dstPath := scanner.Text()
 
+	fmt.Println("3 - Please type the image ID")
+	fmt.Printf("$ ")
+	scanner.Scan()
+	imageID := scanner.Text()
+
+	// NB right now, only 'original' variant is supported so don't bother prompting for one
+	variant := "original"
+
 	return &event.ImagePublished{
-		SrcPath: srcPath,
-		DstPath: dstPath,
+		SrcPath:      srcPath,
+		DstPath:      dstPath,
+		ImageID:      imageID,
+		ImageVariant: variant,
 	}
 }

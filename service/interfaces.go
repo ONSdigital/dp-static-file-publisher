@@ -14,18 +14,18 @@ import (
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
 //go:generate moq -out mock/server.go -pkg mock . HTTPServer
 //go:generate moq -out mock/healthcheck.go -pkg mock . HealthChecker
-//go:generate moq -out mock/image.go -pkg mock . ImageAPIClient
+//go:generate moq -out mock/kafka.go -pkg mock . KafkaConsumer
 //go:generate moq -out mock/consumer.go -pkg mock . EventConsumer
 
 // Initialiser defines the methods to initialise external services
 type Initialiser interface {
 	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
-	DoGetVault(vaultToken, vaultAddress string, retries int) (event.VaultClient, error)
-	DoGetImageAPIClient(imageAPIURL string) ImageAPIClient
-	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
-	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Client, error)
-	DoGetS3UploaderWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Uploader
+	DoGetVault(ctx context.Context, cfg *config.Config) (event.VaultClient, error)
+	DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient
+	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
+	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
+	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
 }
 
 // HTTPServer defines the required methods from the HTTP server
@@ -42,9 +42,12 @@ type HealthChecker interface {
 	AddCheck(name string, checker healthcheck.Checker) (err error)
 }
 
-// ImageAPIClient defines the required methods from dp-api-clients-go ImageAPI
-type ImageAPIClient interface {
+type KafkaConsumer interface {
+	StopListeningToConsumer(ctx context.Context) (err error)
+	Close(ctx context.Context) (err error)
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
+	Channels() *kafka.ConsumerGroupChannels
+	Release()
 }
 
 // EventConsumer defines the required methods from event Consumer

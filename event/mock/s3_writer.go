@@ -12,23 +12,16 @@ import (
 	"sync"
 )
 
-var (
-	lockS3UploaderMockBucketName sync.RWMutex
-	lockS3UploaderMockChecker    sync.RWMutex
-	lockS3UploaderMockSession    sync.RWMutex
-	lockS3UploaderMockUpload     sync.RWMutex
-)
-
-// Ensure, that S3UploaderMock does implement event.S3Uploader.
+// Ensure, that S3WriterMock does implement event.S3Writer.
 // If this is not the case, regenerate this file with moq.
-var _ event.S3Uploader = &S3UploaderMock{}
+var _ event.S3Writer = &S3WriterMock{}
 
-// S3UploaderMock is a mock implementation of event.S3Uploader.
+// S3WriterMock is a mock implementation of event.S3Writer.
 //
-//     func TestSomethingThatUsesS3Uploader(t *testing.T) {
+//     func TestSomethingThatUsesS3Writer(t *testing.T) {
 //
-//         // make and configure a mocked event.S3Uploader
-//         mockedS3Uploader := &S3UploaderMock{
+//         // make and configure a mocked event.S3Writer
+//         mockedS3Writer := &S3WriterMock{
 //             BucketNameFunc: func() string {
 // 	               panic("mock out the BucketName method")
 //             },
@@ -43,11 +36,11 @@ var _ event.S3Uploader = &S3UploaderMock{}
 //             },
 //         }
 //
-//         // use mockedS3Uploader in code that requires event.S3Uploader
+//         // use mockedS3Writer in code that requires event.S3Writer
 //         // and then make assertions.
 //
 //     }
-type S3UploaderMock struct {
+type S3WriterMock struct {
 	// BucketNameFunc mocks the BucketName method.
 	BucketNameFunc func() string
 
@@ -83,38 +76,42 @@ type S3UploaderMock struct {
 			Options []func(*s3manager.Uploader)
 		}
 	}
+	lockBucketName sync.RWMutex
+	lockChecker    sync.RWMutex
+	lockSession    sync.RWMutex
+	lockUpload     sync.RWMutex
 }
 
 // BucketName calls BucketNameFunc.
-func (mock *S3UploaderMock) BucketName() string {
+func (mock *S3WriterMock) BucketName() string {
 	if mock.BucketNameFunc == nil {
-		panic("S3UploaderMock.BucketNameFunc: method is nil but S3Uploader.BucketName was just called")
+		panic("S3WriterMock.BucketNameFunc: method is nil but S3Writer.BucketName was just called")
 	}
 	callInfo := struct {
 	}{}
-	lockS3UploaderMockBucketName.Lock()
+	mock.lockBucketName.Lock()
 	mock.calls.BucketName = append(mock.calls.BucketName, callInfo)
-	lockS3UploaderMockBucketName.Unlock()
+	mock.lockBucketName.Unlock()
 	return mock.BucketNameFunc()
 }
 
 // BucketNameCalls gets all the calls that were made to BucketName.
 // Check the length with:
-//     len(mockedS3Uploader.BucketNameCalls())
-func (mock *S3UploaderMock) BucketNameCalls() []struct {
+//     len(mockedS3Writer.BucketNameCalls())
+func (mock *S3WriterMock) BucketNameCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockS3UploaderMockBucketName.RLock()
+	mock.lockBucketName.RLock()
 	calls = mock.calls.BucketName
-	lockS3UploaderMockBucketName.RUnlock()
+	mock.lockBucketName.RUnlock()
 	return calls
 }
 
 // Checker calls CheckerFunc.
-func (mock *S3UploaderMock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
+func (mock *S3WriterMock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
 	if mock.CheckerFunc == nil {
-		panic("S3UploaderMock.CheckerFunc: method is nil but S3Uploader.Checker was just called")
+		panic("S3WriterMock.CheckerFunc: method is nil but S3Writer.Checker was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
@@ -123,16 +120,16 @@ func (mock *S3UploaderMock) Checker(ctx context.Context, state *healthcheck.Chec
 		Ctx:   ctx,
 		State: state,
 	}
-	lockS3UploaderMockChecker.Lock()
+	mock.lockChecker.Lock()
 	mock.calls.Checker = append(mock.calls.Checker, callInfo)
-	lockS3UploaderMockChecker.Unlock()
+	mock.lockChecker.Unlock()
 	return mock.CheckerFunc(ctx, state)
 }
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedS3Uploader.CheckerCalls())
-func (mock *S3UploaderMock) CheckerCalls() []struct {
+//     len(mockedS3Writer.CheckerCalls())
+func (mock *S3WriterMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
 } {
@@ -140,42 +137,42 @@ func (mock *S3UploaderMock) CheckerCalls() []struct {
 		Ctx   context.Context
 		State *healthcheck.CheckState
 	}
-	lockS3UploaderMockChecker.RLock()
+	mock.lockChecker.RLock()
 	calls = mock.calls.Checker
-	lockS3UploaderMockChecker.RUnlock()
+	mock.lockChecker.RUnlock()
 	return calls
 }
 
 // Session calls SessionFunc.
-func (mock *S3UploaderMock) Session() *session.Session {
+func (mock *S3WriterMock) Session() *session.Session {
 	if mock.SessionFunc == nil {
-		panic("S3UploaderMock.SessionFunc: method is nil but S3Uploader.Session was just called")
+		panic("S3WriterMock.SessionFunc: method is nil but S3Writer.Session was just called")
 	}
 	callInfo := struct {
 	}{}
-	lockS3UploaderMockSession.Lock()
+	mock.lockSession.Lock()
 	mock.calls.Session = append(mock.calls.Session, callInfo)
-	lockS3UploaderMockSession.Unlock()
+	mock.lockSession.Unlock()
 	return mock.SessionFunc()
 }
 
 // SessionCalls gets all the calls that were made to Session.
 // Check the length with:
-//     len(mockedS3Uploader.SessionCalls())
-func (mock *S3UploaderMock) SessionCalls() []struct {
+//     len(mockedS3Writer.SessionCalls())
+func (mock *S3WriterMock) SessionCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockS3UploaderMockSession.RLock()
+	mock.lockSession.RLock()
 	calls = mock.calls.Session
-	lockS3UploaderMockSession.RUnlock()
+	mock.lockSession.RUnlock()
 	return calls
 }
 
 // Upload calls UploadFunc.
-func (mock *S3UploaderMock) Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+func (mock *S3WriterMock) Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 	if mock.UploadFunc == nil {
-		panic("S3UploaderMock.UploadFunc: method is nil but S3Uploader.Upload was just called")
+		panic("S3WriterMock.UploadFunc: method is nil but S3Writer.Upload was just called")
 	}
 	callInfo := struct {
 		Input   *s3manager.UploadInput
@@ -184,16 +181,16 @@ func (mock *S3UploaderMock) Upload(input *s3manager.UploadInput, options ...func
 		Input:   input,
 		Options: options,
 	}
-	lockS3UploaderMockUpload.Lock()
+	mock.lockUpload.Lock()
 	mock.calls.Upload = append(mock.calls.Upload, callInfo)
-	lockS3UploaderMockUpload.Unlock()
+	mock.lockUpload.Unlock()
 	return mock.UploadFunc(input, options...)
 }
 
 // UploadCalls gets all the calls that were made to Upload.
 // Check the length with:
-//     len(mockedS3Uploader.UploadCalls())
-func (mock *S3UploaderMock) UploadCalls() []struct {
+//     len(mockedS3Writer.UploadCalls())
+func (mock *S3WriterMock) UploadCalls() []struct {
 	Input   *s3manager.UploadInput
 	Options []func(*s3manager.Uploader)
 } {
@@ -201,8 +198,8 @@ func (mock *S3UploaderMock) UploadCalls() []struct {
 		Input   *s3manager.UploadInput
 		Options []func(*s3manager.Uploader)
 	}
-	lockS3UploaderMockUpload.RLock()
+	mock.lockUpload.RLock()
 	calls = mock.calls.Upload
-	lockS3UploaderMockUpload.RUnlock()
+	mock.lockUpload.RUnlock()
 	return calls
 }
