@@ -54,7 +54,7 @@ func Get() (*Config, error) {
 		AwsRegion:                  "eu-west-1",
 		PrivateBucketName:          "csv-exported",
 		PublicBucketName:           "static-develop",
-		PublicBucketURL:            "https://static-develop.s3-eu-west-1.amazonaws.com",
+		PublicBucketURL:            "https://static-develop.s3.eu-west-1.amazonaws.com",
 	}
 
 	return cfg, envconfig.Process("", cfg)

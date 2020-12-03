@@ -37,6 +37,7 @@ func TestConfig(t *testing.T) {
 				So(cfg.AwsRegion, ShouldEqual, "eu-west-1")
 				So(cfg.PrivateBucketName, ShouldEqual, "csv-exported")
 				So(cfg.PublicBucketName, ShouldEqual, "static-develop")
+				So(cfg.PublicBucketURL, ShouldEqual, "https://static-develop.s3.eu-west-1.amazonaws.com")
 			})
 
 			Convey("Then a second call to config should return the same config", func() {
