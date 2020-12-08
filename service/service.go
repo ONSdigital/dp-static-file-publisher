@@ -40,14 +40,14 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.Server = serviceList.GetHTTPServer(cfg.BindAddr, svc.Router)
 
 	// Get Vault Client
-	svc.VaultCli, err = serviceList.GetVault(ctx, cfg)
+	svc.VaultCli, err = serviceList.GetVault(cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate vault client", log.FATAL, log.Error(err))
 		return nil, err
 	}
 
 	// Get Image API Client
-	svc.ImageAPICli = serviceList.GetImageAPIClient(ctx, cfg)
+	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
 
 	// Get Kafka Consumer
 	svc.KafkaConsumer, err = serviceList.GetKafkaConsumer(ctx, cfg)

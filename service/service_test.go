@@ -36,7 +36,7 @@ var funcDoGetHealthcheckErr = func(cfg *config.Config, buildTime string, gitComm
 	return nil, errHealthcheck
 }
 
-var funcDoGetVaultErr = func(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+var funcDoGetVaultErr = func(cfg *config.Config) (event.VaultClient, error) {
 	return nil, errVault
 }
 
@@ -97,11 +97,11 @@ func TestRun(t *testing.T) {
 			},
 		}
 
-		funcDoGetVaultOK := func(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+		funcDoGetVaultOK := func(cfg *config.Config) (event.VaultClient, error) {
 			return vaultMock, nil
 		}
 
-		funcDoGetImageAPIClientFuncOK := func(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+		funcDoGetImageAPIClientFuncOK := func(cfg *config.Config) event.ImageAPIClient {
 			return imageAPIClientMock
 		}
 

@@ -29,7 +29,7 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 // 	               panic("mock out the DoGetHealthCheck method")
 //             },
-//             DoGetImageAPIClientFunc: func(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+//             DoGetImageAPIClientFunc: func(cfg *config.Config) event.ImageAPIClient {
 // 	               panic("mock out the DoGetImageAPIClient method")
 //             },
 //             DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
@@ -41,7 +41,7 @@ var _ service.Initialiser = &InitialiserMock{}
 //             DoGetS3ClientWithSessionFunc: func(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
 // 	               panic("mock out the DoGetS3ClientWithSession method")
 //             },
-//             DoGetVaultFunc: func(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+//             DoGetVaultFunc: func(cfg *config.Config) (event.VaultClient, error) {
 // 	               panic("mock out the DoGetVault method")
 //             },
 //         }
@@ -58,7 +58,7 @@ type InitialiserMock struct {
 	DoGetHealthCheckFunc func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error)
 
 	// DoGetImageAPIClientFunc mocks the DoGetImageAPIClient method.
-	DoGetImageAPIClientFunc func(ctx context.Context, cfg *config.Config) event.ImageAPIClient
+	DoGetImageAPIClientFunc func(cfg *config.Config) event.ImageAPIClient
 
 	// DoGetKafkaConsumerFunc mocks the DoGetKafkaConsumer method.
 	DoGetKafkaConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error)
@@ -70,7 +70,7 @@ type InitialiserMock struct {
 	DoGetS3ClientWithSessionFunc func(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
 
 	// DoGetVaultFunc mocks the DoGetVault method.
-	DoGetVaultFunc func(ctx context.Context, cfg *config.Config) (event.VaultClient, error)
+	DoGetVaultFunc func(cfg *config.Config) (event.VaultClient, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -94,8 +94,6 @@ type InitialiserMock struct {
 		}
 		// DoGetImageAPIClient holds details about calls to the DoGetImageAPIClient method.
 		DoGetImageAPIClient []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg *config.Config
 		}
@@ -126,8 +124,6 @@ type InitialiserMock struct {
 		}
 		// DoGetVault holds details about calls to the DoGetVault method.
 		DoGetVault []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg *config.Config
 		}
@@ -220,32 +216,28 @@ func (mock *InitialiserMock) DoGetHealthCheckCalls() []struct {
 }
 
 // DoGetImageAPIClient calls DoGetImageAPIClientFunc.
-func (mock *InitialiserMock) DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+func (mock *InitialiserMock) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 	if mock.DoGetImageAPIClientFunc == nil {
 		panic("InitialiserMock.DoGetImageAPIClientFunc: method is nil but Initialiser.DoGetImageAPIClient was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
 		Cfg *config.Config
 	}{
-		Ctx: ctx,
 		Cfg: cfg,
 	}
 	mock.lockDoGetImageAPIClient.Lock()
 	mock.calls.DoGetImageAPIClient = append(mock.calls.DoGetImageAPIClient, callInfo)
 	mock.lockDoGetImageAPIClient.Unlock()
-	return mock.DoGetImageAPIClientFunc(ctx, cfg)
+	return mock.DoGetImageAPIClientFunc(cfg)
 }
 
 // DoGetImageAPIClientCalls gets all the calls that were made to DoGetImageAPIClient.
 // Check the length with:
 //     len(mockedInitialiser.DoGetImageAPIClientCalls())
 func (mock *InitialiserMock) DoGetImageAPIClientCalls() []struct {
-	Ctx context.Context
 	Cfg *config.Config
 } {
 	var calls []struct {
-		Ctx context.Context
 		Cfg *config.Config
 	}
 	mock.lockDoGetImageAPIClient.RLock()
@@ -368,32 +360,28 @@ func (mock *InitialiserMock) DoGetS3ClientWithSessionCalls() []struct {
 }
 
 // DoGetVault calls DoGetVaultFunc.
-func (mock *InitialiserMock) DoGetVault(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+func (mock *InitialiserMock) DoGetVault(cfg *config.Config) (event.VaultClient, error) {
 	if mock.DoGetVaultFunc == nil {
 		panic("InitialiserMock.DoGetVaultFunc: method is nil but Initialiser.DoGetVault was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
 		Cfg *config.Config
 	}{
-		Ctx: ctx,
 		Cfg: cfg,
 	}
 	mock.lockDoGetVault.Lock()
 	mock.calls.DoGetVault = append(mock.calls.DoGetVault, callInfo)
 	mock.lockDoGetVault.Unlock()
-	return mock.DoGetVaultFunc(ctx, cfg)
+	return mock.DoGetVaultFunc(cfg)
 }
 
 // DoGetVaultCalls gets all the calls that were made to DoGetVault.
 // Check the length with:
 //     len(mockedInitialiser.DoGetVaultCalls())
 func (mock *InitialiserMock) DoGetVaultCalls() []struct {
-	Ctx context.Context
 	Cfg *config.Config
 } {
 	var calls []struct {
-		Ctx context.Context
 		Cfg *config.Config
 	}
 	mock.lockDoGetVault.RLock()

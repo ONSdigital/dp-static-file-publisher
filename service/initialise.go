@@ -59,8 +59,8 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 }
 
 // GetVault creates a Vault client and sets the Vault flag to true
-func (e *ExternalServiceList) GetVault(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
-	vault, err := e.Init.DoGetVault(ctx, cfg)
+func (e *ExternalServiceList) GetVault(cfg *config.Config) (event.VaultClient, error) {
+	vault, err := e.Init.DoGetVault(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +69,8 @@ func (e *ExternalServiceList) GetVault(ctx context.Context, cfg *config.Config) 
 }
 
 // GetImageAPIClient creates an ImageAPI client and sets the ImageAPI flag to true
-func (e *ExternalServiceList) GetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
-	imageAPI := e.Init.DoGetImageAPIClient(ctx, cfg)
+func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
+	imageAPI := e.Init.DoGetImageAPIClient(cfg)
 	e.ImageAPI = true
 	return imageAPI
 }
@@ -115,7 +115,7 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 }
 
 // DoGetVault returns a VaultClient if encryption is enabled
-func (e *Init) DoGetVault(ctx context.Context, cfg *config.Config) (event.VaultClient, error) {
+func (e *Init) DoGetVault(cfg *config.Config) (event.VaultClient, error) {
 	if cfg.EncryptionDisabled {
 		return nil, nil
 	}
@@ -127,7 +127,7 @@ func (e *Init) DoGetVault(ctx context.Context, cfg *config.Config) (event.VaultC
 }
 
 // DoGetImageAPIClient returns an Image API client
-func (e *Init) DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 	return image.NewAPIClient(cfg.ImageAPIURL)
 }
 

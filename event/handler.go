@@ -23,7 +23,6 @@ import (
 
 const (
 	vaultKey       = "key" // is the key under each vault secret that contains the PSK needed to decrypt files from S3
-	publishedState = "published"
 	completedState = "completed"
 )
 
@@ -97,7 +96,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	}
 
 	// Decrypt image from private bucket optionally using PSK obtained from Vault
-	reader, err := h.getS3Reader(ctx, privatePath, privatePsk)
+	reader, err := h.getS3Reader(privatePath, privatePsk)
 	if err != nil {
 		log.Event(ctx, "error getting s3 object reader", log.ERROR, log.Error(err), logData)
 		return
@@ -115,7 +114,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 
 	// Upload file to public bucket
 	log.Event(ctx, "uploading private file to s3", log.INFO, logData)
-	err = h.uploadToS3(ctx, event.DstPath, reader)
+	err = h.uploadToS3(event.DstPath, reader)
 	if err != nil {
 		log.Event(ctx, "error uploading to s3", log.ERROR, log.Error(err), logData)
 		return
@@ -136,7 +135,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 }
 
 // Get an S3 reader
-func (h *ImagePublishedHandler) getS3Reader(ctx context.Context, path string, psk []byte) (reader io.ReadCloser, err error) {
+func (h *ImagePublishedHandler) getS3Reader(path string, psk []byte) (reader io.ReadCloser, err error) {
 	if psk != nil {
 		// Decrypt image from upload bucket using PSK obtained from Vault
 		reader, _, err = h.S3Private.GetWithPSK(path, psk)
@@ -154,7 +153,7 @@ func (h *ImagePublishedHandler) getS3Reader(ctx context.Context, path string, ps
 }
 
 // Upload to public S3 from a reader
-func (h *ImagePublishedHandler) uploadToS3(ctx context.Context, path string, reader io.Reader) error {
+func (h *ImagePublishedHandler) uploadToS3(path string, reader io.Reader) error {
 	publicBucket := h.S3Public.BucketName()
 	uploadInput := &s3manager.UploadInput{
 		Body:   reader,
