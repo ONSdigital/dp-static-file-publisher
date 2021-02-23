@@ -66,14 +66,14 @@ func TestConsume(t *testing.T) {
 				handlerWg.Wait()
 
 				Convey("An event is sent to the mockEventHandler ", func() {
-					So(len(mockEventHandler.HandleCalls()), ShouldEqual, 1)
+					So(mockEventHandler.HandleCalls(), ShouldHaveLength, 1)
 					So(*mockEventHandler.HandleCalls()[0].ImagePublished, ShouldResemble, testEvent)
 				})
 
 				Convey("The message is committed and the consumer is released", func() {
 					kafkaConsumerWg.Wait()
-					So(len(message.CommitCalls()), ShouldEqual, 1)
-					So(len(mockConsumer.ReleaseCalls()), ShouldEqual, 1)
+					So(message.CommitCalls(), ShouldHaveLength, 1)
+					So(mockConsumer.ReleaseCalls(), ShouldHaveLength, 1)
 				})
 			})
 		})
@@ -93,15 +93,15 @@ func TestConsume(t *testing.T) {
 				handlerWg.Wait()
 
 				Convey("Only the valid event is sent to the mockEventHandler ", func() {
-					So(len(mockEventHandler.HandleCalls()), ShouldEqual, 1)
+					So(mockEventHandler.HandleCalls(), ShouldHaveLength, 1)
 					So(*mockEventHandler.HandleCalls()[0].ImagePublished, ShouldResemble, testEvent)
 				})
 
 				Convey("Only the valid message is committed, but the consumer is released for both messages", func() {
 					kafkaConsumerWg.Wait()
-					So(len(validMessage.CommitCalls()), ShouldEqual, 1)
-					So(len(invalidMessage.CommitCalls()), ShouldEqual, 0)
-					So(len(mockConsumer.ReleaseCalls()), ShouldEqual, 2)
+					So(validMessage.CommitCalls(), ShouldHaveLength, 1)
+					So(invalidMessage.CommitCalls(), ShouldHaveLength, 0)
+					So(mockConsumer.ReleaseCalls(), ShouldHaveLength, 2)
 				})
 			})
 		})
@@ -122,14 +122,14 @@ func TestConsume(t *testing.T) {
 				handlerWg.Wait()
 
 				Convey("An event is sent to the mockEventHandler ", func() {
-					So(len(mockEventHandler.HandleCalls()), ShouldEqual, 1)
+					So(mockEventHandler.HandleCalls(), ShouldHaveLength, 1)
 					So(*mockEventHandler.HandleCalls()[0].ImagePublished, ShouldResemble, testEvent)
 				})
 
 				Convey("The message is committed and the consumer is released", func() {
 					kafkaConsumerWg.Wait()
-					So(len(message.CommitCalls()), ShouldEqual, 1)
-					So(len(mockConsumer.ReleaseCalls()), ShouldEqual, 1)
+					So(message.CommitCalls(), ShouldHaveLength, 1)
+					So(mockConsumer.ReleaseCalls(), ShouldHaveLength, 1)
 					// TODO in this case, once we have an error reported, we should validate that the error is correctly reported.
 				})
 			})
