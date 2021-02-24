@@ -75,6 +75,12 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			},
 		}
 		mockImageAPI := &mock.ImageAPIClientMock{
+			GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
+				return image.Image{}, nil
+			},
+			PutImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, data image.Image) (image.Image, error) {
+				return data, nil
+			},
 			GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
 				return testPublishedDownload, nil
 			},
@@ -283,6 +289,9 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
 					return image.ImageDownload{}, errImageAPI
 				},
+				GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
+					return image.Image{}, errImageAPI
+				},
 			}
 			eventHandler := event.ImagePublishedHandler{
 				AuthToken:       testAuthToken,
@@ -333,6 +342,9 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				return &s3manager.UploadOutput{}, nil
 			}
 			mockImageAPIFail := &mock.ImageAPIClientMock{
+				GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
+					return image.Image{}, errImageAPI
+				},
 				GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
 					return testPublishedDownload, nil
 				},
