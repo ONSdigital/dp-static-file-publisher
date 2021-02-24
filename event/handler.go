@@ -94,6 +94,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 		privatePsk, err = h.getVaultKeyForFile(privatePath)
 		if err != nil {
 			log.Event(ctx, "error reading key from vault", log.ERROR, log.Error(err), logData)
+			h.setImageStatusToFailed(ctx, event.ImageID, "error reading key from vault")
 			return err
 		}
 	}
@@ -102,6 +103,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	reader, err := h.getS3Reader(privatePath, privatePsk)
 	if err != nil {
 		log.Event(ctx, "error getting s3 object reader", log.ERROR, log.Error(err), logData)
+		h.setImageStatusToFailed(ctx, event.ImageID, "error getting s3 object reader")
 		return
 	}
 	defer reader.Close()

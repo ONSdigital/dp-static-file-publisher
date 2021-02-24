@@ -215,6 +215,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private: mockS3Private,
 				VaultCli:  mockVaultFail,
 				VaultPath: testVaultPath,
+				ImageAPICli: mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
@@ -235,6 +236,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private: mockS3Private,
 				VaultCli:  mockVaultFail,
 				VaultPath: testVaultPath,
+				ImageAPICli: mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
@@ -253,6 +255,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private: mockS3Private,
 				VaultCli:  mockVault,
 				VaultPath: testVaultPath,
+				ImageAPICli: mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
@@ -272,6 +275,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private: mockS3Private,
 				VaultCli:  nil,
 				VaultPath: "",
+				ImageAPICli: mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
