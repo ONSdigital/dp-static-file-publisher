@@ -86,6 +86,14 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	}
 	log.Event(ctx, "event handler called", log.INFO, logData)
 
+	// GET images/{id}/downloads/{variant}
+	imageDownload, err := h.ImageAPICli.GetDownloadVariant(ctx, "", h.AuthToken, "", event.ImageID, event.ImageVariant)
+	if err != nil {
+		log.Event(ctx, "error getting image variant from API", log.ERROR, log.Error(err), logData)
+		h.setImageStatusToFailed(ctx, event.ImageID, "error getting image variant from API")
+		return
+	}
+
 	privatePath := event.SrcPath
 
 	// Get PSK from Vault
@@ -108,13 +116,6 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	}
 	defer reader.Close()
 
-	// GET images/{id}/downloads/{variant}
-	imageDownload, err := h.ImageAPICli.GetDownloadVariant(ctx, "", h.AuthToken, "", event.ImageID, event.ImageVariant)
-	if err != nil {
-		log.Event(ctx, "error getting image variant from API", log.ERROR, log.Error(err), logData)
-		h.setImageStatusToFailed(ctx, event.ImageID, "error getting image variant from API")
-		return
-	}
 	logData["imageDownload"] = &imageDownload
 	log.Event(ctx, "got image download from api", log.INFO, logData)
 
