@@ -102,7 +102,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 		privatePsk, err = h.getVaultKeyForFile(privatePath)
 		if err != nil {
 			log.Event(ctx, "error reading key from vault", log.ERROR, log.Error(err), logData)
-			h.setImageStatusToFailed(ctx, event.ImageID, "error reading key from vault")
+			h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "error reading key from vault")
 			return err
 		}
 	}
@@ -111,7 +111,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	reader, err := h.getS3Reader(privatePath, privatePsk)
 	if err != nil {
 		log.Event(ctx, "error getting s3 object reader", log.ERROR, log.Error(err), logData)
-		h.setImageStatusToFailed(ctx, event.ImageID, "error getting s3 object reader")
+		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "error getting s3 object reader")
 		return
 	}
 	defer reader.Close()
@@ -124,7 +124,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	err = h.uploadToS3(event.DstPath, reader)
 	if err != nil {
 		log.Event(ctx, "error uploading to s3", log.ERROR, log.Error(err), logData)
-		h.setImageStatusToFailed(ctx, event.ImageID, "failed to upload image to s3")
+		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload,"failed to upload image to s3")
 		return
 	}
 	endTime := time.Now().UTC()
@@ -213,3 +213,14 @@ func (h *ImagePublishedHandler) setImageStatusToFailed(ctx context.Context, imag
 		return
 	}
 }
+
+func (h *ImagePublishedHandler) setVariantStatusToFailed(ctx context.Context, imageID string, variant image.ImageDownload, desc string) {
+	variant.State = failedState
+	variant.Error = desc
+	_, err := h.ImageAPICli.PutDownloadVariant(ctx, "", h.AuthToken, "", imageID, variant.Id, variant)
+	if err != nil {
+		log.Event(ctx, "error putting image variant to API to set failed_import status", log.ERROR, log.Error(err))
+		return
+	}
+}
+
