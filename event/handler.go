@@ -90,7 +90,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	imageDownload, err := h.ImageAPICli.GetDownloadVariant(ctx, "", h.AuthToken, "", event.ImageID, event.ImageVariant)
 	if err != nil {
 		log.Event(ctx, "error getting image variant from API", log.ERROR, log.Error(err), logData)
-		h.setImageStatusToFailed(ctx, event.ImageID, "error getting image variant from API")
+		h.setImageStatusToFailed(ctx, event.ImageID, fmt.Sprintf("error getting image variant '%s' from API", event.ImageVariant))
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	imageDownload, err = h.ImageAPICli.PutDownloadVariant(ctx, "", h.AuthToken, "", event.ImageID, event.ImageVariant, imageDownload)
 	if err != nil {
 		log.Event(ctx, "error putting image variant to API", log.ERROR, log.Error(err), logData)
-		h.setImageStatusToFailed(ctx, event.ImageID, "error putting updated image variant to API")
+		h.setImageStatusToFailed(ctx, event.ImageID, fmt.Sprintf("error putting updated image variant '%s' to API", event.ImageVariant))
 		return
 	}
 	log.Event(ctx, "put image download to api", log.INFO, logData)
@@ -219,7 +219,7 @@ func (h *ImagePublishedHandler) setVariantStatusToFailed(ctx context.Context, im
 	variant.Error = desc
 	_, err := h.ImageAPICli.PutDownloadVariant(ctx, "", h.AuthToken, "", imageID, variant.Id, variant)
 	if err != nil {
-		log.Event(ctx, "error putting image variant to API to set failed_import status", log.ERROR, log.Error(err))
+		log.Event(ctx, "error putting image variant to API to set failed_publish status", log.ERROR, log.Error(err))
 		return
 	}
 }
