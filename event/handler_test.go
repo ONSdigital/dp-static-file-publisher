@@ -248,6 +248,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				},
 			}
 			eventHandler := event.ImagePublishedHandler{
+				AuthToken:   testAuthToken,
 				S3Public:    mockS3Public,
 				S3Private:   mockS3Private,
 				VaultCli:    mockVaultFail,
@@ -260,6 +261,20 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(mockVaultFail.ReadKeyCalls(), ShouldHaveLength, 1)
 			})
+
+			Convey("The download variant is retrieved from the API and updated with a state of failed_publish", func() {
+				So(mockImageAPI.GetDownloadVariantCalls(), ShouldHaveLength, 1)
+				So(mockImageAPI.GetDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
+				So(mockImageAPI.GetDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				So(mockImageAPI.PutDownloadVariantCalls(), ShouldHaveLength, 1)
+				So(mockImageAPI.PutDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
+				So(mockImageAPI.PutDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				updatedImage := mockImageAPI.PutDownloadVariantCalls()[0].Data
+				So(updatedImage.State, ShouldEqual, failedState)
+				So(updatedImage.Error, ShouldEqual, "error reading key from vault")
+			})
 		})
 
 		Convey("And an event handler with an S3Private client that fails to obtain the source file, when Handle is triggered", func() {
@@ -267,6 +282,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				return nil, nil, errS3Private
 			}
 			eventHandler := event.ImagePublishedHandler{
+				AuthToken:   testAuthToken,
 				S3Public:    mockS3Public,
 				S3Private:   mockS3Private,
 				VaultCli:    mockVault,
@@ -279,6 +295,20 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				So(err, ShouldResemble, errS3Private)
 				So(mockVault.ReadKeyCalls(), ShouldHaveLength, 1)
 				So(mockS3Private.GetWithPSKCalls(), ShouldHaveLength, 1)
+			})
+
+			Convey("The download variant is retrieved from the API and updated with a state of failed_publish", func() {
+				So(mockImageAPI.GetDownloadVariantCalls(), ShouldHaveLength, 1)
+				So(mockImageAPI.GetDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
+				So(mockImageAPI.GetDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				So(mockImageAPI.PutDownloadVariantCalls(), ShouldHaveLength, 1)
+				So(mockImageAPI.PutDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
+				So(mockImageAPI.PutDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				updatedImage := mockImageAPI.PutDownloadVariantCalls()[0].Data
+				So(updatedImage.State, ShouldEqual, failedState)
+				So(updatedImage.Error, ShouldEqual, "error getting s3 object reader")
 			})
 		})
 
