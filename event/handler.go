@@ -124,7 +124,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	err = h.uploadToS3(event.DstPath, reader)
 	if err != nil {
 		log.Event(ctx, "error uploading to s3", log.ERROR, log.Error(err), logData)
-		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload,"failed to upload image to s3")
+		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "failed to upload image to s3")
 		return
 	}
 	endTime := time.Now().UTC()
@@ -223,4 +223,3 @@ func (h *ImagePublishedHandler) setVariantStatusToFailed(ctx context.Context, im
 		return
 	}
 }
-
