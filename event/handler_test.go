@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"io"
 	"io/ioutil"
@@ -350,28 +351,46 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			mockS3Private.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
-			mockImageAPIFail := &mock.ImageAPIClientMock{
+			mockVariantAPIFail := &mock.ImageAPIClientMock{
 				GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
 					return image.ImageDownload{}, errImageAPI
 				},
 				GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
-					return image.Image{}, errImageAPI
+					return image.Image{}, nil
+				},
+				PutImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, data image.Image) (image.Image, error) {
+					return image.Image{}, nil
 				},
 			}
+
 			eventHandler := event.ImagePublishedHandler{
 				AuthToken:       testAuthToken,
 				S3Public:        mockS3Public,
 				S3Private:       mockS3Private,
 				VaultCli:        mockVault,
 				VaultPath:       testVaultPath,
-				ImageAPICli:     mockImageAPIFail,
+				ImageAPICli:     mockVariantAPIFail,
 				PublicBucketURL: testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
 			Convey("ImageAPI.PostDownloadVariant is called and the error is returned", func() {
 				So(err, ShouldNotBeNil)
-				So(mockImageAPIFail.GetDownloadVariantCalls(), ShouldHaveLength, 1)
+				So(mockVariantAPIFail.GetDownloadVariantCalls(), ShouldHaveLength, 1)
+			})
+
+			Convey("The Image is retrieved from the API and updated with a state of failed_publish specifying the variant", func() {
+				So(mockVariantAPIFail.GetImageCalls(), ShouldHaveLength, 1)
+				So(mockVariantAPIFail.GetImageCalls()[0].ImageID, ShouldEqual, testEvent.ImageID)
+				So(mockVariantAPIFail.GetImageCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				So(mockVariantAPIFail.PutImageCalls(), ShouldHaveLength, 1)
+				So(mockVariantAPIFail.PutImageCalls()[0].ImageID, ShouldEqual, testEvent.ImageID)
+				So(mockVariantAPIFail.PutImageCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				updatedImage := mockVariantAPIFail.PutImageCalls()[0].Data
+				So(updatedImage.State, ShouldEqual, failedState)
+				So(updatedImage.Error, ShouldEqual, fmt.Sprintf("error getting image variant '%s' from API", testEvent.ImageVariant))
 			})
 		})
 
@@ -406,9 +425,12 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 				return &s3manager.UploadOutput{}, nil
 			}
-			mockImageAPIFail := &mock.ImageAPIClientMock{
+			mockVariantAPIFail := &mock.ImageAPIClientMock{
 				GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
-					return image.Image{}, errImageAPI
+					return image.Image{}, nil
+				},
+				PutImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, data image.Image) (image.Image, error) {
+					return image.Image{}, nil
 				},
 				GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
 					return testPublishedDownload, nil
@@ -423,14 +445,28 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private:       mockS3Private,
 				VaultCli:        mockVault,
 				VaultPath:       testVaultPath,
-				ImageAPICli:     mockImageAPIFail,
+				ImageAPICli:     mockVariantAPIFail,
 				PublicBucketURL: testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
 			Convey("ImageAPI.PutDownloadVariant is called and the error is returned", func() {
 				So(err, ShouldNotBeNil)
-				So(mockImageAPIFail.PutDownloadVariantCalls(), ShouldHaveLength, 1)
+				So(mockVariantAPIFail.PutDownloadVariantCalls(), ShouldHaveLength, 1)
+			})
+
+			Convey("The Image is retrieved from the API and updated with a state of failed_publish specifying the variant", func() {
+				So(mockVariantAPIFail.GetImageCalls(), ShouldHaveLength, 1)
+				So(mockVariantAPIFail.GetImageCalls()[0].ImageID, ShouldEqual, testEvent.ImageID)
+				So(mockVariantAPIFail.GetImageCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				So(mockVariantAPIFail.PutImageCalls(), ShouldHaveLength, 1)
+				So(mockVariantAPIFail.PutImageCalls()[0].ImageID, ShouldEqual, testEvent.ImageID)
+				So(mockVariantAPIFail.PutImageCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
+
+				updatedImage := mockVariantAPIFail.PutImageCalls()[0].Data
+				So(updatedImage.State, ShouldEqual, failedState)
+				So(updatedImage.Error, ShouldEqual, fmt.Sprintf("error putting updated image variant '%s' to API", testEvent.ImageVariant))
 			})
 		})
 
