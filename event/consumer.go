@@ -22,7 +22,7 @@ func Consume(ctx context.Context, consumerGroup dpkafka.IConsumerGroup, handler 
 		for {
 			select {
 			case message, ok := <-consumerGroup.Channels().Upstream:
-				logData := log.Data{"message_offset": message.Offset(), "workers": workerNum}
+				logData := log.Data{"message_offset": message.Offset(), "workerNum": workerNum}
 				if !ok {
 					log.Event(ctx, "upstream channel closed - closing event consumer loop", log.INFO, logData)
 					return
@@ -38,7 +38,7 @@ func Consume(ctx context.Context, consumerGroup dpkafka.IConsumerGroup, handler 
 				log.Event(ctx, "message released", log.INFO, logData)
 
 			case <-consumerGroup.Channels().Closer:
-				log.Event(ctx, "closing event consumer loop", log.INFO)
+				log.Event(ctx, "closing event consumer loop because closer channel is closed", log.Data{"workerNum": workerNum}, log.INFO)
 				return
 			}
 		}
