@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafka "github.com/ONSdigital/dp-kafka"
-	"github.com/ONSdigital/dp-kafka/kafkatest"
+	dpkafka "github.com/ONSdigital/dp-kafka/v2"
+	"github.com/ONSdigital/dp-kafka/v2/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
@@ -55,8 +55,8 @@ var funcDoGetHTTPServerNil = func(bindAddr string, router http.Handler) service.
 // kafkaStubConsumer mock which exposes Channels function returning empty channels
 // to be used on tests that are not supposed to receive any kafka message
 var kafkaStubConsumer = &kafkatest.IConsumerGroupMock{
-	ChannelsFunc: func() *kafka.ConsumerGroupChannels {
-		return &kafka.ConsumerGroupChannels{}
+	ChannelsFunc: func() *dpkafka.ConsumerGroupChannels {
+		return &dpkafka.ConsumerGroupChannels{}
 	},
 }
 
@@ -125,7 +125,7 @@ func TestRun(t *testing.T) {
 			return serverMock
 		}
 
-		funcDoGetFailingHTTPSerer := func(bindAddr string, router http.Handler) service.HTTPServer {
+		funcDoGetFailingHTTPServer := func(bindAddr string, router http.Handler) service.HTTPServer {
 			return failingServerMock
 		}
 
@@ -292,7 +292,7 @@ func TestRun(t *testing.T) {
 		Convey("Given that all dependencies are successfully initialised but the http server fails", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetFailingHTTPSerer,
+				DoGetHTTPServerFunc:          funcDoGetFailingHTTPServer,
 				DoGetVaultFunc:               funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
@@ -324,7 +324,6 @@ func TestClose(t *testing.T) {
 
 		hcStopped := false
 		serverStopped := false
-		kafkaConsumerListening := true
 
 		// healthcheck Stop does not depend on any other service being closed/stopped
 		hcMock := &serviceMock.HealthCheckerMock{
@@ -350,22 +349,11 @@ func TestClose(t *testing.T) {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer StopListening before healthcheck or HTTP server")
 				}
-				kafkaConsumerListening = false
 				return nil
 			},
 			CloseFunc: func(ctx context.Context) error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer stopped before healthcheck or HTTP server")
-				}
-				return nil
-			},
-		}
-
-		// eventConsumer Close will fail if kafka consumer is still listening
-		eventConsumerMock := &serviceMock.EventConsumerMock{
-			CloseFunc: func(ctx context.Context) error {
-				if kafkaConsumerListening {
-					return errors.New("Event Consumer closed before Kafka StopListeningToConsumer")
 				}
 				return nil
 			},
@@ -389,12 +377,11 @@ func TestClose(t *testing.T) {
 			svcList.HealthCheck = true
 			svcList.KafkaConsumerPublished = true
 			svc := service.Service{
-				Config:        cfg,
-				ServiceList:   svcList,
-				Server:        serverMock,
-				HealthCheck:   hcMock,
-				KafkaConsumer: kafkaConsumerMock,
-				EventConsumer: eventConsumerMock,
+				Config:             cfg,
+				ServiceList:        svcList,
+				Server:             serverMock,
+				HealthCheck:        hcMock,
+				KafkaConsumerGroup: kafkaConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
@@ -403,7 +390,6 @@ func TestClose(t *testing.T) {
 			So(serverMock.ShutdownCalls(), ShouldHaveLength, 1)
 			So(kafkaConsumerMock.StopListeningToConsumerCalls(), ShouldHaveLength, 1)
 			So(kafkaConsumerMock.CloseCalls(), ShouldHaveLength, 1)
-			So(eventConsumerMock.CloseCalls(), ShouldHaveLength, 1)
 		})
 
 		Convey("If services fail to stop, the Close operation tries to close all dependencies and returns an error", func() {
@@ -424,12 +410,6 @@ func TestClose(t *testing.T) {
 				},
 			}
 
-			failingEventConsumerMock := &serviceMock.EventConsumerMock{
-				CloseFunc: func(ctx context.Context) error {
-					return errors.New("Failed to close EventConsumer")
-				},
-			}
-
 			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc: func(bindAddr string, router http.Handler) service.HTTPServer {
 					return failingserverMock
@@ -446,12 +426,11 @@ func TestClose(t *testing.T) {
 			svcList.HealthCheck = true
 			svcList.KafkaConsumerPublished = true
 			svc := service.Service{
-				Config:        cfg,
-				ServiceList:   svcList,
-				Server:        failingserverMock,
-				HealthCheck:   hcMock,
-				KafkaConsumer: failingKafkaConsumerMock,
-				EventConsumer: failingEventConsumerMock,
+				Config:             cfg,
+				ServiceList:        svcList,
+				Server:             failingserverMock,
+				HealthCheck:        hcMock,
+				KafkaConsumerGroup: failingKafkaConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
@@ -460,7 +439,6 @@ func TestClose(t *testing.T) {
 			So(failingserverMock.ShutdownCalls(), ShouldHaveLength, 1)
 			So(failingKafkaConsumerMock.StopListeningToConsumerCalls(), ShouldHaveLength, 1)
 			So(failingKafkaConsumerMock.CloseCalls(), ShouldHaveLength, 1)
-			So(failingEventConsumerMock.CloseCalls(), ShouldHaveLength, 1)
 		})
 	})
 }

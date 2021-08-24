@@ -20,6 +20,8 @@ type Config struct {
 	VaultPath                  string        `envconfig:"VAULT_PATH"`
 	ImageAPIURL                string        `envconfig:"IMAGE_API_URL"`
 	KafkaAddr                  []string      `envconfig:"KAFKA_ADDR"`
+	KafkaVersion               string        `envconfig:"KAFKA_VERSION"`
+	KafkaConsumerWorkers       int           `envconfig:"KAFKA_CONSUMER_WORKERS"`
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
 	AwsRegion                  string        `envconfig:"AWS_REGION"`
@@ -49,6 +51,8 @@ func Get() (*Config, error) {
 		VaultPath:                  "secret/shared/psk",
 		ImageAPIURL:                "http://localhost:24700",
 		KafkaAddr:                  []string{"localhost:9092"},
+		KafkaVersion:               "1.0.2",
+		KafkaConsumerWorkers:       1,
 		StaticFilePublishedTopic:   "static-file-published",
 		ConsumerGroup:              "dp-static-file-publisher",
 		AwsRegion:                  "eu-west-1",

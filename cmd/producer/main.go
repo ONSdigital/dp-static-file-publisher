@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	kafka "github.com/ONSdigital/dp-kafka"
+	dpkafka "github.com/ONSdigital/dp-kafka/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/schema"
@@ -28,8 +28,11 @@ func main() {
 	}
 
 	// Create Kafka Producer
-	pChannels := kafka.CreateProducerChannels()
-	kafkaProducer, err := kafka.NewProducer(ctx, config.KafkaAddr, config.StaticFilePublishedTopic, 0, pChannels)
+	pChannels := dpkafka.CreateProducerChannels()
+	pConfig := &dpkafka.ProducerConfig{
+		KafkaVersion: &config.KafkaVersion,
+	}
+	kafkaProducer, err := dpkafka.NewProducer(ctx, config.KafkaAddr, config.StaticFilePublishedTopic, pChannels, pConfig)
 	if err != nil {
 		log.Event(ctx, "fatal error trying to create kafka producer", log.FATAL, log.Error(err), log.Data{"topic": config.StaticFilePublishedTopic})
 		os.Exit(1)

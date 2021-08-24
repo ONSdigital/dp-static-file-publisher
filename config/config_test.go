@@ -32,6 +32,8 @@ func TestConfig(t *testing.T) {
 				So(cfg.VaultPath, ShouldEqual, "secret/shared/psk")
 				So(cfg.ImageAPIURL, ShouldEqual, "http://localhost:24700")
 				So(cfg.KafkaAddr, ShouldResemble, []string{"localhost:9092"})
+				So(cfg.KafkaVersion, ShouldEqual, "1.0.2")
+				So(cfg.KafkaConsumerWorkers, ShouldEqual, 1)
 				So(cfg.StaticFilePublishedTopic, ShouldEqual, "static-file-published")
 				So(cfg.ConsumerGroup, ShouldEqual, "dp-static-file-publisher")
 				So(cfg.AwsRegion, ShouldEqual, "eu-west-1")

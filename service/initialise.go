@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dpkafka "github.com/ONSdigital/dp-kafka"
-	"net/http"
+	dpkafka "github.com/ONSdigital/dp-kafka/v2"
 
 	dphttp "github.com/ONSdigital/dp-net/http"
 	dps3 "github.com/ONSdigital/dp-s3"
@@ -77,12 +78,12 @@ func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) event.ImageA
 
 // GetKafkaConsumer creates a Kafka consumer and sets the consumer flag to true
 func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
-	kafkaConsumer, err := e.Init.DoGetKafkaConsumer(ctx, cfg)
+	kafkaConsumerGroup, err := e.Init.DoGetKafkaConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 	e.KafkaConsumerPublished = true
-	return kafkaConsumer, nil
+	return kafkaConsumerGroup, nil
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
@@ -133,15 +134,21 @@ func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 
 // DoGetKafkaConsumer returns a Kafka Consumer group
 func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
-	cgChannels := dpkafka.CreateConsumerGroupChannels(true)
+	cgChannels := dpkafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
+	kafkaOffset := dpkafka.OffsetNewest
+
+	cConfig := &dpkafka.ConsumerGroupConfig{
+		Offset:       &kafkaOffset,
+		KafkaVersion: &cfg.KafkaVersion,
+	}
+
 	return dpkafka.NewConsumerGroup(
 		ctx,
 		cfg.KafkaAddr,
 		cfg.StaticFilePublishedTopic,
 		cfg.ConsumerGroup,
-		dpkafka.OffsetNewest,
-		true,
 		cgChannels,
+		cConfig,
 	)
 }
 

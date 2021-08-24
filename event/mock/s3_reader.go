@@ -12,7 +12,15 @@ import (
 	"sync"
 )
 
-// Ensure, that S3ReaderMock does implement event.S3Reader.
+var (
+	lockS3ReaderMockBucketName sync.RWMutex
+	lockS3ReaderMockChecker    sync.RWMutex
+	lockS3ReaderMockGet        sync.RWMutex
+	lockS3ReaderMockGetWithPSK sync.RWMutex
+	lockS3ReaderMockSession    sync.RWMutex
+)
+
+// Ensure, that S3ReaderMock does implement S3Reader.
 // If this is not the case, regenerate this file with moq.
 var _ event.S3Reader = &S3ReaderMock{}
 
@@ -87,11 +95,6 @@ type S3ReaderMock struct {
 		Session []struct {
 		}
 	}
-	lockBucketName sync.RWMutex
-	lockChecker    sync.RWMutex
-	lockGet        sync.RWMutex
-	lockGetWithPSK sync.RWMutex
-	lockSession    sync.RWMutex
 }
 
 // BucketName calls BucketNameFunc.
@@ -101,9 +104,9 @@ func (mock *S3ReaderMock) BucketName() string {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockBucketName.Lock()
+	lockS3ReaderMockBucketName.Lock()
 	mock.calls.BucketName = append(mock.calls.BucketName, callInfo)
-	mock.lockBucketName.Unlock()
+	lockS3ReaderMockBucketName.Unlock()
 	return mock.BucketNameFunc()
 }
 
@@ -114,9 +117,9 @@ func (mock *S3ReaderMock) BucketNameCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockBucketName.RLock()
+	lockS3ReaderMockBucketName.RLock()
 	calls = mock.calls.BucketName
-	mock.lockBucketName.RUnlock()
+	lockS3ReaderMockBucketName.RUnlock()
 	return calls
 }
 
@@ -132,9 +135,9 @@ func (mock *S3ReaderMock) Checker(ctx context.Context, state *healthcheck.CheckS
 		Ctx:   ctx,
 		State: state,
 	}
-	mock.lockChecker.Lock()
+	lockS3ReaderMockChecker.Lock()
 	mock.calls.Checker = append(mock.calls.Checker, callInfo)
-	mock.lockChecker.Unlock()
+	lockS3ReaderMockChecker.Unlock()
 	return mock.CheckerFunc(ctx, state)
 }
 
@@ -149,9 +152,9 @@ func (mock *S3ReaderMock) CheckerCalls() []struct {
 		Ctx   context.Context
 		State *healthcheck.CheckState
 	}
-	mock.lockChecker.RLock()
+	lockS3ReaderMockChecker.RLock()
 	calls = mock.calls.Checker
-	mock.lockChecker.RUnlock()
+	lockS3ReaderMockChecker.RUnlock()
 	return calls
 }
 
@@ -165,9 +168,9 @@ func (mock *S3ReaderMock) Get(key string) (io.ReadCloser, *int64, error) {
 	}{
 		Key: key,
 	}
-	mock.lockGet.Lock()
+	lockS3ReaderMockGet.Lock()
 	mock.calls.Get = append(mock.calls.Get, callInfo)
-	mock.lockGet.Unlock()
+	lockS3ReaderMockGet.Unlock()
 	return mock.GetFunc(key)
 }
 
@@ -180,9 +183,9 @@ func (mock *S3ReaderMock) GetCalls() []struct {
 	var calls []struct {
 		Key string
 	}
-	mock.lockGet.RLock()
+	lockS3ReaderMockGet.RLock()
 	calls = mock.calls.Get
-	mock.lockGet.RUnlock()
+	lockS3ReaderMockGet.RUnlock()
 	return calls
 }
 
@@ -198,9 +201,9 @@ func (mock *S3ReaderMock) GetWithPSK(key string, psk []byte) (io.ReadCloser, *in
 		Key: key,
 		Psk: psk,
 	}
-	mock.lockGetWithPSK.Lock()
+	lockS3ReaderMockGetWithPSK.Lock()
 	mock.calls.GetWithPSK = append(mock.calls.GetWithPSK, callInfo)
-	mock.lockGetWithPSK.Unlock()
+	lockS3ReaderMockGetWithPSK.Unlock()
 	return mock.GetWithPSKFunc(key, psk)
 }
 
@@ -215,9 +218,9 @@ func (mock *S3ReaderMock) GetWithPSKCalls() []struct {
 		Key string
 		Psk []byte
 	}
-	mock.lockGetWithPSK.RLock()
+	lockS3ReaderMockGetWithPSK.RLock()
 	calls = mock.calls.GetWithPSK
-	mock.lockGetWithPSK.RUnlock()
+	lockS3ReaderMockGetWithPSK.RUnlock()
 	return calls
 }
 
@@ -228,9 +231,9 @@ func (mock *S3ReaderMock) Session() *session.Session {
 	}
 	callInfo := struct {
 	}{}
-	mock.lockSession.Lock()
+	lockS3ReaderMockSession.Lock()
 	mock.calls.Session = append(mock.calls.Session, callInfo)
-	mock.lockSession.Unlock()
+	lockS3ReaderMockSession.Unlock()
 	return mock.SessionFunc()
 }
 
@@ -241,8 +244,8 @@ func (mock *S3ReaderMock) SessionCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockSession.RLock()
+	lockS3ReaderMockSession.RLock()
 	calls = mock.calls.Session
-	mock.lockSession.RUnlock()
+	lockS3ReaderMockSession.RUnlock()
 	return calls
 }

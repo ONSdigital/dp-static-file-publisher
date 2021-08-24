@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafka "github.com/ONSdigital/dp-kafka"
+	dpkafka "github.com/ONSdigital/dp-kafka/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -14,8 +14,6 @@ import (
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
 //go:generate moq -out mock/server.go -pkg mock . HTTPServer
 //go:generate moq -out mock/healthcheck.go -pkg mock . HealthChecker
-//go:generate moq -out mock/kafka.go -pkg mock . KafkaConsumer
-//go:generate moq -out mock/consumer.go -pkg mock . EventConsumer
 
 // Initialiser defines the methods to initialise external services
 type Initialiser interface {
@@ -43,15 +41,10 @@ type HealthChecker interface {
 }
 
 type KafkaConsumer interface {
+	Initialise(ctx context.Context) error
+	IsInitialised() bool
 	StopListeningToConsumer(ctx context.Context) (err error)
 	Close(ctx context.Context) (err error)
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
-	Channels() *kafka.ConsumerGroupChannels
-	Release()
-}
-
-// EventConsumer defines the required methods from event Consumer
-type EventConsumer interface {
-	Consume(ctx context.Context, messageConsumer event.MessageConsumer, handler event.Handler)
-	Close(ctx context.Context) (err error)
+	Channels() *dpkafka.ConsumerGroupChannels
 }

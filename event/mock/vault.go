@@ -10,7 +10,12 @@ import (
 	"sync"
 )
 
-// Ensure, that VaultClientMock does implement event.VaultClient.
+var (
+	lockVaultClientMockChecker sync.RWMutex
+	lockVaultClientMockReadKey sync.RWMutex
+)
+
+// Ensure, that VaultClientMock does implement VaultClient.
 // If this is not the case, regenerate this file with moq.
 var _ event.VaultClient = &VaultClientMock{}
 
@@ -56,8 +61,6 @@ type VaultClientMock struct {
 			Key string
 		}
 	}
-	lockChecker sync.RWMutex
-	lockReadKey sync.RWMutex
 }
 
 // Checker calls CheckerFunc.
@@ -72,9 +75,9 @@ func (mock *VaultClientMock) Checker(ctx context.Context, state *healthcheck.Che
 		Ctx:   ctx,
 		State: state,
 	}
-	mock.lockChecker.Lock()
+	lockVaultClientMockChecker.Lock()
 	mock.calls.Checker = append(mock.calls.Checker, callInfo)
-	mock.lockChecker.Unlock()
+	lockVaultClientMockChecker.Unlock()
 	return mock.CheckerFunc(ctx, state)
 }
 
@@ -89,9 +92,9 @@ func (mock *VaultClientMock) CheckerCalls() []struct {
 		Ctx   context.Context
 		State *healthcheck.CheckState
 	}
-	mock.lockChecker.RLock()
+	lockVaultClientMockChecker.RLock()
 	calls = mock.calls.Checker
-	mock.lockChecker.RUnlock()
+	lockVaultClientMockChecker.RUnlock()
 	return calls
 }
 
@@ -107,9 +110,9 @@ func (mock *VaultClientMock) ReadKey(path string, key string) (string, error) {
 		Path: path,
 		Key:  key,
 	}
-	mock.lockReadKey.Lock()
+	lockVaultClientMockReadKey.Lock()
 	mock.calls.ReadKey = append(mock.calls.ReadKey, callInfo)
-	mock.lockReadKey.Unlock()
+	lockVaultClientMockReadKey.Unlock()
 	return mock.ReadKeyFunc(path, key)
 }
 
@@ -124,8 +127,8 @@ func (mock *VaultClientMock) ReadKeyCalls() []struct {
 		Path string
 		Key  string
 	}
-	mock.lockReadKey.RLock()
+	lockVaultClientMockReadKey.RLock()
 	calls = mock.calls.ReadKey
-	mock.lockReadKey.RUnlock()
+	lockVaultClientMockReadKey.RUnlock()
 	return calls
 }

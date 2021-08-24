@@ -6,11 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ONSdigital/dp-api-clients-go/image"
 	"io"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/ONSdigital/dp-api-clients-go/image"
 
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/event/mock"
@@ -33,7 +34,7 @@ var (
 	fileBytes         []byte        = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	testFileContent   io.ReadCloser = ioutil.NopCloser(bytes.NewReader(fileBytes))
 	encodedPSK        string        = "48656C6C6F20576F726C64"
-	errVault                        = errors.New("Vault error")
+	errVault                        = errors.New("vault error")
 	errS3Private                    = errors.New("S3Private error")
 	errS3Public                     = errors.New("S3Public error")
 	errImageAPI                     = errors.New("imageAPI error")
@@ -328,7 +329,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				return nil, nil, errS3Private
 			}
 			eventHandler := event.ImagePublishedHandler{
-				AuthToken: 	 testAuthToken,
+				AuthToken:   testAuthToken,
 				S3Public:    mockS3Public,
 				S3Private:   mockS3Private,
 				VaultCli:    nil,

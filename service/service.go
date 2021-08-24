@@ -12,17 +12,16 @@ import (
 
 // Service contains all the configs, server and clients to run the Image API
 type Service struct {
-	Config        *config.Config
-	Server        HTTPServer
-	Router        *mux.Router
-	ServiceList   *ExternalServiceList
-	HealthCheck   HealthChecker
-	ImageAPICli   event.ImageAPIClient
-	KafkaConsumer KafkaConsumer
-	EventConsumer EventConsumer
-	S3Public      event.S3Writer
-	S3Private     event.S3Reader
-	VaultCli      event.VaultClient
+	Config             *config.Config
+	Server             HTTPServer
+	Router             *mux.Router
+	ServiceList        *ExternalServiceList
+	HealthCheck        HealthChecker
+	ImageAPICli        event.ImageAPIClient
+	KafkaConsumerGroup KafkaConsumer
+	S3Public           event.S3Writer
+	S3Private          event.S3Reader
+	VaultCli           event.VaultClient
 }
 
 // Run the service
@@ -49,8 +48,8 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Get Image API Client
 	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
 
-	// Get Kafka Consumer
-	svc.KafkaConsumer, err = serviceList.GetKafkaConsumer(ctx, cfg)
+	// Initialise Kafka Consumer
+	svc.KafkaConsumerGroup, err = serviceList.GetKafkaConsumer(ctx, cfg)
 	if err != nil {
 		log.Event(ctx, "could not instantiate kafka consumer", log.FATAL, log.Error(err))
 		return nil, err
@@ -63,9 +62,8 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 
-	// Event Handler for Kafka Consumer with the created S3 Clients and Vault
-	svc.EventConsumer = event.NewConsumer()
-	svc.EventConsumer.Consume(ctx, svc.KafkaConsumer, &event.ImagePublishedHandler{
+	// Event Handler/Processor for Kafka Consumer with the created S3 Clients and Vault
+	handler := &event.ImagePublishedHandler{
 		AuthToken:       cfg.ServiceAuthToken,
 		S3Private:       svc.S3Private,
 		S3Public:        svc.S3Public,
@@ -73,7 +71,8 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		VaultPath:       cfg.VaultPath,
 		ImageAPICli:     svc.ImageAPICli,
 		PublicBucketURL: cfg.PublicBucketURL,
-	})
+	}
+	event.Consume(ctx, svc.KafkaConsumerGroup, handler, cfg.KafkaConsumerWorkers)
 
 	// Get HealthCheck
 	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
@@ -89,7 +88,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.HealthCheck.Start(ctx)
 
 	// kafka error channel logging go-routine
-	svc.KafkaConsumer.Channels().LogErrors(ctx, "kafka StaticFilePublished Consumer")
+	svc.KafkaConsumerGroup.Channels().LogErrors(ctx, "kafka StaticFilePublished Consumer")
 
 	// Run the http server in a new go-routine
 	go func() {
@@ -127,21 +126,15 @@ func (svc *Service) Close(ctx context.Context) error {
 
 		// Stop listening Kafka Consumer, if present
 		if svc.ServiceList.KafkaConsumerPublished {
-			if err := svc.KafkaConsumer.StopListeningToConsumer(ctx); err != nil {
+			if err := svc.KafkaConsumerGroup.StopListeningToConsumer(ctx); err != nil {
 				log.Event(ctx, "failed to stop listening kafka consumer", log.Error(err), log.ERROR)
 				hasShutdownError = true
 			}
 		}
 
-		// Close EventConsumer
-		if err := svc.EventConsumer.Close(ctx); err != nil {
-			log.Event(ctx, "error closing event consumer", log.ERROR, log.Error(err))
-			hasShutdownError = true
-		}
-
 		// Close Kafka Consumer, if present
 		if svc.ServiceList.KafkaConsumerPublished {
-			if err := svc.KafkaConsumer.Close(ctx); err != nil {
+			if err := svc.KafkaConsumerGroup.Close(ctx); err != nil {
 				log.Event(ctx, "failed to shutdown kafka consumer group", log.Error(err), log.ERROR)
 				hasShutdownError = true
 			}
@@ -181,7 +174,7 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 		log.Event(ctx, "failed to add image api client checker", log.ERROR, log.Error(err))
 	}
 
-	if err = svc.HealthCheck.AddCheck("Kafka Consumer", svc.KafkaConsumer.Checker); err != nil {
+	if err = svc.HealthCheck.AddCheck("Kafka Consumer", svc.KafkaConsumerGroup.Checker); err != nil {
 		hasErrors = true
 		log.Event(ctx, "failed to add kafka consumer checker", log.ERROR, log.Error(err))
 	}
