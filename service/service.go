@@ -5,7 +5,7 @@ import (
 
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
-	"github.com/ONSdigital/log.go/log"
+	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -26,7 +26,7 @@ type Service struct {
 
 // Run the service
 func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, buildTime, gitCommit, version string, svcErrors chan error) (svc *Service, err error) {
-	log.Event(ctx, "got service configuration", log.Data{"config": cfg}, log.INFO)
+	log.Info(ctx, "got service configuration", log.Data{"config": cfg})
 
 	svc = &Service{
 		Config: cfg,
@@ -41,7 +41,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Get Vault Client
 	svc.VaultCli, err = serviceList.GetVault(cfg)
 	if err != nil {
-		log.Event(ctx, "could not instantiate vault client", log.FATAL, log.Error(err))
+		log.Fatal(ctx, "could not instantiate vault client", err)
 		return nil, err
 	}
 
@@ -51,14 +51,14 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Initialise Kafka Consumer
 	svc.KafkaConsumerGroup, err = serviceList.GetKafkaConsumer(ctx, cfg)
 	if err != nil {
-		log.Event(ctx, "could not instantiate kafka consumer", log.FATAL, log.Error(err))
+		log.Fatal(ctx, "could not instantiate kafka consumer", err)
 		return nil, err
 	}
 
 	// Get S3 Clients
 	svc.S3Private, svc.S3Public, err = serviceList.GetS3Clients(cfg)
 	if err != nil {
-		log.Event(ctx, "could not instantiate S3 clients", log.FATAL, log.Error(err))
+		log.Fatal(ctx, "could not instantiate S3 clients", err)
 		return nil, err
 	}
 
@@ -77,7 +77,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Get HealthCheck
 	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)
 	if err != nil {
-		log.Event(ctx, "could not instantiate healthcheck", log.FATAL, log.Error(err))
+		log.Fatal(ctx, "could not instantiate healthcheck", err)
 		return nil, err
 	}
 	if err := svc.registerCheckers(ctx); err != nil {
@@ -103,7 +103,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 // Close gracefully shuts the service down in the required order, with timeout
 func (svc *Service) Close(ctx context.Context) error {
 	timeout := svc.Config.GracefulShutdownTimeout
-	log.Event(ctx, "commencing graceful shutdown", log.Data{"graceful_shutdown_timeout": timeout}, log.INFO)
+	log.Info(ctx, "commencing graceful shutdown", log.Data{"graceful_shutdown_timeout": timeout})
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 
 	// track shutown gracefully closes up
@@ -120,14 +120,14 @@ func (svc *Service) Close(ctx context.Context) error {
 
 		// stop any incoming requests before closing any outbound connections
 		if err := svc.Server.Shutdown(ctx); err != nil {
-			log.Event(ctx, "failed to shutdown http server", log.Error(err), log.ERROR)
+			log.Error(ctx, "failed to shutdown http server", err)
 			hasShutdownError = true
 		}
 
 		// Stop listening Kafka Consumer, if present
 		if svc.ServiceList.KafkaConsumerPublished {
 			if err := svc.KafkaConsumerGroup.StopListeningToConsumer(ctx); err != nil {
-				log.Event(ctx, "failed to stop listening kafka consumer", log.Error(err), log.ERROR)
+				log.Error(ctx, "failed to stop listening kafka consumer", err)
 				hasShutdownError = true
 			}
 		}
@@ -135,7 +135,7 @@ func (svc *Service) Close(ctx context.Context) error {
 		// Close Kafka Consumer, if present
 		if svc.ServiceList.KafkaConsumerPublished {
 			if err := svc.KafkaConsumerGroup.Close(ctx); err != nil {
-				log.Event(ctx, "failed to shutdown kafka consumer group", log.Error(err), log.ERROR)
+				log.Error(ctx, "failed to shutdown kafka consumer group", err)
 				hasShutdownError = true
 			}
 		}
@@ -150,11 +150,11 @@ func (svc *Service) Close(ctx context.Context) error {
 
 	if !gracefulShutdown {
 		err := errors.New("failed to shutdown gracefully")
-		log.Event(ctx, "failed to shutdown gracefully ", log.ERROR, log.Error(err))
+		log.Error(ctx, "failed to shutdown gracefully ", err)
 		return err
 	}
 
-	log.Event(ctx, "graceful shutdown was successful", log.INFO)
+	log.Info(ctx, "graceful shutdown was successful")
 	return nil
 }
 
@@ -165,28 +165,28 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	if svc.VaultCli != nil {
 		if err = svc.HealthCheck.AddCheck("Vault", svc.VaultCli.Checker); err != nil {
 			hasErrors = true
-			log.Event(ctx, "failed to add vault client checker", log.ERROR, log.Error(err))
+			log.Error(ctx, "failed to add vault client checker", err)
 		}
 	}
 
 	if err = svc.HealthCheck.AddCheck("Image API", svc.ImageAPICli.Checker); err != nil {
 		hasErrors = true
-		log.Event(ctx, "failed to add image api client checker", log.ERROR, log.Error(err))
+		log.Error(ctx, "failed to add image api client checker", err)
 	}
 
 	if err = svc.HealthCheck.AddCheck("Kafka Consumer", svc.KafkaConsumerGroup.Checker); err != nil {
 		hasErrors = true
-		log.Event(ctx, "failed to add kafka consumer checker", log.ERROR, log.Error(err))
+		log.Error(ctx, "failed to add kafka consumer checker", err)
 	}
 
 	if err = svc.HealthCheck.AddCheck("S3 Public", svc.S3Public.Checker); err != nil {
 		hasErrors = true
-		log.Event(ctx, "failed to add public s3 client checker", log.ERROR, log.Error(err))
+		log.Error(ctx, "failed to add public s3 client checker", err)
 	}
 
 	if err = svc.HealthCheck.AddCheck("S3 Private", svc.S3Private.Checker); err != nil {
 		hasErrors = true
-		log.Event(ctx, "failed to add private s3 client checker", log.ERROR, log.Error(err))
+		log.Error(ctx, "failed to add private s3 client checker", err)
 	}
 
 	if hasErrors {

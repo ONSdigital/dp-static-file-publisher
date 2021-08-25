@@ -11,7 +11,7 @@ import (
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/schema"
-	"github.com/ONSdigital/log.go/log"
+	"github.com/ONSdigital/log.go/v2/log"
 )
 
 const serviceName = "dp-static-file-publisher"
@@ -23,7 +23,7 @@ func main() {
 	// Get Config
 	config, err := config.Get()
 	if err != nil {
-		log.Event(ctx, "error getting config", log.FATAL, log.Error(err))
+		log.Fatal(ctx, "error getting config", err)
 		os.Exit(1)
 	}
 
@@ -32,9 +32,18 @@ func main() {
 	pConfig := &dpkafka.ProducerConfig{
 		KafkaVersion: &config.KafkaVersion,
 	}
+	if config.KafkaSecProtocol == "TLS" {
+		pConfig.SecurityConfig = dpkafka.GetSecurityConfig(
+			config.KafkaSecCACerts,
+			config.KafkaSecClientCert,
+			config.KafkaSecClientKey,
+			config.KafkaSecSkipVerify,
+		)
+	}
+
 	kafkaProducer, err := dpkafka.NewProducer(ctx, config.KafkaAddr, config.StaticFilePublishedTopic, pChannels, pConfig)
 	if err != nil {
-		log.Event(ctx, "fatal error trying to create kafka producer", log.FATAL, log.Error(err), log.Data{"topic": config.StaticFilePublishedTopic})
+		log.Fatal(ctx, "fatal error trying to create kafka producer", err, log.Data{"topic": config.StaticFilePublishedTopic})
 		os.Exit(1)
 	}
 
@@ -45,11 +54,11 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		e := scanEvent(scanner)
-		log.Event(ctx, "sending image published event", log.INFO, log.Data{"imagePublishedEvent": e})
+		log.Info(ctx, "sending image published event", log.Data{"imagePublishedEvent": e})
 
 		bytes, err := schema.ImagePublishedEvent.Marshal(e)
 		if err != nil {
-			log.Event(ctx, "image published event error", log.FATAL, log.Error(err))
+			log.Fatal(ctx, "image published event error", err)
 			os.Exit(1)
 		}
 

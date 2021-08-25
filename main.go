@@ -7,7 +7,7 @@ import (
 
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
-	"github.com/ONSdigital/log.go/log"
+	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +27,7 @@ func main() {
 	ctx := context.Background()
 
 	if err := run(ctx); err != nil {
-		log.Event(ctx, "fatal runtime error", log.Error(err), log.FATAL)
+		log.Fatal(ctx, "fatal runtime error", err)
 		os.Exit(1)
 	}
 }
@@ -58,7 +58,7 @@ func run(ctx context.Context) error {
 		return errors.Wrap(err, "service error received")
 	case sig := <-signals:
 		ctx := context.Background()
-		log.Event(ctx, "os signal received", log.Data{"signal": sig}, log.INFO)
+		log.Info(ctx, "os signal received", log.Data{"signal": sig})
 		svc.Close(ctx)
 	}
 	return nil
