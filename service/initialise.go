@@ -141,6 +141,14 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 		Offset:       &kafkaOffset,
 		KafkaVersion: &cfg.KafkaVersion,
 	}
+	if cfg.KafkaSecProtocol == "TLS" {
+		cConfig.SecurityConfig = dpkafka.GetSecurityConfig(
+			cfg.KafkaSecCACerts,
+			cfg.KafkaSecClientCert,
+			cfg.KafkaSecClientKey,
+			cfg.KafkaSecSkipVerify,
+		)
+	}
 
 	return dpkafka.NewConsumerGroup(
 		ctx,

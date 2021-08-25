@@ -27,8 +27,19 @@ Then you will need to introduce the source and destination paths, and the messag
 | VAULT_RETRIES                | 3                        | Number of times that a connection to vault will be retried if it fails
 | IMAGE_API_URL                | http://localhost:24700   | The image api url
 | KAFKA_ADDR                   | localhost:9092           | The list of kafka broker hosts
-| STATIC_FILE_PUBLISHED_TOPIC  | static-file-published    | The kafka topic that will be consumed by this service and will trigger a file publishing event
+| KAFKA_VERSION                | `1.0.2`                  | The version of Kafka
+| KAFKA_CONSUMER_WORKERS       | 1                        | The maximum number of parallel kafka consumers
+| KAFKA_SEC_PROTO              | _unset_   (only `TLS`)   | if set to `TLS`, kafka connections will use TLS
+| KAFKA_SEC_CLIENT_KEY         | _unset_                  | PEM [2] for the client key (optional, used for client auth) [1]
+| KAFKA_SEC_CLIENT_CERT        | _unset_                  | PEM [2] for the client certificate (optional, used for client auth) [1]
+| KAFKA_SEC_CA_CERTS           | _unset_                  | PEM [2] of CA cert chain if using private CA for the server cert [1]
+| KAFKA_SEC_SKIP_VERIFY        | false                    | ignore server certificate issues if set to `true` [1]
 | CONSUMER_GROUP               | dp-static-file-publisher | The kafka consumer-group to consume static-file-published messages
+| STATIC_FILE_PUBLISHED_TOPIC  | static-file-published    | The kafka topic that will be consumed by this service and will trigger a file publishing event
+
+**Notes:**
+
+1. For more info, see the [kafka TLS examples documentation](https://github.com/ONSdigital/dp-kafka/tree/main/examples#tls)
 
 ### Contributing
 
