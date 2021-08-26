@@ -135,7 +135,7 @@ func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 // DoGetKafkaConsumer returns a Kafka Consumer group
 func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
 	cgChannels := dpkafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
-	kafkaOffset := dpkafka.OffsetNewest
+	kafkaOffset := dpkafka.OffsetOldest
 
 	cConfig := &dpkafka.ConsumerGroupConfig{
 		Offset:       &kafkaOffset,
