@@ -55,7 +55,7 @@ func Get() (*Config, error) {
 		VaultRetries:               3,
 		VaultPath:                  "secret/shared/psk",
 		ImageAPIURL:                "http://localhost:24700",
-		KafkaAddr:                  []string{"localhost:9092"},
+		KafkaAddr:                  []string{"localhost:9092", "localhost:9093", "localhost:9094"},
 		KafkaVersion:               "1.0.2",
 		KafkaConsumerWorkers:       1,
 		StaticFilePublishedTopic:   "static-file-published",

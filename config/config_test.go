@@ -31,7 +31,7 @@ func TestConfig(t *testing.T) {
 				So(cfg.VaultRetries, ShouldEqual, 3)
 				So(cfg.VaultPath, ShouldEqual, "secret/shared/psk")
 				So(cfg.ImageAPIURL, ShouldEqual, "http://localhost:24700")
-				So(cfg.KafkaAddr, ShouldResemble, []string{"localhost:9092"})
+				So(cfg.KafkaAddr, ShouldResemble, []string{"localhost:9092", "localhost:9093", "localhost:9094"})
 				So(cfg.KafkaVersion, ShouldEqual, "1.0.2")
 				So(cfg.KafkaConsumerWorkers, ShouldEqual, 1)
 				So(cfg.StaticFilePublishedTopic, ShouldEqual, "static-file-published")
