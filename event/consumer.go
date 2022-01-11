@@ -53,7 +53,7 @@ func Consume(ctx context.Context, consumerGroup dpkafka.IConsumerGroup, handler 
 // processMessage unmarshals the provided kafka message into an event and calls the handler.
 // After the message is successfully handled, it is committed.
 func processMessage(ctx context.Context, message dpkafka.Message, handler Handler) (err error) {
-	defer message.Commit() //deferring the commit till the processing is done
+	defer message.Commit() // deferring the commit till the processing is done
 
 	event, err := unmarshal(message)
 	if err != nil {

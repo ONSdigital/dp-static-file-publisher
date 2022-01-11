@@ -27,7 +27,7 @@ const (
 	completedState = "completed"
 )
 
-//ErrVaultFilenameEmpty is an error returned when trying to obtain a PSK for an empty file name
+// ErrVaultFilenameEmpty is an error returned when trying to obtain a PSK for an empty file name
 var ErrVaultFilenameEmpty = errors.New("vault filename required but was empty")
 
 // ImagePublishedHandler ...
