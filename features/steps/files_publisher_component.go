@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 
@@ -23,6 +24,10 @@ type FilePublisherComponent struct {
 	cg           *kafka.ConsumerGroup
 }
 
+const (
+	localStackHost = "http://localstack:4566"
+)
+
 func NewFilePublisherComponent() *FilePublisherComponent {
 	s := dphttp.NewServer("", http.NewServeMux())
 	s.HandleOSSignals = false
@@ -42,6 +47,7 @@ func NewFilePublisherComponent() *FilePublisherComponent {
 func (d *FilePublisherComponent) Initialiser() (http.Handler, error) {
 	cfg, _ := config.Get()
 	d.svc, _ = service.Run(context.Background(), cfg, service.NewServiceList(d.svcList), "0", "0", "1.0.0", d.errChan)
+	time.Sleep(500 * time.Millisecond)
 
 	return d.DpHttpServer.Handler, nil
 }

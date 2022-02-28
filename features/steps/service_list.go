@@ -2,12 +2,17 @@ package steps
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
+	s3client "github.com/ONSdigital/dp-s3"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 
-	"github.com/ONSdigital/dp-kafka/v2/kafkatest"
+	kafka "github.com/ONSdigital/dp-kafka/v2"
+
+	vault "github.com/ONSdigital/dp-vault"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
@@ -35,12 +40,12 @@ func (e *fakeServiceContainer) DoGetHealthCheck(cfg *config.Config, buildTime, g
 }
 
 func (e *fakeServiceContainer) DoGetVault(cfg *config.Config) (event.VaultClient, error) {
-	return &mock.VaultClientMock{
-		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-			state.Update("OK", "Vault all good", 0)
-			return nil
-		},
-	}, nil
+	v, err := vault.CreateClient(cfg.VaultToken, cfg.VaultAddress, cfg.VaultRetries)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	return v, nil
 }
 
 func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
@@ -53,37 +58,29 @@ func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.Ima
 }
 
 func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-	return &kafkatest.IConsumerGroupMock{
-		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-			state.Update("OK", "Kafka Consumer all good", 0)
-			return nil
-		},
-		ChannelsFunc: func() *dpkafka.ConsumerGroupChannels {
-			return dpkafka.CreateConsumerGroupChannels(1)
-		},
-	}, nil
+	kafkaOffset := kafka.OffsetOldest
+	cgConfig := &kafka.ConsumerGroupConfig{
+		KafkaVersion: &cfg.KafkaVersion,
+		Offset:       &kafkaOffset,
+	}
+	cg, err := kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers), cgConfig)
+
+	return cg, err
 }
 
 func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
-	return &mock.S3WriterMock{
-		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-			state.Update("OK", "s3 Client Without Session all good", 0)
-			return nil
-		},
-		SessionFunc: func() *session.Session {
-			s, _ := session.NewSession()
-			return s
-		},
-	}, nil
+	s, _ := session.NewSession(&aws.Config{
+		Endpoint:         aws.String(localStackHost),
+		Region:           aws.String(awsRegion),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
+	})
+
+	return s3client.NewUploaderWithSession(bucketName, encryptionEnabled, s), nil
 }
 
 func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
-	return &mock.S3ReaderMock{
-		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-			state.Update("OK", "s3 Client With Session all good", 0)
-			return nil
-		},
-	}
+	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s)
 }
 
 func (e *fakeServiceContainer) Shutdown(ctx context.Context) error {
