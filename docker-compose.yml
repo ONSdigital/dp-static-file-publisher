@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  dp-static-file-publisher:
+    image: template_test
+    ports:
+      - "24900:24900"
+    environment:
+      BIND_ADDR: ':24900'
+      GRACEFUL_SHUTDOWN_TIMEOUT: '30s'
+      HEALTHCHECK_INTERVAL: '5s'
+      HEALTHCHECK_CRITICAL_TIMEOUT: '30s'
+    depends_on:
+      kafka:
+        condition: service_healthy
