@@ -2,10 +2,13 @@ module github.com/ONSdigital/dp-static-file-publisher
 
 go 1.17
 
+replace github.com/coreos/etcd => github.com/coreos/etcd v3.3.24+incompatible
+
+replace github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20210802184156-9742bd7fca1c+incompatible
+
 require (
 	github.com/ONSdigital/dp-api-clients-go v1.43.0
 	github.com/ONSdigital/dp-component-test v0.6.5
-	github.com/ONSdigital/dp-files-api v0.0.0-20220222161746-36a81ea25765
 	github.com/ONSdigital/dp-healthcheck v1.2.3
 	github.com/ONSdigital/dp-kafka/v2 v2.4.4
 	github.com/ONSdigital/dp-kafka/v3 v3.3.1
@@ -25,6 +28,7 @@ require (
 
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.1.7-beta // indirect
+	github.com/ONSdigital/dp-files-api v0.0.0-20220222161746-36a81ea25765 // indirect
 	github.com/ONSdigital/dp-mongodb-in-memory v1.2.0 // indirect
 	github.com/ONSdigital/dp-mongodb/v3 v3.0.0-beta.9 // indirect
 	github.com/ONSdigital/s3crypto v0.0.0-20180725145621-f8943119a487 // indirect
