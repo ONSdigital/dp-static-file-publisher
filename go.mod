@@ -28,34 +28,25 @@ require (
 
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.1.7-beta // indirect
-	github.com/ONSdigital/dp-files-api v0.0.0-20220222161746-36a81ea25765 // indirect
 	github.com/ONSdigital/dp-mongodb-in-memory v1.2.0 // indirect
-	github.com/ONSdigital/dp-mongodb/v3 v3.0.0-beta.9 // indirect
 	github.com/ONSdigital/s3crypto v0.0.0-20180725145621-f8943119a487 // indirect
 	github.com/Shopify/sarama v1.30.1 // indirect
 	github.com/chromedp/cdproto v0.0.0-20211126220118-81fa0469ad77 // indirect
 	github.com/chromedp/chromedp v0.7.6 // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
-	github.com/cucumber/gherkin-go/v11 v11.0.0 // indirect
 	github.com/cucumber/gherkin-go/v19 v19.0.3 // indirect
-	github.com/cucumber/messages-go/v10 v10.0.3 // indirect
 	github.com/cucumber/messages-go/v16 v16.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.0 // indirect
 	github.com/go-avro/avro v0.0.0-20171219232920-444163702c11 // indirect
-	github.com/go-playground/locales v0.14.0 // indirect
-	github.com/go-playground/universal-translator v0.18.0 // indirect
-	github.com/go-playground/validator v9.31.0+incompatible // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20220104163920-15ed2e8cf2bd // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
@@ -83,7 +74,6 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/justinas/alice v1.2.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
-	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
@@ -93,12 +83,10 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	github.com/rdumont/assistdog v0.0.0-20201106100018-168b06230d14 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/smartystreets/assertions v1.2.1 // indirect
 	github.com/spf13/afero v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/square/mongo-lock v0.0.0-20201208161834-4db518ed7fb2 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect
