@@ -9,7 +9,7 @@ image_resource:
     tag: latest
 
 inputs:
-  - name: dp-upload-service
+  - name: dp-static-file-publisher
 
 run:
   path: dp-static-file-publisher/ci/scripts/lint.sh
