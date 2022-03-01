@@ -7,8 +7,6 @@ import (
 
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
-
 	componenttest "github.com/ONSdigital/dp-component-test"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
@@ -21,7 +19,6 @@ type FilePublisherComponent struct {
 	svcList      service.Initialiser
 	ApiFeature   *componenttest.APIFeature
 	errChan      chan error
-	cg           *kafka.ConsumerGroup
 }
 
 const (
@@ -56,15 +53,9 @@ func (d *FilePublisherComponent) Reset() {
 }
 
 func (d *FilePublisherComponent) Close() error {
-	//if d.cg != nil {
-	//	d.cg.Stop()
-	//}
-	//
-	//cfg, _ := config.Get()
-	//
-	//if d.svc != nil {
-	//	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	//	return d.svc.Close(ctx, cfg.GracefulShutdownTimeout)
-	//}
+	if d.svc != nil {
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		return d.svc.Close(ctx)
+	}
 	return nil
 }
