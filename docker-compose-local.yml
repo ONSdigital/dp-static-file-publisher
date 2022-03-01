@@ -1,0 +1,16 @@
+version: "3"
+
+services:
+  dp-static-file-publisher:
+    build:
+      context: ./
+      dockerfile: Dockerfile-local
+    ports:
+      - "24900:24900"
+    volumes:
+      - ./:/service
+    env_file:
+      - docker.env
+    depends_on:
+      kafka:
+        condition: service_healthy

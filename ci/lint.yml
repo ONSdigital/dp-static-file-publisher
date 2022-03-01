@@ -6,13 +6,10 @@ image_resource:
   type: docker-image
   source:
     repository: golang
-    tag: 1.17.6
+    tag: latest
 
 inputs:
   - name: dp-static-file-publisher
 
-caches:
-  - path: go/
-
 run:
-  path: dp-static-file-publisher/ci/scripts/unit.sh
+  path: dp-static-file-publisher/ci/scripts/lint.sh

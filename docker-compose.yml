@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  dp-static-file-publisher:
+    image: template_test
+    ports:
+      - "24900:24900"
+    env_file:
+      - docker.env
+    depends_on:
+      kafka:
+        condition: service_healthy
