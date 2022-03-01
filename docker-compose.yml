@@ -5,25 +5,8 @@ services:
     image: template_test
     ports:
       - "24900:24900"
-    environment:
-      BIND_ADDR: ':24900'
-      GRACEFUL_SHUTDOWN_TIMEOUT: '30s'
-      HEALTHCHECK_INTERVAL: '5s'
-      HEALTHCHECK_CRITICAL_TIMEOUT: '30s'
-      VAULT_TOKEN: '0000-0000-0000-0000'
-      VAULT_ADDR: 'http://vault:8200'
-      VAULT_PATH: 'secret/shared/psk'
-      VAULT_RETRIES: '3'
-      KAFKA_ADDR: 'kafka:9092'
-      KAFKA_PRODUCER_MIN_BROKERS_HEALTHY: '1'
-      KAFKA_VERSION: '2.6.1'
-      KAFKA_MAX_BYTES: '2000000'
-      KAFKA_SEC_PROTO: ''
-      KAFKA_SEC_CA_CERTS: ''
-      KAFKA_SEC_CLIENT_KEY: ''
-      KAFKA_SEC_CLIENT_CERT: ''
-      KAFKA_SEC_SKIP_VERIFY: ''
-      STATIC_FILE_PUBLISHED_TOPIC: 'static-file-published-v2'
+    env_file:
+      - docker.env
     depends_on:
       kafka:
         condition: service_healthy
