@@ -22,9 +22,9 @@ services:
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
     healthcheck:
       test: [ "CMD-SHELL", "kafka-topics.sh --list  --bootstrap-server kafka:9092" ]
-      interval: 30s
+      interval: 60s
       timeout: 60s
-      retries: 15
+      retries: 3
 
   vault:
     image: hashicorp/vault:latest
