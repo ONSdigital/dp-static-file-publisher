@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	s3client "github.com/ONSdigital/dp-s3/v2"
+	"github.com/aws/aws-sdk-go/aws"
 	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
@@ -11,6 +13,7 @@ import (
 
 	dphttp "github.com/ONSdigital/dp-net/http"
 	dps3 "github.com/ONSdigital/dp-s3"
+	dps3v2 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	dpvault "github.com/ONSdigital/dp-vault"
@@ -104,6 +107,11 @@ func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.
 	return
 }
 
+// GetS3Clients returns S3 clients private and public. They share the same AWS session.
+func (e *ExternalServiceList) GetS3ClientV2(cfg *config.Config, bucketName string) (*s3client.Client, error) {
+	return e.Init.DoGetS3ClientV2(cfg.AwsRegion, bucketName)
+}
+
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
 func (e *Init) DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
 	s := dphttp.NewServer(bindAddr, router)
@@ -193,6 +201,18 @@ func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (ka
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
 func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 	return dps3.NewUploader(awsRegion, bucketName, encryptionEnabled)
+}
+
+func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (*s3client.Client, error) {
+	s, err := session.NewSession(&aws.Config{
+		Region: aws.String(awsRegion),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dps3v2.NewClientWithSession(bucketName, s), nil
 }
 
 // DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)

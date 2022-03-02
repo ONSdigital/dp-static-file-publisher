@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	s3client "github.com/ONSdigital/dp-s3/v2"
 	"net/http"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
@@ -26,6 +27,7 @@ type Initialiser interface {
 	DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error)
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
+	DoGetS3ClientV2(awsRegion, bucketName string) (*s3client.Client, error)
 }
 
 // HTTPServer defines the required methods from the HTTP server
