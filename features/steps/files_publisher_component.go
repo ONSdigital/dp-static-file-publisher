@@ -2,6 +2,12 @@ package steps
 
 import (
 	"context"
+	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"net/http"
 	"time"
 
@@ -23,6 +29,7 @@ type FilePublisherComponent struct {
 
 const (
 	localStackHost = "http://localstack:4566"
+	encryptionKey  = "1234567890ABCDEF"
 )
 
 func NewFilePublisherComponent() *FilePublisherComponent {
@@ -41,21 +48,48 @@ func NewFilePublisherComponent() *FilePublisherComponent {
 	return d
 }
 
-func (d *FilePublisherComponent) Initialiser() (http.Handler, error) {
+func (c *FilePublisherComponent) Initialiser() (http.Handler, error) {
 	cfg, _ := config.Get()
-	d.svc, _ = service.Run(context.Background(), cfg, service.NewServiceList(d.svcList), "0", "0", "1.0.0", d.errChan)
+	c.svc, _ = service.Run(context.Background(), cfg, service.NewServiceList(c.svcList), "0", "0", "1.0.0", c.errChan)
 	time.Sleep(2 * time.Second)
 
-	return d.DpHttpServer.Handler, nil
+	return c.DpHttpServer.Handler, nil
 }
 
-func (d *FilePublisherComponent) Reset() {
+func (c *FilePublisherComponent) Reset() {
+	cfg, _ := config.Get()
+	s, _ := session.NewSession(&aws.Config{
+		Endpoint:         aws.String(localStackHost),
+		Region:           aws.String(cfg.AwsRegion),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
+	})
+
+	s3client := s3.New(s)
+
+	err := s3manager.NewBatchDeleteWithClient(s3client).Delete(
+		aws.BackgroundContext(), s3manager.NewDeleteListIterator(s3client, &s3.ListObjectsInput{
+			Bucket: aws.String(cfg.PrivateBucketName),
+		}))
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to empty private localstack s3: %s", err.Error()))
+	}
+
+	err = s3manager.NewBatchDeleteWithClient(s3client).Delete(
+		aws.BackgroundContext(), s3manager.NewDeleteListIterator(s3client, &s3.ListObjectsInput{
+			Bucket: aws.String(cfg.PublicBucketName),
+		}))
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to empty public localstack s3: %s", err.Error()))
+	}
 }
 
-func (d *FilePublisherComponent) Close() error {
-	if d.svc != nil {
+func (c *FilePublisherComponent) Close() error {
+	if c.svc != nil {
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		return d.svc.Close(ctx)
+		return c.svc.Close(ctx)
 	}
 	return nil
 }

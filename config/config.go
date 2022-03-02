@@ -28,6 +28,7 @@ type Config struct {
 	KafkaSecSkipVerify         bool          `envconfig:"KAFKA_SEC_SKIP_VERIFY"`
 	KafkaConsumerWorkers       int           `envconfig:"KAFKA_CONSUMER_WORKERS"`
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
+	StaticFilePublishedTopicV2 string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC_V2"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
 	AwsRegion                  string        `envconfig:"AWS_REGION"`
 	PrivateBucketName          string        `envconfig:"S3_PRIVATE_BUCKET_NAME"`
@@ -59,6 +60,7 @@ func Get() (*Config, error) {
 		KafkaVersion:               "1.0.2",
 		KafkaConsumerWorkers:       1,
 		StaticFilePublishedTopic:   "static-file-published",
+		StaticFilePublishedTopicV2: "static-file-published-v2",
 		ConsumerGroup:              "dp-static-file-publisher",
 		AwsRegion:                  "eu-west-1",
 		PrivateBucketName:          "csv-exported",
