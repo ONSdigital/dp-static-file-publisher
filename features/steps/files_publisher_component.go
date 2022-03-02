@@ -25,6 +25,8 @@ type FilePublisherComponent struct {
 	svcList      service.Initialiser
 	ApiFeature   *componenttest.APIFeature
 	errChan      chan error
+	config       *config.Config
+	session      *session.Session
 }
 
 const (
@@ -44,6 +46,12 @@ func NewFilePublisherComponent() *FilePublisherComponent {
 	log.Namespace = "dp-static-file-publisher"
 
 	d.svcList = &fakeServiceContainer{s}
+	d.config, _ = config.Get()
+	d.session, _ = session.NewSession(&aws.Config{
+		Endpoint:         aws.String(localStackHost),
+		Region:           aws.String(d.config.AwsRegion),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials("test", "test", "")})
 
 	return d
 }

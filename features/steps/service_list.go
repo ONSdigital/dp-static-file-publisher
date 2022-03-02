@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"fmt"
+	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"net/http"
 	"time"
 
@@ -66,6 +67,21 @@ func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *conf
 	cg, err := kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers), cgConfig)
 
 	return cg, err
+}
+
+func (e *fakeServiceContainer) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+	kafkaOffset := kafkaV3.OffsetOldest
+
+	gc := kafkaV3.ConsumerGroupConfig{
+		KafkaVersion:      &cfg.KafkaVersion,
+		Offset:            &kafkaOffset,
+		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
+		Topic:             cfg.StaticFilePublishedTopicV2,
+		GroupName:         cfg.ConsumerGroup,
+		BrokerAddrs:       cfg.KafkaAddr,
+	}
+
+	return kafkaV3.NewConsumerGroup(ctx, &gc)
 }
 
 func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {

@@ -2,10 +2,17 @@ package service
 
 import (
 	"context"
-
+	kafka "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-kafka/v3/avro"
+	s3client "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/ONSdigital/log.go/v2/log"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -73,6 +80,50 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		PublicBucketURL: cfg.PublicBucketURL,
 	}
 	event.Consume(ctx, svc.KafkaConsumerGroup, handler, cfg.KafkaConsumerWorkers)
+
+	sub, err := serviceList.GetKafkaConsumerV3(ctx, cfg)
+
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate Kafka V3 consumer", err)
+		return nil, err
+	}
+
+	sub.Start()
+	sub.RegisterHandler(ctx, func(ctx context.Context, workerID int, msg kafka.Message) error {
+		schema := &avro.Schema{
+			Definition: `{
+					"type": "record",
+					"name": "file-published",
+					"fields": [
+					  {"name": "path", "type": "string"},
+					  {"name": "etag", "type": "string"},
+					  {"name": "type", "type": "string"},
+					  {"name": "sizeInBytes", "type": "string"}
+					]
+				  }`,
+		}
+		fp := file.Published{}
+		schema.Unmarshal(msg.GetData(), &fp)
+
+		s, _ := session.NewSession(&aws.Config{
+			Endpoint:         aws.String("http://localstack:4566"),
+			Region:           aws.String(cfg.AwsRegion),
+			S3ForcePathStyle: aws.Bool(true),
+			Credentials:      credentials.NewStaticCredentials("test", "test", ""),
+		})
+
+		publicClient := s3client.NewClientWithSession(cfg.PublicBucketName, s)
+		privateClient := s3client.NewClientWithSession(cfg.PrivateBucketName, s)
+		reader, _, _ := privateClient.GetWithPSK(fp.Path, []byte("1234567890ABCDEF"))
+		publicClient.Upload(&s3manager.UploadInput{
+			Key:         &fp.Path,
+			ContentType: &fp.Type,
+			Body:        reader,
+		})
+
+		// TODO create a file on public bucket
+		return nil
+	})
 
 	// Get HealthCheck
 	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)

@@ -27,6 +27,7 @@ type Config struct {
 	KafkaSecClientKey          string        `envconfig:"KAFKA_SEC_CLIENT_KEY"          json:"-"`
 	KafkaSecSkipVerify         bool          `envconfig:"KAFKA_SEC_SKIP_VERIFY"`
 	KafkaConsumerWorkers       int           `envconfig:"KAFKA_CONSUMER_WORKERS"`
+	KafkaMinimumHealthyBrokers int           `envconfig:"KAFKA_MIN_HEALTHY_BROKERS"`
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
 	StaticFilePublishedTopicV2 string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC_V2"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
@@ -59,6 +60,7 @@ func Get() (*Config, error) {
 		KafkaAddr:                  []string{"localhost:9092", "localhost:9093", "localhost:9094"},
 		KafkaVersion:               "1.0.2",
 		KafkaConsumerWorkers:       1,
+		KafkaMinimumHealthyBrokers: 1,
 		StaticFilePublishedTopic:   "static-file-published",
 		StaticFilePublishedTopicV2: "static-file-published-v2",
 		ConsumerGroup:              "dp-static-file-publisher",

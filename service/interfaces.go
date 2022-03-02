@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
+	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
+	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,6 +23,7 @@ type Initialiser interface {
 	DoGetVault(cfg *config.Config) (event.VaultClient, error)
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
 	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
+	DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error)
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
 }
@@ -46,5 +48,5 @@ type KafkaConsumer interface {
 	StopListeningToConsumer(ctx context.Context) (err error)
 	Close(ctx context.Context) (err error)
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
-	Channels() *dpkafka.ConsumerGroupChannels
+	Channels() *kafkaV2.ConsumerGroupChannels
 }

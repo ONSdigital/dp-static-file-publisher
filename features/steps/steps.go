@@ -6,13 +6,12 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	s3client "github.com/ONSdigital/dp-s3/v2"
-	"github.com/ONSdigital/dp-static-file-publisher/config"
 	vault "github.com/ONSdigital/dp-vault"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/cucumber/godog"
+	"github.com/stretchr/testify/assert"
+	"io"
 	"sync"
+	"time"
 )
 
 type FilePublished struct {
@@ -22,26 +21,29 @@ type FilePublished struct {
 	SizeInBytes string `avro:"sizeInBytes"`
 }
 
+var (
+	expectedContentLength int
+	expectedContent       string
+)
+
 func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a message to publish the file "([^"]*)" is sent$`, c.aMessageToPublishTheFileIsSent)
 	ctx.Step(`^the content of file "([^"]*)" in the public bucket matches the original plain text content$`, c.theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent)
 	ctx.Step(`^the files API should be informed the file has been decrypted$`, c.theFilesAPIShouldBeInformedTheFileHasBeenDecrypted)
 	ctx.Step(`^the private bucket still has a encrypted file called "([^"]*)"$`, c.thePrivateBucketStillHasAEncryptedFileCalled)
 	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
-	ctx.Step(`^there is a encrypted file "([^"]*)" in the private bucket$`, c.thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent)
+	ctx.Step(`^there is a encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent)
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
 }
 
 func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) error {
-	cfg, _ := config.Get()
-
 	minBrokersHealthy := 1
 	ctx := context.Background()
 	pub, _ := kafka.NewProducer(ctx, &kafka.ProducerConfig{
-		KafkaVersion:      &cfg.KafkaVersion,
+		KafkaVersion:      &c.config.KafkaVersion,
 		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             cfg.StaticFilePublishedTopicV2,
-		BrokerAddrs:       cfg.KafkaAddr,
+		Topic:             c.config.StaticFilePublishedTopicV2,
+		BrokerAddrs:       c.config.KafkaAddr,
 	})
 
 	schema := &avro.Schema{
@@ -69,18 +71,19 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	c.Initialiser()
 
 	sub, _ := kafka.NewConsumerGroup(ctx, &kafka.ConsumerGroupConfig{
-		KafkaVersion:      &cfg.KafkaVersion,
+		KafkaVersion:      &c.config.KafkaVersion,
 		Offset:            nil,
 		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             cfg.StaticFilePublishedTopicV2,
+		Topic:             c.config.StaticFilePublishedTopicV2,
 		GroupName:         "testing",
-		BrokerAddrs:       cfg.KafkaAddr,
+		BrokerAddrs:       c.config.KafkaAddr,
 	})
 
 	sub.Start()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	sub.RegisterHandler(ctx, func(ctx context.Context, workerID int, msg kafka.Message) error {
+		time.Sleep(2 * time.Second)
 		wg.Done()
 
 		return nil
@@ -91,34 +94,55 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	return c.ApiFeature.StepError()
 }
 
-func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent(arg1 string) error {
-	return godog.ErrPending
+func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent(filename string) error {
+	client := s3client.NewClientWithSession(c.config.PublicBucketName, c.session)
+	result, _, err := client.Get(filename)
+
+	b, _ := io.ReadAll(result)
+
+	assert.NoError(c.ApiFeature, err)
+	assert.Equal(c.ApiFeature, expectedContent, string(b))
+
+	return c.ApiFeature.StepError()
 }
 
 func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted() error {
 	return godog.ErrPending
 }
 
-func (c *FilePublisherComponent) thePrivateBucketStillHasAEncryptedFileCalled(arg1 string) error {
-	return godog.ErrPending
+func (c *FilePublisherComponent) thePrivateBucketStillHasAEncryptedFileCalled(filename string) error {
+	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
+	result, err := client.Head(filename)
+
+	assert.Equal(c.ApiFeature, expectedContentLength, int(*result.ContentLength))
+	assert.Equal(c.ApiFeature, "text/plain", *result.ContentType)
+
+	assert.NoError(c.ApiFeature, err)
+
+	return c.ApiFeature.StepError()
 }
 
 func (c *FilePublisherComponent) thePublicBucketContainsADecryptedFileCalled(filename string) error {
-	return godog.ErrPending
+	client := s3client.NewClientWithSession(c.config.PublicBucketName, c.session)
+	result, err := client.Head(filename)
+
+	assert.NoError(c.ApiFeature, err)
+
+	if err == nil {
+		assert.Equal(c.ApiFeature, expectedContentLength, int(*result.ContentLength))
+		assert.Equal(c.ApiFeature, "text/plain", *result.ContentType)
+	}
+
+	return c.ApiFeature.StepError()
 }
 
 func (c *FilePublisherComponent) thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent(filename string, fileContent *godog.DocString) error {
-	cfg, _ := config.Get()
+	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
 
-	s, _ := session.NewSession(&aws.Config{
-		Endpoint:         aws.String(localStackHost),
-		Region:           aws.String(cfg.AwsRegion),
-		S3ForcePathStyle: aws.Bool(true),
-		Credentials:      credentials.NewStaticCredentials("test", "test", "")})
+	expectedContentLength = len(fileContent.Content)
+	expectedContent = fileContent.Content
 
-	client := s3client.NewClientWithSession(cfg.PrivateBucketName, s)
-
-	client.UploadPartWithPsk(context.Background(), &s3client.UploadPartRequest{
+	_, err := client.UploadPartWithPsk(context.Background(), &s3client.UploadPartRequest{
 		UploadKey:   filename,
 		Type:        "text/plain",
 		ChunkNumber: 1,
@@ -128,15 +152,16 @@ func (c *FilePublisherComponent) thereIsAEncryptedSingleChunkFileInThePrivateBuc
 		[]byte(fileContent.Content),
 		[]byte(encryptionKey),
 	)
+	assert.NoError(c.ApiFeature, err)
 
 	return c.ApiFeature.StepError()
 }
 
 func (c *FilePublisherComponent) thereIsAnEncryptionKeyForFileInVault(filename string) error {
-	cfg, _ := config.Get()
-	v, _ := vault.CreateClient(cfg.VaultToken, cfg.VaultAddress, 5)
+	v, _ := vault.CreateClient(c.config.VaultToken, c.config.VaultAddress, 5)
 
-	v.WriteKey(fmt.Sprintf("%s/%s", cfg.VaultPath, filename), "key", encryptionKey)
+	err := v.WriteKey(fmt.Sprintf("%s/%s", c.config.VaultPath, filename), "key", encryptionKey)
+	assert.NoError(c.ApiFeature, err)
 
 	return c.ApiFeature.StepError()
 }

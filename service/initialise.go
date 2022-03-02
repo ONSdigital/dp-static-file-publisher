@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
+	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
 
 	dphttp "github.com/ONSdigital/dp-net/http"
 	dps3 "github.com/ONSdigital/dp-s3"
@@ -86,6 +87,11 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 	return kafkaConsumerGroup, nil
 }
 
+// GetKafkaConsumerV3 creates a Kafka consumer and sets the consumer flag to true
+func (e *ExternalServiceList) GetKafkaConsumerV3(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+	return e.Init.DoGetKafkaV3Consumer(ctx, cfg)
+}
+
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
 func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.S3Reader, s3Public event.S3Writer, err error) {
 	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, false)
@@ -134,15 +140,15 @@ func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 
 // DoGetKafkaConsumer returns a Kafka Consumer group
 func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
-	cgChannels := dpkafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
-	kafkaOffset := dpkafka.OffsetOldest
+	cgChannels := kafkaV2.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
+	kafkaOffset := kafkaV2.OffsetOldest
 
-	cConfig := &dpkafka.ConsumerGroupConfig{
+	cConfig := &kafkaV2.ConsumerGroupConfig{
 		Offset:       &kafkaOffset,
 		KafkaVersion: &cfg.KafkaVersion,
 	}
 	if cfg.KafkaSecProtocol == "TLS" {
-		cConfig.SecurityConfig = dpkafka.GetSecurityConfig(
+		cConfig.SecurityConfig = kafkaV2.GetSecurityConfig(
 			cfg.KafkaSecCACerts,
 			cfg.KafkaSecClientCert,
 			cfg.KafkaSecClientKey,
@@ -150,7 +156,7 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 		)
 	}
 
-	return dpkafka.NewConsumerGroup(
+	return kafkaV2.NewConsumerGroup(
 		ctx,
 		cfg.KafkaAddr,
 		cfg.StaticFilePublishedTopic,
@@ -158,6 +164,30 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 		cgChannels,
 		cConfig,
 	)
+}
+
+func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+	kafkaOffset := kafkaV3.OffsetOldest
+
+	gc := kafkaV3.ConsumerGroupConfig{
+		KafkaVersion:      &cfg.KafkaVersion,
+		Offset:            &kafkaOffset,
+		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
+		Topic:             cfg.StaticFilePublishedTopicV2,
+		GroupName:         cfg.ConsumerGroup,
+		BrokerAddrs:       cfg.KafkaAddr,
+	}
+
+	if cfg.KafkaSecProtocol == "TLS" {
+		gc.SecurityConfig = &kafkaV3.SecurityConfig{
+			RootCACerts:        cfg.KafkaSecCACerts,
+			ClientCert:         cfg.KafkaSecClientCert,
+			ClientKey:          cfg.KafkaSecClientKey,
+			InsecureSkipVerify: cfg.KafkaSecSkipVerify,
+		}
+	}
+
+	return kafkaV3.NewConsumerGroup(ctx, &gc)
 }
 
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
