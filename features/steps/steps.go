@@ -38,7 +38,7 @@ func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the files API should be informed the file has been decrypted$`, c.theFilesAPIShouldBeInformedTheFileHasBeenDecrypted)
 	ctx.Step(`^the private bucket still has a encrypted file called "([^"]*)"$`, c.thePrivateBucketStillHasAEncryptedFileCalled)
 	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
-	ctx.Step(`^there is a encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent)
+	ctx.Step(`^there is an encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAnEncryptedSingleChunkFileInThePrivateBucketWithContent)
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
 	ctx.Step(`^files API is available$`, c.filesAPIIsAvailable)
 }
@@ -149,7 +149,7 @@ func (c *FilePublisherComponent) thePublicBucketContainsADecryptedFileCalled(fil
 	return c.ApiFeature.StepError()
 }
 
-func (c *FilePublisherComponent) thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent(filename string, fileContent *godog.DocString) error {
+func (c *FilePublisherComponent) thereIsAnEncryptedSingleChunkFileInThePrivateBucketWithContent(filename string, fileContent *godog.DocString) error {
 	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
 
 	expectedContentLength = len(fileContent.Content)
