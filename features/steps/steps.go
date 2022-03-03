@@ -2,12 +2,14 @@ package steps
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	s3client "github.com/ONSdigital/dp-s3/v2"
 	vault "github.com/ONSdigital/dp-vault"
+	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
 	"github.com/stretchr/testify/assert"
 	"io"
@@ -35,23 +37,31 @@ var (
 func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a message to publish the file "([^"]*)" is sent$`, c.aMessageToPublishTheFileIsSent)
 	ctx.Step(`^the content of file "([^"]*)" in the public bucket matches the original plain text content$`, c.theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent)
-	ctx.Step(`^the files API should be informed the file has been decrypted$`, c.theFilesAPIShouldBeInformedTheFileHasBeenDecrypted)
+	ctx.Step(`^the files API should be informed the file "([^"]*)" has been decrypted$`, c.theFilesAPIShouldBeInformedTheFileHasBeenDecrypted)
 	ctx.Step(`^the private bucket still has a encrypted file called "([^"]*)"$`, c.thePrivateBucketStillHasAEncryptedFileCalled)
 	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
 	ctx.Step(`^there is an encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAnEncryptedSingleChunkFileInThePrivateBucketWithContent)
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
 	ctx.Step(`^files API is available$`, c.filesAPIIsAvailable)
+	ctx.Step(`^there is an encrypted multi-chunk file "([^"]*)" in the private bucket$`, c.thereIsAnEncryptedMultichunkFileInThePrivateBucket)
+
 }
 
 func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) error {
 	minBrokersHealthy := 1
+
 	ctx := context.Background()
-	pub, _ := kafka.NewProducer(ctx, &kafka.ProducerConfig{
+
+	pub, err := kafka.NewProducer(ctx, &kafka.ProducerConfig{
 		KafkaVersion:      &c.config.KafkaVersion,
 		MinBrokersHealthy: &minBrokersHealthy,
 		Topic:             c.config.StaticFilePublishedTopicV2,
 		BrokerAddrs:       c.config.KafkaAddr,
 	})
+
+	if err != nil {
+		log.Error(ctx, "New Kafka producer", err)
+	}
 
 	schema := &avro.Schema{
 		Definition: `{
@@ -73,11 +83,15 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 		SizeInBytes: "TODO get size of file from file",
 	}
 
-	pub.Send(schema, msg)
+	err = pub.Send(schema, msg)
+
+	if err != nil {
+		log.Error(ctx, "Publish send", err)
+	}
 
 	c.Initialiser()
 
-	sub, _ := kafka.NewConsumerGroup(ctx, &kafka.ConsumerGroupConfig{
+	sub, err := kafka.NewConsumerGroup(ctx, &kafka.ConsumerGroupConfig{
 		KafkaVersion:      &c.config.KafkaVersion,
 		Offset:            nil,
 		MinBrokersHealthy: &minBrokersHealthy,
@@ -85,6 +99,10 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 		GroupName:         "testing",
 		BrokerAddrs:       c.config.KafkaAddr,
 	})
+
+	if err != nil {
+		log.Error(ctx, "Create Kafka consumer group", err)
+	}
 
 	sub.Start()
 	wg := sync.WaitGroup{}
@@ -109,13 +127,13 @@ func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOrig
 	b, _ := io.ReadAll(result)
 
 	assert.NoError(c.ApiFeature, err)
-	assert.Equal(c.ApiFeature, expectedContent, string(b))
+	assert.Equal(c.ApiFeature, expectedContent, string(b), "Public bucket file content does not match")
 
 	return c.ApiFeature.StepError()
 }
 
-func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted() error {
-	body := requests["/files/data/single-chunk.txt|PATCH"]
+func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted(filename string) error {
+	body := requests[fmt.Sprintf("/files/%s|PATCH", filename)]
 
 	assert.Contains(c.ApiFeature, body, "DECRYPTED")
 	assert.NotEqualf(c.ApiFeature, "", body, "No request body")
@@ -192,4 +210,42 @@ func (c *FilePublisherComponent) filesAPIIsAvailable() error {
 	os.Setenv("FILES_API_URL", s.URL)
 
 	return nil
+}
+
+func (c *FilePublisherComponent) thereIsAnEncryptedMultichunkFileInThePrivateBucket(filename string) error {
+	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
+
+	expectedContentLength = 6 * 1024 * 1024
+
+	content := make([]byte, expectedContentLength)
+	rand.Read(content)
+
+	expectedContent = string(content)
+
+	decodeString, _ := hex.DecodeString(encryptionKey)
+
+	for i := 1; i <= 2; i++ {
+		var b []byte
+
+		if i == 1 {
+			b = content[:(5 * 1024 * 1024)]
+		} else {
+			b = content[(5 * 1024 * 1024):]
+		}
+
+		_, err := client.UploadPartWithPsk(context.Background(), &s3client.UploadPartRequest{
+			UploadKey:   filename,
+			Type:        "text/plain",
+			ChunkNumber: int64(i),
+			TotalChunks: 2,
+			FileName:    filename,
+		},
+			b,
+			decodeString,
+		)
+
+		assert.NoError(c.ApiFeature, err)
+	}
+
+	return c.ApiFeature.StepError()
 }

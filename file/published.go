@@ -59,26 +59,36 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 				  }`,
 	}
 	fp := Published{}
+
 	schema.Unmarshal(msg.GetData(), &fp)
 
+	log.Info(ctx, fmt.Sprintf("KEY_NAME: %s/%s", d.VaultPath, fp.Path))
+
 	encryptionKey, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
+
 	if err != nil {
 		log.Error(ctx, "getting encryption key", err)
 	}
+
 	decodeString, err := hex.DecodeString(encryptionKey)
+
 	if err != nil {
 		log.Error(ctx, "decoding encryption key", err)
 	}
 
 	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, decodeString)
+
 	if err != nil {
+		log.Info(ctx, fmt.Sprintf("FILE_PATH: %s", fp.Path))
 		log.Error(ctx, "READ ERROR", err)
 	}
+
 	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{
 		Key:         &fp.Path,
 		ContentType: &fp.Type,
 		Body:        reader,
 	})
+
 	if err != nil {
 		log.Error(ctx, "WRITE ERROR", err)
 	}
@@ -87,7 +97,9 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 		Transport: nil,
 		Timeout:   0,
 	}
+
 	filesAPIPath := fmt.Sprintf("%s/files/%s", d.FilesAPIURL, fp.Path)
+
 	requestBody := FilesAPIRequestBody{
 		Etag:  *uploadResponse.ETag,
 		State: stateDecrypted,

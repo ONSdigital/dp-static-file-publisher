@@ -11,12 +11,14 @@ Feature: Decrypt files trigger by v2 messages
     Then the public bucket contains a decrypted file called "data/single-chunk.txt"
     And the content of file "data/single-chunk.txt" in the public bucket matches the original plain text content
     And the private bucket still has a encrypted file called "data/single-chunk.txt"
-    And the files API should be informed the file has been decrypted
+    And the files API should be informed the file "data/single-chunk.txt" has been decrypted
 
-#  Scenario: The one where there is multi chunk file to decrypt
-#    Given there is an encrypted file "data/multi-chunk.txt" in the private bucket
-#    And there is an encryption key for file "data/multi-chunk.txt" in vault
-#    When a message to publish the file "data/multi-chunk.txt" is sent
-#    Then the public bucket contains a decrypted file called "data/multi-chunk.txt"
-#    And the content of file "data/multi-chunk.txt" in the public bucket matches the original plain text content
-#    And the private bucket still has a encrypted file called "data/multi-chunk.txt"
+  Scenario: The one where there is multi-chunk file to decrypt
+    Given there is an encrypted multi-chunk file "data/multi-chunk.txt" in the private bucket
+    And there is an encryption key for file "data/multi-chunk.txt" in vault
+    And files API is available
+    When a message to publish the file "data/multi-chunk.txt" is sent
+    Then the public bucket contains a decrypted file called "data/multi-chunk.txt"
+    And the content of file "data/multi-chunk.txt" in the public bucket matches the original plain text content
+    And the private bucket still has a encrypted file called "data/multi-chunk.txt"
+    And the files API should be informed the file "data/multi-chunk.txt" has been decrypted
