@@ -29,6 +29,7 @@ type FilePublished struct {
 var (
 	expectedContentLength int
 	expectedContent       string
+	requests              map[string]string
 )
 
 func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
@@ -39,8 +40,7 @@ func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
 	ctx.Step(`^there is a encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent)
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
-	ctx.Step(`^files API has file "([^"]*)" registered as published$`, c.filesAPIHasFileRegisteredAsPublished)
-
+	ctx.Step(`^files API is available$`, c.filesAPIIsAvailable)
 }
 
 func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) error {
@@ -116,6 +116,8 @@ func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOrig
 
 func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted() error {
 	body := requests["/files/data/single-chunk.txt|PATCH"]
+
+	assert.Contains(c.ApiFeature, body, "DECRYPTED")
 	assert.NotEqualf(c.ApiFeature, "", body, "No request body")
 
 	return c.ApiFeature.StepError()
@@ -178,7 +180,7 @@ func (c *FilePublisherComponent) thereIsAnEncryptionKeyForFileInVault(filename s
 	return c.ApiFeature.StepError()
 }
 
-func (c *FilePublisherComponent) filesAPIHasFileRegisteredAsPublished(filename string) error {
+func (c *FilePublisherComponent) filesAPIIsAvailable() error {
 	requests = make(map[string]string)
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -191,5 +193,3 @@ func (c *FilePublisherComponent) filesAPIHasFileRegisteredAsPublished(filename s
 
 	return nil
 }
-
-var requests map[string]string

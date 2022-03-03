@@ -6,7 +6,7 @@ Feature: Decrypt files trigger by v2 messages
     This is the file content for testing
     """
     And there is an encryption key for file "data/single-chunk.txt" in vault
-    And files API has file "data/single-chunk.txt" registered as published
+    And files API is available
     When a message to publish the file "data/single-chunk.txt" is sent
     Then the public bucket contains a decrypted file called "data/single-chunk.txt"
     And the content of file "data/single-chunk.txt" in the public bucket matches the original plain text content
