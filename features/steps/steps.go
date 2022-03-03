@@ -90,6 +90,7 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	})
 
 	wg.Wait()
+	sub.Stop()
 
 	return c.ApiFeature.StepError()
 }

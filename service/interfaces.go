@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	s3client "github.com/ONSdigital/dp-s3/v2"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"net/http"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
@@ -16,6 +16,7 @@ import (
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
 //go:generate moq -out mock/server.go -pkg mock . HTTPServer
 //go:generate moq -out mock/healthcheck.go -pkg mock . HealthChecker
+//go:generate moq -out mock/kafka.go -pkg mock . KafkaConsumerV3
 
 // Initialiser defines the methods to initialise external services
 type Initialiser interface {
@@ -24,10 +25,10 @@ type Initialiser interface {
 	DoGetVault(cfg *config.Config) (event.VaultClient, error)
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
 	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
-	DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error)
+	DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error)
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
-	DoGetS3ClientV2(awsRegion, bucketName string) (*s3client.Client, error)
+	DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error)
 }
 
 // HTTPServer defines the required methods from the HTTP server
@@ -51,4 +52,9 @@ type KafkaConsumer interface {
 	Close(ctx context.Context) (err error)
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Channels() *kafkaV2.ConsumerGroupChannels
+}
+
+type KafkaConsumerV3 interface {
+	Start() error
+	RegisterHandler(ctx context.Context, h kafkaV3.Handler) error
 }

@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
-	s3client "github.com/ONSdigital/dp-s3/v2"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/aws"
 	"net/http"
 
@@ -91,7 +91,7 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 }
 
 // GetKafkaConsumerV3 creates a Kafka consumer and sets the consumer flag to true
-func (e *ExternalServiceList) GetKafkaConsumerV3(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+func (e *ExternalServiceList) GetKafkaConsumerV3(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
 	return e.Init.DoGetKafkaV3Consumer(ctx, cfg)
 }
 
@@ -108,7 +108,7 @@ func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
-func (e *ExternalServiceList) GetS3ClientV2(cfg *config.Config, bucketName string) (*s3client.Client, error) {
+func (e *ExternalServiceList) GetS3ClientV2(cfg *config.Config, bucketName string) (file.S3ClientV2, error) {
 	return e.Init.DoGetS3ClientV2(cfg.AwsRegion, bucketName)
 }
 
@@ -174,7 +174,7 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 	)
 }
 
-func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
 	kafkaOffset := kafkaV3.OffsetOldest
 
 	gc := kafkaV3.ConsumerGroupConfig{
@@ -203,7 +203,7 @@ func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled boo
 	return dps3.NewUploader(awsRegion, bucketName, encryptionEnabled)
 }
 
-func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (*s3client.Client, error) {
+func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
 	s, err := session.NewSession(&aws.Config{
 		Region: aws.String(awsRegion),
 	})

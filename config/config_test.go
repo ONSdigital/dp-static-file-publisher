@@ -20,7 +20,7 @@ func TestConfig(t *testing.T) {
 			})
 
 			Convey("Then the values should be set to the expected defaults", func() {
-				So(cfg.BindAddr, ShouldEqual, "localhost:24900")
+				So(cfg.BindAddr, ShouldEqual, ":24900")
 				So(cfg.ServiceAuthToken, ShouldEqual, "4424A9F2-B903-40F4-85F1-240107D1AFAF")
 				So(cfg.EncryptionDisabled, ShouldBeFalse)
 				So(cfg.GracefulShutdownTimeout, ShouldEqual, 5*time.Second)

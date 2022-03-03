@@ -46,7 +46,7 @@ func Get() (*Config, error) {
 	}
 
 	cfg := &Config{
-		BindAddr:                   "localhost:24900",
+		BindAddr:                   ":24900",
 		ServiceAuthToken:           "4424A9F2-B903-40F4-85F1-240107D1AFAF",
 		EncryptionDisabled:         false,
 		GracefulShutdownTimeout:    5 * time.Second,

@@ -4,8 +4,8 @@ import (
 	"context"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
-	s3client "github.com/ONSdigital/dp-s3/v2"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"io"
 )
 
 type Published struct {
@@ -15,9 +15,15 @@ type Published struct {
 	SizeInBytes string `avro:"sizeInBytes"`
 }
 
+//go:generate moq -out mock/s3client.go -pkg mock . S3ClientV2
+type S3ClientV2 interface {
+	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
+	GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error)
+}
+
 type DecrypterCopier struct {
-	PublicClient  *s3client.Client
-	PrivateClient *s3client.Client
+	PublicClient  S3ClientV2
+	PrivateClient S3ClientV2
 }
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {

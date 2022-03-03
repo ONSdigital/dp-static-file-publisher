@@ -5,9 +5,9 @@ package mock
 
 import (
 	"context"
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"net/http"
@@ -36,11 +36,14 @@ var _ service.Initialiser = &InitialiserMock{}
 // 			DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 // 				panic("mock out the DoGetKafkaConsumer method")
 // 			},
-// 			DoGetKafkaV3ConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+// 			DoGetKafkaV3ConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 // 				panic("mock out the DoGetKafkaV3Consumer method")
 // 			},
 // 			DoGetS3ClientFunc: func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 // 				panic("mock out the DoGetS3Client method")
+// 			},
+// 			DoGetS3ClientV2Func: func(awsRegion string, bucketName string) (file.S3ClientV2, error) {
+// 				panic("mock out the DoGetS3ClientV2 method")
 // 			},
 // 			DoGetS3ClientWithSessionFunc: func(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
 // 				panic("mock out the DoGetS3ClientWithSession method")
@@ -68,10 +71,13 @@ type InitialiserMock struct {
 	DoGetKafkaConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error)
 
 	// DoGetKafkaV3ConsumerFunc mocks the DoGetKafkaV3Consumer method.
-	DoGetKafkaV3ConsumerFunc func(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error)
+	DoGetKafkaV3ConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error)
 
 	// DoGetS3ClientFunc mocks the DoGetS3Client method.
 	DoGetS3ClientFunc func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
+
+	// DoGetS3ClientV2Func mocks the DoGetS3ClientV2 method.
+	DoGetS3ClientV2Func func(awsRegion string, bucketName string) (file.S3ClientV2, error)
 
 	// DoGetS3ClientWithSessionFunc mocks the DoGetS3ClientWithSession method.
 	DoGetS3ClientWithSessionFunc func(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
@@ -127,6 +133,13 @@ type InitialiserMock struct {
 			// EncryptionEnabled is the encryptionEnabled argument value.
 			EncryptionEnabled bool
 		}
+		// DoGetS3ClientV2 holds details about calls to the DoGetS3ClientV2 method.
+		DoGetS3ClientV2 []struct {
+			// AwsRegion is the awsRegion argument value.
+			AwsRegion string
+			// BucketName is the bucketName argument value.
+			BucketName string
+		}
 		// DoGetS3ClientWithSession holds details about calls to the DoGetS3ClientWithSession method.
 		DoGetS3ClientWithSession []struct {
 			// BucketName is the bucketName argument value.
@@ -148,6 +161,7 @@ type InitialiserMock struct {
 	lockDoGetKafkaConsumer       sync.RWMutex
 	lockDoGetKafkaV3Consumer     sync.RWMutex
 	lockDoGetS3Client            sync.RWMutex
+	lockDoGetS3ClientV2          sync.RWMutex
 	lockDoGetS3ClientWithSession sync.RWMutex
 	lockDoGetVault               sync.RWMutex
 }
@@ -297,7 +311,7 @@ func (mock *InitialiserMock) DoGetKafkaConsumerCalls() []struct {
 }
 
 // DoGetKafkaV3Consumer calls DoGetKafkaV3ConsumerFunc.
-func (mock *InitialiserMock) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (kafkaV3.IConsumerGroup, error) {
+func (mock *InitialiserMock) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 	if mock.DoGetKafkaV3ConsumerFunc == nil {
 		panic("InitialiserMock.DoGetKafkaV3ConsumerFunc: method is nil but Initialiser.DoGetKafkaV3Consumer was just called")
 	}
@@ -367,6 +381,41 @@ func (mock *InitialiserMock) DoGetS3ClientCalls() []struct {
 	mock.lockDoGetS3Client.RLock()
 	calls = mock.calls.DoGetS3Client
 	mock.lockDoGetS3Client.RUnlock()
+	return calls
+}
+
+// DoGetS3ClientV2 calls DoGetS3ClientV2Func.
+func (mock *InitialiserMock) DoGetS3ClientV2(awsRegion string, bucketName string) (file.S3ClientV2, error) {
+	if mock.DoGetS3ClientV2Func == nil {
+		panic("InitialiserMock.DoGetS3ClientV2Func: method is nil but Initialiser.DoGetS3ClientV2 was just called")
+	}
+	callInfo := struct {
+		AwsRegion  string
+		BucketName string
+	}{
+		AwsRegion:  awsRegion,
+		BucketName: bucketName,
+	}
+	mock.lockDoGetS3ClientV2.Lock()
+	mock.calls.DoGetS3ClientV2 = append(mock.calls.DoGetS3ClientV2, callInfo)
+	mock.lockDoGetS3ClientV2.Unlock()
+	return mock.DoGetS3ClientV2Func(awsRegion, bucketName)
+}
+
+// DoGetS3ClientV2Calls gets all the calls that were made to DoGetS3ClientV2.
+// Check the length with:
+//     len(mockedInitialiser.DoGetS3ClientV2Calls())
+func (mock *InitialiserMock) DoGetS3ClientV2Calls() []struct {
+	AwsRegion  string
+	BucketName string
+} {
+	var calls []struct {
+		AwsRegion  string
+		BucketName string
+	}
+	mock.lockDoGetS3ClientV2.RLock()
+	calls = mock.calls.DoGetS3ClientV2
+	mock.lockDoGetS3ClientV2.RUnlock()
 	return calls
 }
 
