@@ -1,8 +1,10 @@
 package file
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
@@ -10,6 +12,11 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"io"
+	"net/http"
+)
+
+const (
+	stateDecrypted = "DECRYPTED"
 )
 
 type Published struct {
@@ -25,11 +32,17 @@ type S3ClientV2 interface {
 	GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error)
 }
 
+type FilesAPIRequestBody struct {
+	Etag  string
+	State string
+}
+
 type DecrypterCopier struct {
 	PublicClient  S3ClientV2
 	PrivateClient S3ClientV2
 	VaultClient   event.VaultClient
 	VaultPath     string
+	FilesAPIURL   string
 }
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
@@ -61,7 +74,7 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	if err != nil {
 		log.Error(ctx, "READ ERROR", err)
 	}
-	_, err = d.PublicClient.Upload(&s3manager.UploadInput{
+	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{
 		Key:         &fp.Path,
 		ContentType: &fp.Type,
 		Body:        reader,
@@ -70,6 +83,30 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 		log.Error(ctx, "WRITE ERROR", err)
 	}
 
-	// TODO create a file on public bucket
+	hc := http.Client{
+		Transport: nil,
+		Timeout:   0,
+	}
+	filesAPIPath := fmt.Sprintf("%s/files/%s", d.FilesAPIURL, fp.Path)
+	requestBody := FilesAPIRequestBody{
+		Etag:  *uploadResponse.ETag,
+		State: stateDecrypted,
+	}
+
+	log.Info(ctx, "Starting request to files API")
+
+	body, _ := json.Marshal(requestBody)
+	req, _ := http.NewRequest(http.MethodPatch, filesAPIPath, bytes.NewReader(body))
+
+	log.Info(ctx, fmt.Sprintf("FILES API PATH %s", filesAPIPath))
+
+	_, err = hc.Do(req)
+
+	if err != nil {
+		log.Error(ctx, "FILES API REQUEST ERROR", err)
+	}
+
+	log.Info(ctx, "Finished request to files API")
+
 	return nil
 }

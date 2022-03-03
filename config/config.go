@@ -35,6 +35,7 @@ type Config struct {
 	PrivateBucketName          string        `envconfig:"S3_PRIVATE_BUCKET_NAME"`
 	PublicBucketName           string        `envconfig:"S3_PUBLIC_BUCKET_NAME"`
 	PublicBucketURL            string        `envconfig:"S3_PUBLIC_BUCKET_URL"`
+	FilesAPIURL                string        `envconfig:"FILES_API_URL"`
 }
 
 var cfg *Config
@@ -68,6 +69,7 @@ func Get() (*Config, error) {
 		PrivateBucketName:          "csv-exported",
 		PublicBucketName:           "static-develop",
 		PublicBucketURL:            "https://static-develop.s3.eu-west-1.amazonaws.com",
+		FilesAPIURL:                "http://localhost:26900",
 	}
 
 	return cfg, envconfig.Process("", cfg)

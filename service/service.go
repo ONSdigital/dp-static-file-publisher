@@ -96,6 +96,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		PrivateClient: privateClient,
 		VaultClient:   svc.VaultCli,
 		VaultPath:     cfg.VaultPath,
+		FilesAPIURL:   cfg.FilesAPIURL,
 	}
 
 	if err != nil {

@@ -11,6 +11,10 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"sync"
 	"time"
 )
@@ -35,6 +39,8 @@ func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
 	ctx.Step(`^there is a encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAEncryptedSingleChunkFileInThePrivateBucketWithContent)
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
+	ctx.Step(`^files API has file "([^"]*)" registered as published$`, c.filesAPIHasFileRegisteredAsPublished)
+
 }
 
 func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) error {
@@ -109,7 +115,10 @@ func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOrig
 }
 
 func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted() error {
-	return godog.ErrPending
+	body := requests["/files/data/single-chunk.txt|PATCH"]
+	assert.NotEqualf(c.ApiFeature, "", body, "No request body")
+
+	return c.ApiFeature.StepError()
 }
 
 func (c *FilePublisherComponent) thePrivateBucketStillHasAEncryptedFileCalled(filename string) error {
@@ -168,3 +177,19 @@ func (c *FilePublisherComponent) thereIsAnEncryptionKeyForFileInVault(filename s
 
 	return c.ApiFeature.StepError()
 }
+
+func (c *FilePublisherComponent) filesAPIHasFileRegisteredAsPublished(filename string) error {
+	requests = make(map[string]string)
+
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := ioutil.ReadAll(r.Body)
+		requests[fmt.Sprintf("%s|%s", r.URL.Path, r.Method)] = string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	os.Setenv("FILES_API_URL", s.URL)
+
+	return nil
+}
+
+var requests map[string]string
