@@ -2,8 +2,12 @@ package file
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
+	"github.com/ONSdigital/dp-static-file-publisher/event"
+	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"io"
 )
@@ -24,6 +28,8 @@ type S3ClientV2 interface {
 type DecrypterCopier struct {
 	PublicClient  S3ClientV2
 	PrivateClient S3ClientV2
+	VaultClient   event.VaultClient
+	VaultPath     string
 }
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
@@ -42,12 +48,27 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	fp := Published{}
 	schema.Unmarshal(msg.GetData(), &fp)
 
-	reader, _, _ := d.PrivateClient.GetWithPSK(fp.Path, []byte("1234567890ABCDEF"))
-	d.PublicClient.Upload(&s3manager.UploadInput{
+	encryptionKey, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
+	if err != nil {
+		log.Error(ctx, "getting encryption key", err)
+	}
+	decodeString, err := hex.DecodeString(encryptionKey)
+	if err != nil {
+		log.Error(ctx, "decoding encryption key", err)
+	}
+
+	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, decodeString)
+	if err != nil {
+		log.Error(ctx, "READ ERROR", err)
+	}
+	_, err = d.PublicClient.Upload(&s3manager.UploadInput{
 		Key:         &fp.Path,
 		ContentType: &fp.Type,
 		Body:        reader,
 	})
+	if err != nil {
+		log.Error(ctx, "WRITE ERROR", err)
+	}
 
 	// TODO create a file on public bucket
 	return nil

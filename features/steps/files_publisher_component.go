@@ -31,7 +31,7 @@ type FilePublisherComponent struct {
 
 const (
 	localStackHost = "http://localstack:4566"
-	encryptionKey  = "1234567890ABCDEF"
+	encryptionKey  = "1234567890ABCDEF1234567890ABCDEF"
 )
 
 func NewFilePublisherComponent() *FilePublisherComponent {

@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
@@ -143,6 +144,7 @@ func (c *FilePublisherComponent) thereIsAEncryptedSingleChunkFileInThePrivateBuc
 	expectedContentLength = len(fileContent.Content)
 	expectedContent = fileContent.Content
 
+	decodeString, _ := hex.DecodeString(encryptionKey)
 	_, err := client.UploadPartWithPsk(context.Background(), &s3client.UploadPartRequest{
 		UploadKey:   filename,
 		Type:        "text/plain",
@@ -151,7 +153,7 @@ func (c *FilePublisherComponent) thereIsAEncryptedSingleChunkFileInThePrivateBuc
 		FileName:    filename,
 	},
 		[]byte(fileContent.Content),
-		[]byte(encryptionKey),
+		decodeString,
 	)
 	assert.NoError(c.ApiFeature, err)
 

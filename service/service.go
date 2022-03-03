@@ -94,6 +94,8 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	dc := file.DecrypterCopier{
 		PublicClient:  publicClient,
 		PrivateClient: privateClient,
+		VaultClient:   svc.VaultCli,
+		VaultPath:     cfg.VaultPath,
 	}
 
 	if err != nil {
