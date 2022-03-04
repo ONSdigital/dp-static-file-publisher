@@ -2,8 +2,12 @@ package file_test
 
 import (
 	"context"
+	"errors"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-kafka/v3/avro"
+	"github.com/ONSdigital/dp-static-file-publisher/event/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
+	vault "github.com/ONSdigital/dp-vault"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -38,6 +42,26 @@ func (m MockMessage) UpstreamDone() chan struct{} {
 }
 
 func TestHandleFilePublishMessage(t *testing.T) {
+	schema := &avro.Schema{
+		Definition: `{
+					"type": "record",
+					"name": "file-published",
+					"fields": [
+					  {"name": "path", "type": "string"},
+					  {"name": "etag", "type": "string"},
+					  {"name": "type", "type": "string"},
+					  {"name": "sizeInBytes", "type": "string"}
+					]
+				  }`,
+	}
+	fp := file.Published{
+		Path:        "test/file.txt",
+		Type:        "plain/test",
+		Etag:        "1234567890",
+		SizeInBytes: "123",
+	}
+
+	c, _ := schema.Marshal(fp)
 
 	Convey("Given invalid message content", t, func() {
 		dc := file.DecrypterCopier{}
@@ -58,4 +82,114 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		})
 	})
 
+	Convey("Given there is a read error on the Vault key", t, func() {
+		vc := &mock.VaultClientMock{ReadKeyFunc: func(path string, key string) (string, error) {
+			return "", errors.New("broken")
+		}}
+
+		dc := file.DecrypterCopier{
+			VaultClient: vc,
+		}
+		ctx := context.Background()
+		msg := MockMessage{
+			Data: c,
+		}
+
+		Convey("When the message is handled", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
+
+	Convey("Given there a specific vault read error", t, func() {
+		vc := &mock.VaultClientMock{}
+
+		dc := file.DecrypterCopier{
+			VaultClient: vc,
+		}
+		ctx := context.Background()
+		msg := MockMessage{
+			Data: c,
+		}
+
+		Convey("When the error is ErrKeyNotFound", func() {
+			vc.ReadKeyFunc = func(path string, key string) (string, error) {
+				return "", vault.ErrKeyNotFound
+			}
+
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, vault.ErrKeyNotFound.Error())
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+
+		Convey("When the error is ErrVersionNotFound", func() {
+			vc.ReadKeyFunc = func(path string, key string) (string, error) {
+				return "", vault.ErrVersionNotFound
+			}
+
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, vault.ErrVersionNotFound.Error())
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+
+		Convey("When the error is ErrMetadataNotFound", func() {
+			vc.ReadKeyFunc = func(path string, key string) (string, error) {
+				return "", vault.ErrMetadataNotFound
+			}
+
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, vault.ErrMetadataNotFound.Error())
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+
+		Convey("When the error is ErrDataNotFound", func() {
+			vc.ReadKeyFunc = func(path string, key string) (string, error) {
+				return "", vault.ErrDataNotFound
+			}
+
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, vault.ErrDataNotFound.Error())
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+
+		Convey("When the error is ErrVersionInvalid", func() {
+			vc.ReadKeyFunc = func(path string, key string) (string, error) {
+				return "", vault.ErrVersionInvalid
+			}
+
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, vault.ErrVersionInvalid.Error())
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
 }

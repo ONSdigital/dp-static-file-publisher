@@ -84,6 +84,7 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 
 	if err != nil {
 		log.Error(ctx, "Getting encryption key", err)
+		return NoCommitError{err}
 	}
 
 	decodeString, err := hex.DecodeString(encryptionKey)
