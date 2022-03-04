@@ -76,6 +76,10 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 
 	// File decryption with v3 Kafka CG
 	sub, err := serviceList.GetKafkaConsumerV3(ctx, cfg)
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate Kafka V3 client", err)
+		return nil, err
+	}
 
 	publicClient, err := serviceList.GetS3ClientV2(cfg, cfg.PublicBucketName)
 
@@ -99,13 +103,17 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		FilesAPIURL:   cfg.FilesAPIURL,
 	}
 
+	err = sub.Start()
 	if err != nil {
-		log.Fatal(ctx, "Could not instantiate Kafka V3 consumer", err)
+		log.Fatal(ctx, "Could not start kafka consumer", err)
 		return nil, err
 	}
 
-	sub.Start()
-	sub.RegisterHandler(ctx, dc.HandleFilePublishMessage)
+	err = sub.RegisterHandler(ctx, dc.HandleFilePublishMessage)
+	if err != nil {
+		log.Fatal(ctx, "failed to register file published message handler", err)
+		return nil, err
+	}
 
 	// Get HealthCheck
 	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)

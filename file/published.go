@@ -60,7 +60,10 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	}
 	fp := Published{}
 
-	schema.Unmarshal(msg.GetData(), &fp)
+	err := schema.Unmarshal(msg.GetData(), &fp)
+	if err != nil {
+		log.Error(ctx, "getting encryption key", err)
+	}
 
 	log.Info(ctx, fmt.Sprintf("KEY_NAME: %s/%s", d.VaultPath, fp.Path))
 
