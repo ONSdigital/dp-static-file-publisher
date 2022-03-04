@@ -45,6 +45,18 @@ type DecrypterCopier struct {
 	FilesAPIURL   string
 }
 
+type NoCommitError struct {
+	err error
+}
+
+func (n NoCommitError) Commit() bool {
+	return false
+}
+
+func (n NoCommitError) Error() string {
+	return n.err.Error()
+}
+
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
 	schema := &avro.Schema{
 		Definition: `{
@@ -62,7 +74,8 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 
 	err := schema.Unmarshal(msg.GetData(), &fp)
 	if err != nil {
-		log.Error(ctx, "getting encryption key", err)
+		log.Error(ctx, "Unmarshalling message", err)
+		return NoCommitError{err}
 	}
 
 	log.Info(ctx, fmt.Sprintf("KEY_NAME: %s/%s", d.VaultPath, fp.Path))
@@ -70,13 +83,13 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	encryptionKey, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
 
 	if err != nil {
-		log.Error(ctx, "getting encryption key", err)
+		log.Error(ctx, "Getting encryption key", err)
 	}
 
 	decodeString, err := hex.DecodeString(encryptionKey)
 
 	if err != nil {
-		log.Error(ctx, "decoding encryption key", err)
+		log.Error(ctx, "Decoding encryption key", err)
 	}
 
 	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, decodeString)
