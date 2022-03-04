@@ -12,41 +12,34 @@ import (
 	"sync"
 )
 
-var (
-	lockS3WriterMockBucketName sync.RWMutex
-	lockS3WriterMockChecker    sync.RWMutex
-	lockS3WriterMockSession    sync.RWMutex
-	lockS3WriterMockUpload     sync.RWMutex
-)
-
-// Ensure, that S3WriterMock does implement S3Writer.
+// Ensure, that S3WriterMock does implement event.S3Writer.
 // If this is not the case, regenerate this file with moq.
 var _ event.S3Writer = &S3WriterMock{}
 
 // S3WriterMock is a mock implementation of event.S3Writer.
 //
-//     func TestSomethingThatUsesS3Writer(t *testing.T) {
+// 	func TestSomethingThatUsesS3Writer(t *testing.T) {
 //
-//         // make and configure a mocked event.S3Writer
-//         mockedS3Writer := &S3WriterMock{
-//             BucketNameFunc: func() string {
-// 	               panic("mock out the BucketName method")
-//             },
-//             CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-// 	               panic("mock out the Checker method")
-//             },
-//             SessionFunc: func() *session.Session {
-// 	               panic("mock out the Session method")
-//             },
-//             UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-// 	               panic("mock out the Upload method")
-//             },
-//         }
+// 		// make and configure a mocked event.S3Writer
+// 		mockedS3Writer := &S3WriterMock{
+// 			BucketNameFunc: func() string {
+// 				panic("mock out the BucketName method")
+// 			},
+// 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+// 				panic("mock out the Checker method")
+// 			},
+// 			SessionFunc: func() *session.Session {
+// 				panic("mock out the Session method")
+// 			},
+// 			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+// 				panic("mock out the Upload method")
+// 			},
+// 		}
 //
-//         // use mockedS3Writer in code that requires event.S3Writer
-//         // and then make assertions.
+// 		// use mockedS3Writer in code that requires event.S3Writer
+// 		// and then make assertions.
 //
-//     }
+// 	}
 type S3WriterMock struct {
 	// BucketNameFunc mocks the BucketName method.
 	BucketNameFunc func() string
@@ -83,6 +76,10 @@ type S3WriterMock struct {
 			Options []func(*s3manager.Uploader)
 		}
 	}
+	lockBucketName sync.RWMutex
+	lockChecker    sync.RWMutex
+	lockSession    sync.RWMutex
+	lockUpload     sync.RWMutex
 }
 
 // BucketName calls BucketNameFunc.
@@ -92,9 +89,9 @@ func (mock *S3WriterMock) BucketName() string {
 	}
 	callInfo := struct {
 	}{}
-	lockS3WriterMockBucketName.Lock()
+	mock.lockBucketName.Lock()
 	mock.calls.BucketName = append(mock.calls.BucketName, callInfo)
-	lockS3WriterMockBucketName.Unlock()
+	mock.lockBucketName.Unlock()
 	return mock.BucketNameFunc()
 }
 
@@ -105,9 +102,9 @@ func (mock *S3WriterMock) BucketNameCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockS3WriterMockBucketName.RLock()
+	mock.lockBucketName.RLock()
 	calls = mock.calls.BucketName
-	lockS3WriterMockBucketName.RUnlock()
+	mock.lockBucketName.RUnlock()
 	return calls
 }
 
@@ -123,9 +120,9 @@ func (mock *S3WriterMock) Checker(ctx context.Context, state *healthcheck.CheckS
 		Ctx:   ctx,
 		State: state,
 	}
-	lockS3WriterMockChecker.Lock()
+	mock.lockChecker.Lock()
 	mock.calls.Checker = append(mock.calls.Checker, callInfo)
-	lockS3WriterMockChecker.Unlock()
+	mock.lockChecker.Unlock()
 	return mock.CheckerFunc(ctx, state)
 }
 
@@ -140,9 +137,9 @@ func (mock *S3WriterMock) CheckerCalls() []struct {
 		Ctx   context.Context
 		State *healthcheck.CheckState
 	}
-	lockS3WriterMockChecker.RLock()
+	mock.lockChecker.RLock()
 	calls = mock.calls.Checker
-	lockS3WriterMockChecker.RUnlock()
+	mock.lockChecker.RUnlock()
 	return calls
 }
 
@@ -153,9 +150,9 @@ func (mock *S3WriterMock) Session() *session.Session {
 	}
 	callInfo := struct {
 	}{}
-	lockS3WriterMockSession.Lock()
+	mock.lockSession.Lock()
 	mock.calls.Session = append(mock.calls.Session, callInfo)
-	lockS3WriterMockSession.Unlock()
+	mock.lockSession.Unlock()
 	return mock.SessionFunc()
 }
 
@@ -166,9 +163,9 @@ func (mock *S3WriterMock) SessionCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockS3WriterMockSession.RLock()
+	mock.lockSession.RLock()
 	calls = mock.calls.Session
-	lockS3WriterMockSession.RUnlock()
+	mock.lockSession.RUnlock()
 	return calls
 }
 
@@ -184,9 +181,9 @@ func (mock *S3WriterMock) Upload(input *s3manager.UploadInput, options ...func(*
 		Input:   input,
 		Options: options,
 	}
-	lockS3WriterMockUpload.Lock()
+	mock.lockUpload.Lock()
 	mock.calls.Upload = append(mock.calls.Upload, callInfo)
-	lockS3WriterMockUpload.Unlock()
+	mock.lockUpload.Unlock()
 	return mock.UploadFunc(input, options...)
 }
 
@@ -201,8 +198,8 @@ func (mock *S3WriterMock) UploadCalls() []struct {
 		Input   *s3manager.UploadInput
 		Options []func(*s3manager.Uploader)
 	}
-	lockS3WriterMockUpload.RLock()
+	mock.lockUpload.RLock()
 	calls = mock.calls.Upload
-	lockS3WriterMockUpload.RUnlock()
+	mock.lockUpload.RUnlock()
 	return calls
 }

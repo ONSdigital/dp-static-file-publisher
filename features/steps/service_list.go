@@ -3,6 +3,9 @@ package steps
 import (
 	"context"
 	"fmt"
+	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	dps3v2 "github.com/ONSdigital/dp-s3/v2"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"net/http"
 	"time"
 
@@ -68,6 +71,21 @@ func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *conf
 	return cg, err
 }
 
+func (e *fakeServiceContainer) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+	kafkaOffset := kafkaV3.OffsetOldest
+
+	gc := kafkaV3.ConsumerGroupConfig{
+		KafkaVersion:      &cfg.KafkaVersion,
+		Offset:            &kafkaOffset,
+		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
+		Topic:             cfg.StaticFilePublishedTopicV2,
+		GroupName:         cfg.ConsumerGroup,
+		BrokerAddrs:       cfg.KafkaAddr,
+	}
+
+	return kafkaV3.NewConsumerGroup(ctx, &gc)
+}
+
 func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 	s, _ := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(localStackHost),
@@ -77,6 +95,21 @@ func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encry
 	})
 
 	return s3client.NewUploaderWithSession(bucketName, encryptionEnabled, s), nil
+}
+
+func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
+	s, err := session.NewSession(&aws.Config{
+		Region:           aws.String(awsRegion),
+		Endpoint:         aws.String(localStackHost),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dps3v2.NewClientWithSession(bucketName, s), nil
 }
 
 func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {

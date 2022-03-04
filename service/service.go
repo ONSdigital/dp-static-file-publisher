@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -73,6 +73,47 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		PublicBucketURL: cfg.PublicBucketURL,
 	}
 	event.Consume(ctx, svc.KafkaConsumerGroup, handler, cfg.KafkaConsumerWorkers)
+
+	// File decryption with v3 Kafka CG
+	sub, err := serviceList.GetKafkaConsumerV3(ctx, cfg)
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate Kafka V3 client", err)
+		return nil, err
+	}
+
+	publicClient, err := serviceList.GetS3ClientV2(cfg, cfg.PublicBucketName)
+
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate public S3 v2 client", err)
+		return nil, err
+	}
+
+	privateClient, err := serviceList.GetS3ClientV2(cfg, cfg.PrivateBucketName)
+
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate private S3 v2 client", err)
+		return nil, err
+	}
+
+	dc := file.DecrypterCopier{
+		PublicClient:  publicClient,
+		PrivateClient: privateClient,
+		VaultClient:   svc.VaultCli,
+		VaultPath:     cfg.VaultPath,
+		FilesAPIURL:   cfg.FilesAPIURL,
+	}
+
+	err = sub.Start()
+	if err != nil {
+		log.Fatal(ctx, "Could not start kafka consumer", err)
+		return nil, err
+	}
+
+	err = sub.RegisterHandler(ctx, dc.HandleFilePublishMessage)
+	if err != nil {
+		log.Fatal(ctx, "failed to register file published message handler", err)
+		return nil, err
+	}
 
 	// Get HealthCheck
 	svc.HealthCheck, err = serviceList.GetHealthCheck(cfg, buildTime, gitCommit, version)

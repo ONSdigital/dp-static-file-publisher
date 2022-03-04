@@ -2,14 +2,18 @@ package service
 
 import (
 	"context"
+	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
+	"github.com/aws/aws-sdk-go/aws"
 	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
+	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
 
 	dphttp "github.com/ONSdigital/dp-net/http"
 	dps3 "github.com/ONSdigital/dp-s3"
+	dps3v2 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	dpvault "github.com/ONSdigital/dp-vault"
@@ -86,6 +90,11 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 	return kafkaConsumerGroup, nil
 }
 
+// GetKafkaConsumerV3 creates a Kafka consumer and sets the consumer flag to true
+func (e *ExternalServiceList) GetKafkaConsumerV3(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
+	return e.Init.DoGetKafkaV3Consumer(ctx, cfg)
+}
+
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
 func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.S3Reader, s3Public event.S3Writer, err error) {
 	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, false)
@@ -96,6 +105,11 @@ func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.
 	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, !cfg.EncryptionDisabled, s3Public.Session())
 	e.S3Private = true
 	return
+}
+
+// GetS3Clients returns S3 clients private and public. They share the same AWS session.
+func (e *ExternalServiceList) GetS3ClientV2(cfg *config.Config, bucketName string) (file.S3ClientV2, error) {
+	return e.Init.DoGetS3ClientV2(cfg.AwsRegion, bucketName)
 }
 
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
@@ -134,15 +148,15 @@ func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 
 // DoGetKafkaConsumer returns a Kafka Consumer group
 func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
-	cgChannels := dpkafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
-	kafkaOffset := dpkafka.OffsetOldest
+	cgChannels := kafkaV2.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
+	kafkaOffset := kafkaV2.OffsetOldest
 
-	cConfig := &dpkafka.ConsumerGroupConfig{
+	cConfig := &kafkaV2.ConsumerGroupConfig{
 		Offset:       &kafkaOffset,
 		KafkaVersion: &cfg.KafkaVersion,
 	}
 	if cfg.KafkaSecProtocol == "TLS" {
-		cConfig.SecurityConfig = dpkafka.GetSecurityConfig(
+		cConfig.SecurityConfig = kafkaV2.GetSecurityConfig(
 			cfg.KafkaSecCACerts,
 			cfg.KafkaSecClientCert,
 			cfg.KafkaSecClientKey,
@@ -150,7 +164,7 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 		)
 	}
 
-	return dpkafka.NewConsumerGroup(
+	return kafkaV2.NewConsumerGroup(
 		ctx,
 		cfg.KafkaAddr,
 		cfg.StaticFilePublishedTopic,
@@ -160,9 +174,45 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 	)
 }
 
+func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
+	kafkaOffset := kafkaV3.OffsetOldest
+
+	gc := kafkaV3.ConsumerGroupConfig{
+		KafkaVersion:      &cfg.KafkaVersion,
+		Offset:            &kafkaOffset,
+		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
+		Topic:             cfg.StaticFilePublishedTopicV2,
+		GroupName:         cfg.ConsumerGroup,
+		BrokerAddrs:       cfg.KafkaAddr,
+	}
+
+	if cfg.KafkaSecProtocol == "TLS" {
+		gc.SecurityConfig = &kafkaV3.SecurityConfig{
+			RootCACerts:        cfg.KafkaSecCACerts,
+			ClientCert:         cfg.KafkaSecClientCert,
+			ClientKey:          cfg.KafkaSecClientKey,
+			InsecureSkipVerify: cfg.KafkaSecSkipVerify,
+		}
+	}
+
+	return kafkaV3.NewConsumerGroup(ctx, &gc)
+}
+
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
 func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 	return dps3.NewUploader(awsRegion, bucketName, encryptionEnabled)
+}
+
+func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
+	s, err := session.NewSession(&aws.Config{
+		Region: aws.String(awsRegion),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dps3v2.NewClientWithSession(bucketName, s), nil
 }
 
 // DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)
