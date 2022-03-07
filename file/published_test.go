@@ -399,4 +399,45 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		})
 	})
 
+	Convey("Given the file is in an unexpected state", t, func() {
+		vc := &eventMock.VaultClientMock{
+			ReadKeyFunc: func(path string, key string) (string, error) {
+				return "1234567890123456", nil
+			},
+		}
+
+		pc.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			return io.NopCloser(strings.NewReader("testing")), nil, nil
+		}
+		pc.FileExistsFunc = func(key string) (bool, error) {
+			return false, nil
+		}
+		pc.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			return &s3manager.UploadOutput{ETag: aws.String("1234567890")}, nil
+		}
+
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+		}))
+		defer s.Close()
+
+		dc := file.DecrypterCopier{
+			VaultClient:   vc,
+			PrivateClient: pc,
+			PublicClient:  pc,
+			FilesAPIURL:   s.URL,
+		}
+
+		Convey("When Head error is returned", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldContainSubstring, "invalid request to dp-files-api")
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
+
 }
