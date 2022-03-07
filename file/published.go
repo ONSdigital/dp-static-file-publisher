@@ -58,6 +58,7 @@ func (n NoCommitError) Error() string {
 }
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
+	logData := log.Data{}
 	schema := &avro.Schema{
 		Definition: `{
 					"type": "record",
@@ -74,31 +75,31 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 
 	err := schema.Unmarshal(msg.GetData(), &fp)
 	if err != nil {
-		log.Error(ctx, "Unmarshalling message", err)
+		log.Error(ctx, "Unmarshalling message", err, logData)
 		return NoCommitError{err}
 	}
 
-	log.Info(ctx, fmt.Sprintf("KEY_NAME: %s/%s", d.VaultPath, fp.Path))
+	logData["file-published-message"] = fp
 
 	encryptionKey, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
 
 	if err != nil {
-		log.Error(ctx, "Getting encryption key", err)
+		log.Error(ctx, "Getting encryption key", err, logData)
 		return NoCommitError{err}
 	}
 
 	decodeString, err := hex.DecodeString(encryptionKey)
 
 	if err != nil {
-		log.Error(ctx, "Decoding encryption key", err)
+		log.Error(ctx, "Decoding encryption key", err, logData)
 		return NoCommitError{err}
 	}
 
 	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, decodeString)
 
 	if err != nil {
-		log.Info(ctx, fmt.Sprintf("FILE_PATH: %s", fp.Path))
-		log.Error(ctx, "READ ERROR", err)
+		log.Error(ctx, "Reading encrypted file from private s3 bucket", err, logData)
+		return NoCommitError{err}
 	}
 
 	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{

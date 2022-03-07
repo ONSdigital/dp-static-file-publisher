@@ -5,10 +5,12 @@ import (
 	"errors"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
-	"github.com/ONSdigital/dp-static-file-publisher/event/mock"
+	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
+	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 	vault "github.com/ONSdigital/dp-vault"
 	. "github.com/smartystreets/goconvey/convey"
+	"io"
 	"testing"
 )
 
@@ -83,7 +85,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	})
 
 	Convey("Given there is a read error on the Vault key", t, func() {
-		vc := &mock.VaultClientMock{ReadKeyFunc: func(path string, key string) (string, error) {
+		vc := &eventMock.VaultClientMock{ReadKeyFunc: func(path string, key string) (string, error) {
 			return "", errors.New("broken")
 		}}
 
@@ -107,7 +109,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	})
 
 	Convey("Given there a specific vault read error", t, func() {
-		vc := &mock.VaultClientMock{}
+		vc := &eventMock.VaultClientMock{}
 
 		dc := file.DecrypterCopier{
 			VaultClient: vc,
@@ -194,7 +196,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	})
 
 	Convey("Given the encryption key from vault cannot be parse to a byte array", t, func() {
-		vc := &mock.VaultClientMock{}
+		vc := &eventMock.VaultClientMock{}
 
 		dc := file.DecrypterCopier{
 			VaultClient: vc,
@@ -219,5 +221,39 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(commiter.Commit(), ShouldBeFalse)
 		})
+	})
+
+	Convey("Given files in the private bucket could not be read", t, func() {
+		vc := &eventMock.VaultClientMock{
+			ReadKeyFunc: func(path string, key string) (string, error) {
+				return "1234567890123456", nil
+			},
+		}
+		const errMsg = "could not read from private bucket"
+
+		pc := &fileMock.S3ClientV2Mock{
+			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+				return nil, nil, errors.New(errMsg)
+			},
+			UploadFunc: nil,
+		}
+
+		dc := file.DecrypterCopier{
+			VaultClient:   vc,
+			PrivateClient: pc,
+		}
+		ctx := context.Background()
+		msg := MockMessage{
+			Data: c,
+		}
+
+		err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+		So(err, ShouldBeError)
+		So(err.Error(), ShouldEqual, errMsg)
+		commiter, ok := err.(kafka.Commiter)
+
+		So(ok, ShouldBeTrue)
+		So(commiter.Commit(), ShouldBeFalse)
 	})
 }
