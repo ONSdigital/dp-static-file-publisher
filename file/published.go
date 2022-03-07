@@ -84,12 +84,14 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 
 	if err != nil {
 		log.Error(ctx, "Getting encryption key", err)
+		return NoCommitError{err}
 	}
 
 	decodeString, err := hex.DecodeString(encryptionKey)
 
 	if err != nil {
 		log.Error(ctx, "Decoding encryption key", err)
+		return NoCommitError{err}
 	}
 
 	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, decodeString)
