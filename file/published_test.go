@@ -45,6 +45,8 @@ func (m MockMessage) UpstreamDone() chan struct{} {
 	return nil
 }
 
+const errMsg = "s3 is broken"
+
 func TestHandleFilePublishMessage(t *testing.T) {
 	schema := &avro.Schema{
 		Definition: `{
@@ -72,6 +74,12 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	}
 	ctx := context.Background()
 
+	pc := &fileMock.S3ClientV2Mock{
+		FileExistsFunc: func(key string) (bool, error) {
+			return false, nil
+		},
+	}
+
 	Convey("Given invalid message content", t, func() {
 		dc := file.DecrypterCopier{}
 		msg.Data = []byte("Testing")
@@ -93,12 +101,6 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			return "", errors.New("broken")
 		}}
 
-		pc := &fileMock.S3ClientV2Mock{
-			FileExistsFunc: func(key string) (bool, error) {
-				return false, nil
-			},
-		}
-
 		dc := file.DecrypterCopier{
 			VaultClient:  vc,
 			PublicClient: pc,
@@ -117,12 +119,6 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 	Convey("Given there a specific vault read error", t, func() {
 		vc := &eventMock.VaultClientMock{}
-
-		pc := &fileMock.S3ClientV2Mock{
-			FileExistsFunc: func(key string) (bool, error) {
-				return false, nil
-			},
-		}
 
 		dc := file.DecrypterCopier{
 			VaultClient:  vc,
@@ -210,12 +206,6 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	Convey("Given the encryption key from vault cannot be parse to a byte array", t, func() {
 		vc := &eventMock.VaultClientMock{}
 
-		pc := &fileMock.S3ClientV2Mock{
-			FileExistsFunc: func(key string) (bool, error) {
-				return false, nil
-			},
-		}
-
 		dc := file.DecrypterCopier{
 			VaultClient:  vc,
 			PublicClient: pc,
@@ -247,16 +237,9 @@ func TestHandleFilePublishMessage(t *testing.T) {
 				return "1234567890123456", nil
 			},
 		}
-		const errMsg = "could not read from private bucket"
 
-		pc := &fileMock.S3ClientV2Mock{
-			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-				return nil, nil, errors.New(errMsg)
-			},
-			FileExistsFunc: func(key string) (bool, error) {
-				return false, nil
-			},
-		}
+		pc.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) { return nil, nil, errors.New(errMsg) }
+		pc.FileExistsFunc = func(key string) (bool, error) { return false, nil }
 
 		dc := file.DecrypterCopier{
 			VaultClient:   vc,
@@ -282,18 +265,12 @@ func TestHandleFilePublishMessage(t *testing.T) {
 				return "1234567890123456", nil
 			},
 		}
-		const errMsg = "could not write to public bucket"
 
-		pc := &fileMock.S3ClientV2Mock{
-			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-				return io.NopCloser(strings.NewReader("testing")), nil, nil
-			},
-			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-				return nil, errors.New(errMsg)
-			},
-			FileExistsFunc: func(key string) (bool, error) {
-				return false, nil
-			},
+		pc.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			return io.NopCloser(strings.NewReader("testing")), nil, nil
+		}
+		pc.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			return nil, errors.New(errMsg)
 		}
 
 		dc := file.DecrypterCopier{
@@ -321,13 +298,11 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			},
 		}
 
-		pc := &fileMock.S3ClientV2Mock{
-			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-				return io.NopCloser(strings.NewReader("testing")), nil, nil
-			},
-			FileExistsFunc: func(key string) (bool, error) {
-				return true, nil
-			},
+		pc.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			return io.NopCloser(strings.NewReader("testing")), nil, nil
+		}
+		pc.FileExistsFunc = func(key string) (bool, error) {
+			return true, nil
 		}
 
 		dc := file.DecrypterCopier{
@@ -355,14 +330,11 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			},
 		}
 
-		const errMsg = "s3 is broken"
-		pc := &fileMock.S3ClientV2Mock{
-			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-				return io.NopCloser(strings.NewReader("testing")), nil, nil
-			},
-			FileExistsFunc: func(key string) (bool, error) {
-				return false, errors.New(errMsg)
-			},
+		pc.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			return io.NopCloser(strings.NewReader("testing")), nil, nil
+		}
+		pc.FileExistsFunc = func(key string) (bool, error) {
+			return false, errors.New(errMsg)
 		}
 
 		dc := file.DecrypterCopier{
