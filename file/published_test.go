@@ -93,8 +93,15 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			return "", errors.New("broken")
 		}}
 
+		pc := &fileMock.S3ClientV2Mock{
+			FileExistsFunc: func(key string) (bool, error) {
+				return false, nil
+			},
+		}
+
 		dc := file.DecrypterCopier{
-			VaultClient: vc,
+			VaultClient:  vc,
+			PublicClient: pc,
 		}
 
 		Convey("When the message is handled", func() {
@@ -111,8 +118,15 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	Convey("Given there a specific vault read error", t, func() {
 		vc := &eventMock.VaultClientMock{}
 
+		pc := &fileMock.S3ClientV2Mock{
+			FileExistsFunc: func(key string) (bool, error) {
+				return false, nil
+			},
+		}
+
 		dc := file.DecrypterCopier{
-			VaultClient: vc,
+			VaultClient:  vc,
+			PublicClient: pc,
 		}
 
 		msg.Data = c
@@ -196,8 +210,15 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	Convey("Given the encryption key from vault cannot be parse to a byte array", t, func() {
 		vc := &eventMock.VaultClientMock{}
 
+		pc := &fileMock.S3ClientV2Mock{
+			FileExistsFunc: func(key string) (bool, error) {
+				return false, nil
+			},
+		}
+
 		dc := file.DecrypterCopier{
-			VaultClient: vc,
+			VaultClient:  vc,
+			PublicClient: pc,
 		}
 		msg := MockMessage{
 			Data: c,
@@ -232,12 +253,15 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
 				return nil, nil, errors.New(errMsg)
 			},
-			UploadFunc: nil,
+			FileExistsFunc: func(key string) (bool, error) {
+				return false, nil
+			},
 		}
 
 		dc := file.DecrypterCopier{
 			VaultClient:   vc,
 			PrivateClient: pc,
+			PublicClient:  pc,
 		}
 
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
@@ -267,6 +291,9 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 				return nil, errors.New(errMsg)
 			},
+			FileExistsFunc: func(key string) (bool, error) {
+				return false, nil
+			},
 		}
 
 		dc := file.DecrypterCopier{
@@ -280,6 +307,75 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 			So(err, ShouldBeError)
 			So(err.Error(), ShouldEqual, errMsg)
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
+
+	Convey("Given there already is a file in the public bucket with the provided path", t, func() {
+		vc := &eventMock.VaultClientMock{
+			ReadKeyFunc: func(path string, key string) (string, error) {
+				return "1234567890123456", nil
+			},
+		}
+
+		pc := &fileMock.S3ClientV2Mock{
+			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+				return io.NopCloser(strings.NewReader("testing")), nil, nil
+			},
+			FileExistsFunc: func(key string) (bool, error) {
+				return true, nil
+			},
+		}
+
+		dc := file.DecrypterCopier{
+			VaultClient:   vc,
+			PrivateClient: pc,
+			PublicClient:  pc,
+		}
+
+		Convey("When the duplicate file is sent for decryption", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldContainSubstring, "decrypted file already exists")
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
+
+	Convey("Given there is a error checking the head of the file in the public bucket", t, func() {
+		vc := &eventMock.VaultClientMock{
+			ReadKeyFunc: func(path string, key string) (string, error) {
+				return "1234567890123456", nil
+			},
+		}
+
+		const errMsg = "s3 is broken"
+		pc := &fileMock.S3ClientV2Mock{
+			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+				return io.NopCloser(strings.NewReader("testing")), nil, nil
+			},
+			FileExistsFunc: func(key string) (bool, error) {
+				return false, errors.New(errMsg)
+			},
+		}
+
+		dc := file.DecrypterCopier{
+			VaultClient:   vc,
+			PrivateClient: pc,
+			PublicClient:  pc,
+		}
+
+		Convey("When Head error is returned", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldContainSubstring, errMsg)
 			commiter, ok := err.(kafka.Commiter)
 
 			So(ok, ShouldBeTrue)

@@ -20,6 +20,9 @@ var _ file.S3ClientV2 = &S3ClientV2Mock{}
 //
 // 		// make and configure a mocked file.S3ClientV2
 // 		mockedS3ClientV2 := &S3ClientV2Mock{
+// 			FileExistsFunc: func(key string) (bool, error) {
+// 				panic("mock out the FileExists method")
+// 			},
 // 			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
 // 				panic("mock out the GetWithPSK method")
 // 			},
@@ -33,6 +36,9 @@ var _ file.S3ClientV2 = &S3ClientV2Mock{}
 //
 // 	}
 type S3ClientV2Mock struct {
+	// FileExistsFunc mocks the FileExists method.
+	FileExistsFunc func(key string) (bool, error)
+
 	// GetWithPSKFunc mocks the GetWithPSK method.
 	GetWithPSKFunc func(key string, psk []byte) (io.ReadCloser, *int64, error)
 
@@ -41,6 +47,11 @@ type S3ClientV2Mock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// FileExists holds details about calls to the FileExists method.
+		FileExists []struct {
+			// Key is the key argument value.
+			Key string
+		}
 		// GetWithPSK holds details about calls to the GetWithPSK method.
 		GetWithPSK []struct {
 			// Key is the key argument value.
@@ -56,8 +67,40 @@ type S3ClientV2Mock struct {
 			Options []func(*s3manager.Uploader)
 		}
 	}
+	lockFileExists sync.RWMutex
 	lockGetWithPSK sync.RWMutex
 	lockUpload     sync.RWMutex
+}
+
+// FileExists calls FileExistsFunc.
+func (mock *S3ClientV2Mock) FileExists(key string) (bool, error) {
+	if mock.FileExistsFunc == nil {
+		panic("S3ClientV2Mock.FileExistsFunc: method is nil but S3ClientV2.FileExists was just called")
+	}
+	callInfo := struct {
+		Key string
+	}{
+		Key: key,
+	}
+	mock.lockFileExists.Lock()
+	mock.calls.FileExists = append(mock.calls.FileExists, callInfo)
+	mock.lockFileExists.Unlock()
+	return mock.FileExistsFunc(key)
+}
+
+// FileExistsCalls gets all the calls that were made to FileExists.
+// Check the length with:
+//     len(mockedS3ClientV2.FileExistsCalls())
+func (mock *S3ClientV2Mock) FileExistsCalls() []struct {
+	Key string
+} {
+	var calls []struct {
+		Key string
+	}
+	mock.lockFileExists.RLock()
+	calls = mock.calls.FileExists
+	mock.lockFileExists.RUnlock()
+	return calls
 }
 
 // GetWithPSK calls GetWithPSKFunc.

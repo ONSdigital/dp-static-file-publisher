@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
@@ -30,6 +31,7 @@ type Published struct {
 type S3ClientV2 interface {
 	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
 	GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error)
+	FileExists(key string) (bool, error)
 }
 
 type FilesAPIRequestBody struct {
@@ -80,6 +82,17 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	}
 
 	logData["file-published-message"] = fp
+
+	fileExists, err := d.PublicClient.FileExists(fp.Path)
+	if err != nil {
+		log.Error(ctx, "failed to check if file exists", err, logData)
+		return NoCommitError{err}
+	}
+	if fileExists {
+		err = errors.New("decrypted file already exists")
+		log.Error(ctx, "File already exists in public bucket", err, logData)
+		return NoCommitError{err}
+	}
 
 	encryptionKey, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
 
