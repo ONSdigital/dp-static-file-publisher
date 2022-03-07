@@ -109,28 +109,20 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	})
 
 	if err != nil {
-		log.Error(ctx, "WRITE ERROR", err)
+		log.Error(ctx, "Write decrypted file to public s3 bucket", err, logData)
+		return NoCommitError{err}
 	}
-
-	hc := http.Client{
-		Transport: nil,
-		Timeout:   0,
-	}
-
-	filesAPIPath := fmt.Sprintf("%s/files/%s", d.FilesAPIURL, fp.Path)
 
 	requestBody := FilesAPIRequestBody{
 		Etag:  *uploadResponse.ETag,
 		State: stateDecrypted,
 	}
 
-	log.Info(ctx, "Starting request to files API")
-
+	filesAPIPath := fmt.Sprintf("%s/files/%s", d.FilesAPIURL, fp.Path)
 	body, _ := json.Marshal(requestBody)
 	req, _ := http.NewRequest(http.MethodPatch, filesAPIPath, bytes.NewReader(body))
 
-	log.Info(ctx, fmt.Sprintf("FILES API PATH %s", filesAPIPath))
-
+	hc := http.Client{}
 	_, err = hc.Do(req)
 
 	if err != nil {

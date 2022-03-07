@@ -9,8 +9,10 @@ import (
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 	vault "github.com/ONSdigital/dp-vault"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	. "github.com/smartystreets/goconvey/convey"
 	"io"
+	"strings"
 	"testing"
 )
 
@@ -65,12 +67,14 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 	c, _ := schema.Marshal(fp)
 
+	msg := MockMessage{
+		Data: c,
+	}
+	ctx := context.Background()
+
 	Convey("Given invalid message content", t, func() {
 		dc := file.DecrypterCopier{}
-		ctx := context.Background()
-		msg := MockMessage{
-			Data: []byte("Testing"),
-		}
+		msg.Data = []byte("Testing")
 
 		Convey("When the message is handled", func() {
 			err := dc.HandleFilePublishMessage(ctx, 1, msg)
@@ -92,10 +96,6 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		dc := file.DecrypterCopier{
 			VaultClient: vc,
 		}
-		ctx := context.Background()
-		msg := MockMessage{
-			Data: c,
-		}
 
 		Convey("When the message is handled", func() {
 			err := dc.HandleFilePublishMessage(ctx, 1, msg)
@@ -114,10 +114,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		dc := file.DecrypterCopier{
 			VaultClient: vc,
 		}
-		ctx := context.Background()
-		msg := MockMessage{
-			Data: c,
-		}
+
+		msg.Data = c
 
 		Convey("When the error is ErrKeyNotFound", func() {
 			vc.ReadKeyFunc = func(path string, key string) (string, error) {
@@ -201,7 +199,6 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		dc := file.DecrypterCopier{
 			VaultClient: vc,
 		}
-		ctx := context.Background()
 		msg := MockMessage{
 			Data: c,
 		}
@@ -242,18 +239,52 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			VaultClient:   vc,
 			PrivateClient: pc,
 		}
-		ctx := context.Background()
-		msg := MockMessage{
-			Data: c,
+
+		Convey("Attempting to get a file from to  private s3 bucket", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, errMsg)
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
+
+	Convey("Given files sent the public bucket could not be written", t, func() {
+		vc := &eventMock.VaultClientMock{
+			ReadKeyFunc: func(path string, key string) (string, error) {
+				return "1234567890123456", nil
+			},
+		}
+		const errMsg = "could not write to public bucket"
+
+		pc := &fileMock.S3ClientV2Mock{
+			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+				return io.NopCloser(strings.NewReader("testing")), nil, nil
+			},
+			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+				return nil, errors.New(errMsg)
+			},
 		}
 
-		err := dc.HandleFilePublishMessage(ctx, 1, msg)
+		dc := file.DecrypterCopier{
+			VaultClient:   vc,
+			PrivateClient: pc,
+			PublicClient:  pc,
+		}
 
-		So(err, ShouldBeError)
-		So(err.Error(), ShouldEqual, errMsg)
-		commiter, ok := err.(kafka.Commiter)
+		Convey("Attempting to get a file from to  private s3 bucket", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
 
-		So(ok, ShouldBeTrue)
-		So(commiter.Commit(), ShouldBeFalse)
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldEqual, errMsg)
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
 	})
+
 }
