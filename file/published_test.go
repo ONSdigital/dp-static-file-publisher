@@ -192,4 +192,32 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			So(commiter.Commit(), ShouldBeFalse)
 		})
 	})
+
+	Convey("Given the encryption key from vault cannot be parse to a byte array", t, func() {
+		vc := &mock.VaultClientMock{}
+
+		dc := file.DecrypterCopier{
+			VaultClient: vc,
+		}
+		ctx := context.Background()
+		msg := MockMessage{
+			Data: c,
+		}
+
+		Convey("When the encryption key is abcdefgh", func() {
+			vc.ReadKeyFunc = func(path string, key string) (string, error) {
+				return "abcdefgh", nil
+			}
+
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldContainSubstring, "encoding/hex:")
+
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
 }
