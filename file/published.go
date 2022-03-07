@@ -136,10 +136,18 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	req, _ := http.NewRequest(http.MethodPatch, filesAPIPath, bytes.NewReader(body))
 
 	hc := http.Client{}
-	_, err = hc.Do(req)
+	response, err := hc.Do(req)
+
+	if response.StatusCode == http.StatusNotFound {
+		err = errors.New("file not found on dp-files-api")
+		logData["response"] = response
+		log.Error(ctx, "no file found attemping to mark decrypted", err, logData)
+		return NoCommitError{err}
+	}
 
 	if err != nil {
 		log.Error(ctx, "FILES API REQUEST ERROR", err)
+		return err
 	}
 
 	log.Info(ctx, "Finished request to files API")

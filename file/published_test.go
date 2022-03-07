@@ -9,9 +9,12 @@ import (
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 	vault "github.com/ONSdigital/dp-vault"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	. "github.com/smartystreets/goconvey/convey"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -348,6 +351,47 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 			So(err, ShouldBeError)
 			So(err.Error(), ShouldContainSubstring, errMsg)
+			commiter, ok := err.(kafka.Commiter)
+
+			So(ok, ShouldBeTrue)
+			So(commiter.Commit(), ShouldBeFalse)
+		})
+	})
+
+	Convey("Given the file does not exists on Files API", t, func() {
+		vc := &eventMock.VaultClientMock{
+			ReadKeyFunc: func(path string, key string) (string, error) {
+				return "1234567890123456", nil
+			},
+		}
+
+		pc.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			return io.NopCloser(strings.NewReader("testing")), nil, nil
+		}
+		pc.FileExistsFunc = func(key string) (bool, error) {
+			return false, nil
+		}
+		pc.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			return &s3manager.UploadOutput{ETag: aws.String("1234567890")}, nil
+		}
+
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer s.Close()
+
+		dc := file.DecrypterCopier{
+			VaultClient:   vc,
+			PrivateClient: pc,
+			PublicClient:  pc,
+			FilesAPIURL:   s.URL,
+		}
+
+		Convey("When Head error is returned", func() {
+			err := dc.HandleFilePublishMessage(ctx, 1, msg)
+
+			So(err, ShouldBeError)
+			So(err.Error(), ShouldContainSubstring, "file not found on dp-files-api")
 			commiter, ok := err.(kafka.Commiter)
 
 			So(ok, ShouldBeTrue)
