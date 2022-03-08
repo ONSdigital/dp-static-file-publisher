@@ -137,6 +137,12 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 
 	hc := http.Client{}
 	response, err := hc.Do(req)
+	if err != nil {
+		logData["request"] = req
+		logData["request_body"] = string(body)
+		log.Error(ctx, "could not send HTTP request", err, logData)
+		return NoCommitError{err}
+	}
 
 	if response.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(response.Body)
@@ -147,17 +153,20 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 			err = errors.New("file not found on dp-files-api")
 		case http.StatusBadRequest:
 			err = errors.New("invalid request to dp-files-api")
+		case http.StatusInternalServerError:
+			err = errors.New("error received from dp-files-api")
+		case http.StatusUnauthorized:
+			err = errors.New("unauthorized request to dp-files-api")
+		case http.StatusForbidden:
+			err = errors.New("forbidden request to dp-files-api")
+		default:
+			err = errors.New("unexpected response from dp-files-api")
 		}
 		log.Error(ctx, "failed response from dp-files-api", err, logData)
 
 		return NoCommitError{err}
 	}
-
-	if err != nil {
-		log.Error(ctx, "FILES API REQUEST ERROR", err)
-		return err
-	}
-
+	
 	log.Info(ctx, "Finished request to files API")
 
 	return nil
