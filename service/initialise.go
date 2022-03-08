@@ -22,25 +22,29 @@ import (
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
-	Vault                  bool
-	ImageAPI               bool
-	HealthCheck            bool
-	KafkaConsumerPublished bool
-	S3Private              bool
-	S3Public               bool
-	Init                   Initialiser
+	Vault                    bool
+	ImageAPI                 bool
+	HealthCheck              bool
+	KafkaConsumerPublished   bool
+	KafkaConsumerV3Published bool
+	S3Private                bool
+	S3Public                 bool
+	S3ClientV2               bool
+	Init                     Initialiser
 }
 
 // NewServiceList creates a new service list with the provided initialiser
 func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 	return &ExternalServiceList{
-		Vault:                  false,
-		ImageAPI:               false,
-		HealthCheck:            false,
-		KafkaConsumerPublished: false,
-		S3Private:              false,
-		S3Public:               false,
-		Init:                   initialiser,
+		Vault:                    false,
+		ImageAPI:                 false,
+		HealthCheck:              false,
+		KafkaConsumerPublished:   false,
+		KafkaConsumerV3Published: false,
+		S3Private:                false,
+		S3Public:                 false,
+		S3ClientV2:               false,
+		Init:                     initialiser,
 	}
 }
 
@@ -92,7 +96,12 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 
 // GetKafkaConsumerV3 creates a Kafka consumer and sets the consumer flag to true
 func (e *ExternalServiceList) GetKafkaConsumerV3(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
-	return e.Init.DoGetKafkaV3Consumer(ctx, cfg)
+	kafkaV3ConsumerGroup, err := e.Init.DoGetKafkaV3Consumer(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	e.KafkaConsumerV3Published = true
+	return kafkaV3ConsumerGroup, nil
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
@@ -107,9 +116,14 @@ func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.
 	return
 }
 
-// GetS3Clients returns S3 clients private and public. They share the same AWS session.
+// GetS3ClientV2 returns S3 clients private and public. They share the same AWS session.
 func (e *ExternalServiceList) GetS3ClientV2(cfg *config.Config, bucketName string) (file.S3ClientV2, error) {
-	return e.Init.DoGetS3ClientV2(cfg.AwsRegion, bucketName)
+	s3ClientV2, err := e.Init.DoGetS3ClientV2(cfg.AwsRegion, bucketName)
+	if err != nil {
+		return nil, err
+	}
+	e.S3ClientV2 = true
+	return s3ClientV2, nil
 }
 
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
