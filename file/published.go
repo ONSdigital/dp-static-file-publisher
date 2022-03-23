@@ -9,23 +9,13 @@ import (
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
+	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"io"
 	"net/http"
 )
-
-const (
-	stateDecrypted = "DECRYPTED"
-)
-
-type Published struct {
-	Path        string `avro:"path"`
-	Type        string `avro:"type"`
-	Etag        string `avro:"etag"`
-	SizeInBytes string `avro:"sizeInBytes"`
-}
 
 //go:generate moq -out mock/s3client.go -pkg mock . S3ClientV2
 type S3ClientV2 interface {
@@ -34,9 +24,8 @@ type S3ClientV2 interface {
 	FileExists(key string) (bool, error)
 }
 
-type FilesAPIRequestBody struct {
-	Etag  string
-	State string
+func NewDecrypterCopier(public, private S3ClientV2, vc event.VaultClient, vaultPath, filesAPIURL string) DecrypterCopier {
+	return DecrypterCopier{public, private, vc, vaultPath, filesAPIURL}
 }
 
 type DecrypterCopier struct {
@@ -47,83 +36,43 @@ type DecrypterCopier struct {
 	FilesAPIURL   string
 }
 
-type NoCommitError struct {
-	err error
-}
-
-func (n NoCommitError) Commit() bool {
-	return false
-}
-
-func (n NoCommitError) Error() string {
-	return n.err.Error()
-}
-
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
 	logData := log.Data{}
-	schema := &avro.Schema{
-		Definition: `{
-					"type": "record",
-					"name": "file-published",
-					"fields": [
-					  {"name": "path", "type": "string"},
-					  {"name": "etag", "type": "string"},
-					  {"name": "type", "type": "string"},
-					  {"name": "sizeInBytes", "type": "string"}
-					]
-				  }`,
-	}
+	schema := &avro.Schema{Definition: filePublishAvroSchema}
 	fp := Published{}
 
-	err := schema.Unmarshal(msg.GetData(), &fp)
-	if err != nil {
-		log.Error(ctx, "Unmarshalling message", err, logData)
-		return NoCommitError{err}
+	if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
+		return NewNoCommitError(ctx, err, "Unmarshalling message", logData)
 	}
 
 	logData["file-published-message"] = fp
 
-	fileExists, err := d.PublicClient.FileExists(fp.Path)
-	if err != nil {
-		log.Error(ctx, "failed to check if file exists", err, logData)
-		return NoCommitError{err}
-	}
-	if fileExists {
-		err = errors.New("decrypted file already exists")
-		log.Error(ctx, "File already exists in public bucket", err, logData)
-		return NoCommitError{err}
+	if err := d.ensurePublicFileDoesNotAlreadyExists(ctx, fp, logData); err != nil {
+		return err
 	}
 
-	encryptionKey, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
-
+	encyptionKey, err := d.getEncyptionKey(ctx, fp, logData)
 	if err != nil {
-		log.Error(ctx, "Getting encryption key", err, logData)
-		return NoCommitError{err}
+		return err
 	}
 
-	decodeString, err := hex.DecodeString(encryptionKey)
-
+	uploadResponse, err := d.decryptAndCopyFile(ctx, fp, encyptionKey, logData)
 	if err != nil {
-		log.Error(ctx, "Decoding encryption key", err, logData)
-		return NoCommitError{err}
+		return err
 	}
 
-	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, decodeString)
-
-	if err != nil {
-		log.Error(ctx, "Reading encrypted file from private s3 bucket", err, logData)
-		return NoCommitError{err}
+	if err := d.notifyFileApiDecryptionComplete(ctx, uploadResponse, fp, logData); err != nil {
+		return err
 	}
 
-	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{
-		Key:         &fp.Path,
-		ContentType: &fp.Type,
-		Body:        reader,
-	})
+	return nil
+}
 
-	if err != nil {
-		log.Error(ctx, "Write decrypted file to public s3 bucket", err, logData)
-		return NoCommitError{err}
+func (d DecrypterCopier) notifyFileApiDecryptionComplete(ctx context.Context, uploadResponse *s3manager.UploadOutput, fp Published, logData log.Data) error {
+	const stateDecrypted = "DECRYPTED"
+	type FilesAPIRequestBody struct {
+		Etag  string
+		State string
 	}
 
 	requestBody := FilesAPIRequestBody{
@@ -135,13 +84,11 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	body, _ := json.Marshal(requestBody)
 	req, _ := http.NewRequest(http.MethodPatch, filesAPIPath, bytes.NewReader(body))
 
-	hc := http.Client{}
-	response, err := hc.Do(req)
+	response, err := dphttp.DefaultClient.Do(ctx, req)
 	if err != nil {
 		logData["request"] = req
 		logData["request_body"] = string(body)
-		log.Error(ctx, "could not send HTTP request", err, logData)
-		return NoCommitError{err}
+		return NewNoCommitError(ctx, err, "could not send HTTP request", logData)
 	}
 
 	if response.StatusCode != http.StatusOK {
@@ -164,10 +111,50 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 		}
 		log.Error(ctx, "failed response from dp-files-api", err, logData)
 
-		return NoCommitError{err}
+		return NewNoCommitError(ctx, err, "HTTP Error", logData)
+
 	}
-	
-	log.Info(ctx, "Finished request to files API")
+	return nil
+}
+
+func (d DecrypterCopier) decryptAndCopyFile(ctx context.Context, fp Published, encyptionKey []byte, logData log.Data) (*s3manager.UploadOutput, error) {
+	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, encyptionKey)
+	if err != nil {
+		return nil, NewNoCommitError(ctx, err, "Reading encrypted file from private s3 bucket", logData)
+	}
+
+	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{
+		Key:         &fp.Path,
+		ContentType: &fp.Type,
+		Body:        reader,
+	})
+	if err != nil {
+		return nil, NewNoCommitError(ctx, err, "Write decrypted file to public s3 bucket", logData)
+	}
+	return uploadResponse, nil
+}
+
+func (d DecrypterCopier) getEncyptionKey(ctx context.Context, fp Published, logData log.Data) ([]byte, error) {
+	keyString, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
+	if err != nil {
+		return nil, NewNoCommitError(ctx, err, "Getting encryption key", logData)
+	}
+
+	keyBytes, err := hex.DecodeString(keyString)
+	if err != nil {
+		return nil, NewNoCommitError(ctx, err, "Decoding encryption key", logData)
+	}
+	return keyBytes, nil
+}
+
+func (d DecrypterCopier) ensurePublicFileDoesNotAlreadyExists(ctx context.Context, fp Published, logData log.Data) error {
+	fileExists, err := d.PublicClient.FileExists(fp.Path)
+	if err != nil {
+		return NewNoCommitError(ctx, err, "failed to check if file exists", logData)
+	}
+	if fileExists {
+		return NewNoCommitError(ctx, errors.New("decrypted file already exists"), "File already exists in public bucket", logData)
+	}
 
 	return nil
 }
