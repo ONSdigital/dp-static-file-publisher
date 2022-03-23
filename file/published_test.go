@@ -19,35 +19,6 @@ import (
 	"testing"
 )
 
-type MockMessage struct {
-	Data []byte
-}
-
-func (m MockMessage) GetData() []byte {
-	return m.Data
-}
-
-func (m MockMessage) Mark() {
-}
-
-func (m MockMessage) Commit() {
-
-}
-
-func (m MockMessage) Release() {
-}
-
-func (m MockMessage) CommitAndRelease() {
-}
-
-func (m MockMessage) Offset() int64 {
-	return 1
-}
-
-func (m MockMessage) UpstreamDone() chan struct{} {
-	return nil
-}
-
 const errMsg = "s3 is broken"
 
 func TestHandleFilePublishMessage(t *testing.T) {
@@ -480,5 +451,33 @@ func TestHandleFilePublishMessage(t *testing.T) {
 			})
 		}
 	})
+}
 
+type MockMessage struct {
+	Data []byte
+}
+
+func (m MockMessage) GetData() []byte {
+	return m.Data
+}
+
+func (m MockMessage) Mark() {
+}
+
+func (m MockMessage) Commit() {
+
+}
+
+func (m MockMessage) Release() {
+}
+
+func (m MockMessage) CommitAndRelease() {
+}
+
+func (m MockMessage) Offset() int64 {
+	return 1
+}
+
+func (m MockMessage) UpstreamDone() chan struct{} {
+	return nil
 }
