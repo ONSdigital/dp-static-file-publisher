@@ -74,43 +74,22 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	}
 	event.Consume(ctx, svc.KafkaConsumerGroup, handler, cfg.KafkaConsumerWorkers)
 
-	// File decryption with v3 Kafka CG
-	sub, err := serviceList.GetKafkaConsumerV3(ctx, cfg)
+	consumer, err := serviceList.GetKafkaConsumerV3(ctx, cfg)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate Kafka V3 client", err)
 		return nil, err
 	}
-
-	publicClient, err := serviceList.GetS3ClientV2(cfg, cfg.PublicBucketName)
-
-	if err != nil {
-		log.Fatal(ctx, "Could not instantiate public S3 v2 client", err)
-		return nil, err
-	}
-
-	privateClient, err := serviceList.GetS3ClientV2(cfg, cfg.PrivateBucketName)
-
-	if err != nil {
-		log.Fatal(ctx, "Could not instantiate private S3 v2 client", err)
-		return nil, err
-	}
-
-	dc := file.DecrypterCopier{
-		PublicClient:  publicClient,
-		PrivateClient: privateClient,
-		VaultClient:   svc.VaultCli,
-		VaultPath:     cfg.VaultPath,
-		FilesAPIURL:   cfg.FilesAPIURL,
-	}
-
-	err = sub.Start()
-	if err != nil {
+	if err := consumer.Start(); err != nil {
 		log.Fatal(ctx, "Could not start kafka consumer", err)
 		return nil, err
 	}
 
-	err = sub.RegisterHandler(ctx, dc.HandleFilePublishMessage)
+	dc, err := getDecrypterCopier(ctx, cfg, serviceList, svc)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := consumer.RegisterHandler(ctx, dc.HandleFilePublishMessage); err != nil {
 		log.Fatal(ctx, "failed to register file published message handler", err)
 		return nil, err
 	}
@@ -139,6 +118,22 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	}()
 
 	return svc, nil
+}
+
+func getDecrypterCopier(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, svc *Service) (file.DecrypterCopier, error) {
+	publicClient, err := serviceList.GetS3ClientV2(cfg, cfg.PublicBucketName)
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate public S3 v2 client", err)
+		return file.DecrypterCopier{}, err
+	}
+
+	privateClient, err := serviceList.GetS3ClientV2(cfg, cfg.PrivateBucketName)
+	if err != nil {
+		log.Fatal(ctx, "Could not instantiate private S3 v2 client", err)
+		return file.DecrypterCopier{}, err
+	}
+
+	return file.NewDecrypterCopier(publicClient, privateClient, svc.VaultCli, cfg.VaultPath, cfg.FilesAPIURL), nil
 }
 
 // Close gracefully shuts the service down in the required order, with timeout
