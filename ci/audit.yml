@@ -6,7 +6,7 @@ image_resource:
   type: docker-image
   source:
     repository: onsdigital/dp-concourse-tools-nancy
-    tag: 1.17.6
+    tag: latest
 
 inputs:
   - name: dp-static-file-publisher
