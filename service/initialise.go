@@ -5,6 +5,7 @@ import (
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
@@ -218,9 +219,21 @@ func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled boo
 }
 
 func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
-	s, err := session.NewSession(&aws.Config{
-		Region: aws.String(awsRegion),
-	})
+	var s *session.Session
+	var err error
+	cfg, _ := config.Get()
+	if cfg.LocalS3URL != "" {
+		s, err = session.NewSession(&aws.Config{
+			Endpoint:         aws.String(cfg.LocalS3URL),
+			Region:           aws.String(awsRegion),
+			S3ForcePathStyle: aws.Bool(true),
+			Credentials:      credentials.NewStaticCredentials(cfg.LocalS3ID, cfg.LocalS3Secret, ""),
+		})
+	} else {
+		s, err = session.NewSession(&aws.Config{
+			Region: aws.String(awsRegion),
+		})
+	}
 
 	if err != nil {
 		return nil, err

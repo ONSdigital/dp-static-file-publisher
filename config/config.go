@@ -35,6 +35,9 @@ type Config struct {
 	PrivateBucketName          string        `envconfig:"S3_PRIVATE_BUCKET_NAME"`
 	PublicBucketName           string        `envconfig:"S3_PUBLIC_BUCKET_NAME"`
 	PublicBucketURL            string        `envconfig:"S3_PUBLIC_BUCKET_URL"`
+	LocalS3URL                 string        `envconfig:"S3_LOCAL_URL"`
+	LocalS3ID                  string        `envconfig:"S3_LOCAL_ID"`
+	LocalS3Secret              string        `envconfig:"S3_LOCAL_SECRET"`
 	FilesAPIURL                string        `envconfig:"FILES_API_URL"`
 }
 

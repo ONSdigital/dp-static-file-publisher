@@ -133,7 +133,7 @@ func getDecrypterCopier(ctx context.Context, cfg *config.Config, serviceList *Ex
 		return file.DecrypterCopier{}, err
 	}
 
-	return file.NewDecrypterCopier(publicClient, privateClient, svc.VaultCli, cfg.VaultPath, cfg.FilesAPIURL), nil
+	return file.NewDecrypterCopier(publicClient, privateClient, svc.VaultCli, cfg.VaultPath, cfg.FilesAPIURL, cfg.ServiceAuthToken), nil
 }
 
 // Close gracefully shuts the service down in the required order, with timeout

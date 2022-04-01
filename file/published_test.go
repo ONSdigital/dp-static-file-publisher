@@ -35,6 +35,7 @@ var (
 	validUploadFunc      = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 		return &s3manager.UploadOutput{ETag: aws.String("1234567890")}, nil
 	}
+	serviceAuthToken = "Why can't I paste!"
 )
 
 func TestHandleFilePublishMessage(t *testing.T) {
@@ -277,7 +278,7 @@ func ensureNoCommitError(err error) {
 }
 
 func generateDecrypterCopier(fileAPIURL string) file.DecrypterCopier {
-	return file.NewDecrypterCopier(s3Client, s3Client, vaultClient, vaultPath, fileAPIURL)
+	return file.NewDecrypterCopier(s3Client, s3Client, vaultClient, vaultPath, fileAPIURL, serviceAuthToken)
 }
 
 func generateMockMessage() MockMessage {

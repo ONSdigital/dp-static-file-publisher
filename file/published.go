@@ -9,6 +9,7 @@ import (
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
+	"github.com/ONSdigital/dp-net/request"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -24,16 +25,17 @@ type S3ClientV2 interface {
 	FileExists(key string) (bool, error)
 }
 
-func NewDecrypterCopier(public, private S3ClientV2, vc event.VaultClient, vaultPath, filesAPIURL string) DecrypterCopier {
-	return DecrypterCopier{public, private, vc, vaultPath, filesAPIURL}
+func NewDecrypterCopier(public, private S3ClientV2, vc event.VaultClient, vaultPath, filesAPIURL, serviceAuthToken string) DecrypterCopier {
+	return DecrypterCopier{public, private, vc, vaultPath, filesAPIURL, serviceAuthToken}
 }
 
 type DecrypterCopier struct {
-	PublicClient  S3ClientV2
-	PrivateClient S3ClientV2
-	VaultClient   event.VaultClient
-	VaultPath     string
-	FilesAPIURL   string
+	PublicClient     S3ClientV2
+	PrivateClient    S3ClientV2
+	VaultClient      event.VaultClient
+	VaultPath        string
+	FilesAPIURL      string
+	ServiceAuthToken string
 }
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
@@ -83,6 +85,7 @@ func (d DecrypterCopier) notifyFileApiDecryptionComplete(ctx context.Context, up
 	filesAPIPath := fmt.Sprintf("%s/files/%s", d.FilesAPIURL, fp.Path)
 	body, _ := json.Marshal(requestBody)
 	req, _ := http.NewRequest(http.MethodPatch, filesAPIPath, bytes.NewReader(body))
+	req.Header.Add(request.AuthHeaderKey, fmt.Sprintf("Bearer %s", d.ServiceAuthToken))
 
 	response, err := dphttp.DefaultClient.Do(ctx, req)
 	if err != nil {

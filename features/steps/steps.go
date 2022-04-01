@@ -7,6 +7,7 @@ import (
 	"fmt"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
+	"github.com/ONSdigital/dp-net/request"
 	s3client "github.com/ONSdigital/dp-s3/v2"
 	vault "github.com/ONSdigital/dp-vault"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -31,8 +32,13 @@ type FilePublished struct {
 var (
 	expectedContentLength int
 	expectedContent       string
-	requests              map[string]string
+	requests              map[string]actualRequest
 )
+
+type actualRequest struct {
+	body       string
+	authHeader string
+}
 
 func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a message to publish the file "([^"]*)" is sent$`, c.aMessageToPublishTheFileIsSent)
@@ -44,7 +50,6 @@ func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
 	ctx.Step(`^files API is available$`, c.filesAPIIsAvailable)
 	ctx.Step(`^there is an encrypted multi-chunk file "([^"]*)" in the private bucket$`, c.thereIsAnEncryptedMultichunkFileInThePrivateBucket)
-
 }
 
 func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) error {
@@ -133,10 +138,11 @@ func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOrig
 }
 
 func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted(filename string) error {
-	body := requests[fmt.Sprintf("/files/%s|PATCH", filename)]
+	actualRequest := requests[fmt.Sprintf("/files/%s|PATCH", filename)]
 
-	assert.Contains(c.ApiFeature, body, "DECRYPTED")
-	assert.NotEqualf(c.ApiFeature, "", body, "No request body")
+	assert.Contains(c.ApiFeature, actualRequest.body, "DECRYPTED")
+	assert.NotEqualf(c.ApiFeature, "", actualRequest, "No request body")
+	assert.Equal(c.ApiFeature, "Bearer 4424A9F2-B903-40F4-85F1-240107D1AFAF", actualRequest.authHeader, "missing auth token")
 
 	return c.ApiFeature.StepError()
 }
@@ -199,11 +205,12 @@ func (c *FilePublisherComponent) thereIsAnEncryptionKeyForFileInVault(filename s
 }
 
 func (c *FilePublisherComponent) filesAPIIsAvailable() error {
-	requests = make(map[string]string)
+	requests = make(map[string]actualRequest)
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := ioutil.ReadAll(r.Body)
-		requests[fmt.Sprintf("%s|%s", r.URL.Path, r.Method)] = string(body)
+		authHeader := r.Header.Get(request.AuthHeaderKey)
+		requests[fmt.Sprintf("%s|%s", r.URL.Path, r.Method)] = actualRequest{string(body), authHeader}
 		w.WriteHeader(http.StatusOK)
 	}))
 
