@@ -20,7 +20,7 @@ build:
 .PHONY: debug
 debug:
 	go build -tags 'debug' $(LDFLAGS) -o $(BINPATH)/dp-static-file-publisher
-	HUMAN_LOG=1 DEBUG=1 VAULT_TOKEN=$(APP_TOKEN) VAULT_ADDR=$(VAULT_ADDR) $(BINPATH)/dp-static-file-publisher
+	HUMAN_LOG=1 DEBUG=1 $(BINPATH)/dp-static-file-publisher
 
 .PHONY: test
 test:
