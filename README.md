@@ -3,9 +3,9 @@
 ## Introduction
 The Static File Publisher API is part of the [Static Files System](https://github.com/ONSdigital/dp-static-files-compose).
 
-This service is responsible for decrypting files that have been published. 
+This service is responsible for decrypting files that have been published.
 
-It receives messages on two Kafka topics `static-file-published` (which has been deprecated, but not yet removed) and 
+It receives messages on two Kafka topics `static-file-published` (which has been deprecated, but not yet removed) and
 `static-file-published-v2` which is the new topic that the [Files API](https://github.com/ONSdigital/dp-files-api) sends
 publication messages on.
 
@@ -70,7 +70,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ## License
 
-Copyright © 2021, Office for National Statistics (https://www.ons.gov.uk)
+Copyright © 2022, Office for National Statistics (https://www.ons.gov.uk)
 
 Released under MIT license, see [LICENSE](LICENSE.md) for details.
 
