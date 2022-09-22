@@ -6,6 +6,20 @@ replace github.com/coreos/etcd => github.com/coreos/etcd v3.3.24+incompatible
 
 replace github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20210802184156-9742bd7fca1c+incompatible
 
+// to avoid the following vulnerabilities:
+//     - CVE-2022-29153 # pkg:golang/github.com/hashicorp/consul/api@v1.1.0
+//     - sonatype-2021-1401 # pkg:golang/github.com/miekg/dns@v1.0.14
+replace github.com/spf13/cobra => github.com/spf13/cobra v1.4.0
+
+// to avoid 'sonatype-2021-4899' non-CVE Vulnerability
+exclude github.com/gorilla/sessions v1.2.1
+
+// to avoid CVE-2022-21698
+exclude github.com/prometheus/client_golang v0.9.2
+
+// to avoid 'sonatype-2020-1055' non-CVE Vulnerability
+exclude github.com/go-ldap/ldap/v3 v3.1.3
+
 require (
 	github.com/ONSdigital/dp-api-clients-go v1.43.0
 	github.com/ONSdigital/dp-component-test v0.6.5

@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	"net/http"
+
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
@@ -199,6 +200,7 @@ func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (Ka
 		Topic:             cfg.StaticFilePublishedTopicV2,
 		GroupName:         cfg.ConsumerGroup,
 		BrokerAddrs:       cfg.KafkaAddr,
+		NumWorkers:        &cfg.KafkaConsumerWorkers,
 	}
 
 	if cfg.KafkaSecProtocol == "TLS" {
