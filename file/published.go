@@ -1,21 +1,18 @@
 package file
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+
+	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
-	"github.com/ONSdigital/dp-net/request"
-	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"io"
-	"net/http"
 )
 
 //go:generate moq -out mock/s3client.go -pkg mock . S3ClientV2
@@ -25,17 +22,22 @@ type S3ClientV2 interface {
 	FileExists(key string) (bool, error)
 }
 
-func NewDecrypterCopier(public, private S3ClientV2, vc event.VaultClient, vaultPath, filesAPIURL, serviceAuthToken string) DecrypterCopier {
-	return DecrypterCopier{public, private, vc, vaultPath, filesAPIURL, serviceAuthToken}
+//go:generate moq -out mock/filesservice.go -pkg mock . FilesService
+type FilesService interface {
+	Checker(ctx context.Context, state *healthcheck.CheckState) error
+	MarkFileDecrypted(ctx context.Context, path string, etag string) error
+}
+
+func NewDecrypterCopier(public, private S3ClientV2, vc event.VaultClient, vaultPath string, filesClient FilesService) DecrypterCopier {
+	return DecrypterCopier{public, private, vc, vaultPath, filesClient}
 }
 
 type DecrypterCopier struct {
-	PublicClient     S3ClientV2
-	PrivateClient    S3ClientV2
-	VaultClient      event.VaultClient
-	VaultPath        string
-	FilesAPIURL      string
-	ServiceAuthToken string
+	PublicClient  S3ClientV2
+	PrivateClient S3ClientV2
+	VaultClient   event.VaultClient
+	VaultPath     string
+	FilesService  FilesService
 }
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
@@ -71,51 +73,12 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 }
 
 func (d DecrypterCopier) notifyFileApiDecryptionComplete(ctx context.Context, uploadResponse *s3manager.UploadOutput, fp Published, logData log.Data) error {
-	const stateDecrypted = "DECRYPTED"
-	type FilesAPIRequestBody struct {
-		Etag  string
-		State string
-	}
 
-	requestBody := FilesAPIRequestBody{
-		Etag:  *uploadResponse.ETag,
-		State: stateDecrypted,
-	}
-
-	filesAPIPath := fmt.Sprintf("%s/files/%s", d.FilesAPIURL, fp.Path)
-	body, _ := json.Marshal(requestBody)
-	req, _ := http.NewRequest(http.MethodPatch, filesAPIPath, bytes.NewReader(body))
-	req.Header.Add(request.AuthHeaderKey, fmt.Sprintf("Bearer %s", d.ServiceAuthToken))
-
-	response, err := dphttp.DefaultClient.Do(ctx, req)
+	err := d.FilesService.MarkFileDecrypted(ctx, fp.Path, *uploadResponse.ETag)
 	if err != nil {
-		logData["request"] = req
-		logData["request_body"] = string(body)
-		return NewNoCommitError(ctx, err, "could not send HTTP request", logData)
-	}
-
-	if response.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(response.Body)
-		logData["response"] = string(body)
-
-		switch response.StatusCode {
-		case http.StatusNotFound:
-			err = errors.New("file not found on dp-files-api")
-		case http.StatusBadRequest:
-			err = errors.New("invalid request to dp-files-api")
-		case http.StatusInternalServerError:
-			err = errors.New("error received from dp-files-api")
-		case http.StatusUnauthorized:
-			err = errors.New("unauthorized request to dp-files-api")
-		case http.StatusForbidden:
-			err = errors.New("forbidden request to dp-files-api")
-		default:
-			err = errors.New("unexpected response from dp-files-api")
-		}
-		log.Error(ctx, "failed response from dp-files-api", err, logData)
-
-		return NewNoCommitError(ctx, err, "HTTP Error", logData)
-
+		logData["file_path"] = fp.Path
+		logData["etag"] = *uploadResponse.ETag
+		return NewNoCommitError(ctx, err, "recieved error from files service", logData)
 	}
 	return nil
 }

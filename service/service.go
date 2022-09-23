@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
@@ -22,6 +23,7 @@ type Service struct {
 	S3Public           event.S3Writer
 	S3Private          event.S3Reader
 	VaultCli           event.VaultClient
+	FilesClient        file.FilesService
 }
 
 // Run the service
@@ -133,7 +135,9 @@ func getDecrypterCopier(ctx context.Context, cfg *config.Config, serviceList *Ex
 		return file.DecrypterCopier{}, err
 	}
 
-	return file.NewDecrypterCopier(publicClient, privateClient, svc.VaultCli, cfg.VaultPath, cfg.FilesAPIURL, cfg.ServiceAuthToken), nil
+	svc.FilesClient = serviceList.GetFilesService(ctx, cfg)
+
+	return file.NewDecrypterCopier(publicClient, privateClient, svc.VaultCli, cfg.VaultPath, svc.FilesClient), nil
 }
 
 // Close gracefully shuts the service down in the required order, with timeout
@@ -223,6 +227,11 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	if err = svc.HealthCheck.AddCheck("S3 Private", svc.S3Private.Checker); err != nil {
 		hasErrors = true
 		log.Error(ctx, "failed to add private s3 client checker", err)
+	}
+
+	if err = svc.HealthCheck.AddCheck("Files Service", svc.FilesClient.Checker); err != nil {
+		hasErrors = true
+		log.Error(ctx, "failed to add files api client checker", err)
 	}
 
 	if hasErrors {

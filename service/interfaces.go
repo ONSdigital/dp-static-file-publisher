@@ -29,6 +29,7 @@ type Initialiser interface {
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
 	DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error)
+	DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService
 }
 
 // HTTPServer defines the required methods from the HTTP server

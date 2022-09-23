@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
-	"github.com/ONSdigital/dp-static-file-publisher/file"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"io"
 	"net/http"
 	"sync"
 	"testing"
+
+	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-static-file-publisher/file"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dpkafka "github.com/ONSdigital/dp-kafka/v2"
@@ -75,6 +76,7 @@ func TestRun(t *testing.T) {
 		vaultMock := &eventMock.VaultClientMock{}
 
 		imageAPIClientMock := &eventMock.ImageAPIClientMock{}
+		filesSvcClientMock := &fileMock.FilesServiceMock{}
 
 		hcMock := &serviceMock.HealthCheckerMock{
 			AddCheckFunc: func(name string, checker healthcheck.Checker) error { return nil },
@@ -108,6 +110,10 @@ func TestRun(t *testing.T) {
 
 		funcDoGetImageAPIClientFuncOK := func(cfg *config.Config) event.ImageAPIClient {
 			return imageAPIClientMock
+		}
+
+		funcDoGetFilesClientFuncOK := func(ctx context.Context, cfg *config.Config) file.FilesService {
+			return filesSvcClientMock
 		}
 
 		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
@@ -253,6 +259,7 @@ func TestRun(t *testing.T) {
 				DoGetHealthCheckFunc:         funcDoGetHealthcheckErr,
 				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -281,7 +288,8 @@ func TestRun(t *testing.T) {
 				DoGetKafkaV3ConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 					return nil, expectedError
 				},
-				DoGetS3ClientV2Func: funcDoGetS3ClientV2OK,
+				DoGetS3ClientV2Func:   funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc: funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -312,6 +320,7 @@ func TestRun(t *testing.T) {
 				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
 				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMockAddFail, nil
 				},
@@ -324,12 +333,13 @@ func TestRun(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddheckFail.Error()))
 				So(svcList.HealthCheck, ShouldBeTrue)
-				So(hcMockAddFail.AddCheckCalls(), ShouldHaveLength, 5)
+				So(hcMockAddFail.AddCheckCalls(), ShouldHaveLength, 6)
 				So(hcMockAddFail.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
 				So(hcMockAddFail.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
 				So(hcMockAddFail.AddCheckCalls()[2].Name, ShouldResemble, "Kafka Consumer")
 				So(hcMockAddFail.AddCheckCalls()[3].Name, ShouldResemble, "S3 Public")
 				So(hcMockAddFail.AddCheckCalls()[4].Name, ShouldResemble, "S3 Private")
+				So(hcMockAddFail.AddCheckCalls()[5].Name, ShouldResemble, "Files Service")
 			})
 		})
 
@@ -345,6 +355,7 @@ func TestRun(t *testing.T) {
 				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
 				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -357,14 +368,16 @@ func TestRun(t *testing.T) {
 				So(svcList.S3Public, ShouldBeTrue)
 				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
+				So(svcList.FilesService, ShouldBeTrue)
 
 				Convey("And all healthcheck checks are registered", func() {
-					So(hcMock.AddCheckCalls(), ShouldHaveLength, 5)
+					So(hcMock.AddCheckCalls(), ShouldHaveLength, 6)
 					So(hcMock.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
 					So(hcMock.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
 					So(hcMock.AddCheckCalls()[2].Name, ShouldResemble, "Kafka Consumer")
 					So(hcMock.AddCheckCalls()[3].Name, ShouldResemble, "S3 Public")
 					So(hcMock.AddCheckCalls()[4].Name, ShouldResemble, "S3 Private")
+					So(hcMock.AddCheckCalls()[5].Name, ShouldResemble, "Files Service")
 				})
 			})
 
@@ -390,6 +403,7 @@ func TestRun(t *testing.T) {
 				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
 				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)

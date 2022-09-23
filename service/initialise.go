@@ -2,13 +2,15 @@ package service
 
 import (
 	"context"
+	"net/http"
+
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"net/http"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
+	files "github.com/ONSdigital/dp-api-clients-go/v2/files"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
 
@@ -25,6 +27,7 @@ import (
 type ExternalServiceList struct {
 	Vault                    bool
 	ImageAPI                 bool
+	FilesService             bool
 	HealthCheck              bool
 	KafkaConsumerPublished   bool
 	KafkaConsumerV3Published bool
@@ -45,6 +48,7 @@ func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 		S3Private:                false,
 		S3Public:                 false,
 		S3ClientV2:               false,
+		FilesService:             false,
 		Init:                     initialiser,
 	}
 }
@@ -83,6 +87,13 @@ func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) event.ImageA
 	imageAPI := e.Init.DoGetImageAPIClient(cfg)
 	e.ImageAPI = true
 	return imageAPI
+}
+
+// GetFilesService creates files service  and sets the FilesService flag to true
+func (e *ExternalServiceList) GetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
+	client := e.Init.DoGetFilesService(ctx, cfg)
+	e.FilesService = true
+	return client
 }
 
 // GetKafkaConsumer creates a Kafka consumer and sets the consumer flag to true
@@ -159,6 +170,12 @@ func (e *Init) DoGetVault(cfg *config.Config) (event.VaultClient, error) {
 // DoGetImageAPIClient returns an Image API client
 func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 	return image.NewAPIClient(cfg.ImageAPIURL)
+}
+
+// DoGetFilesService returns a files service backend
+func (e *Init) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
+	apiClient := files.NewAPIClient(cfg.FilesAPIURL, cfg.ServiceAuthToken)
+	return apiClient
 }
 
 // DoGetKafkaConsumer returns a Kafka Consumer group

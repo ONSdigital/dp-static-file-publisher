@@ -3,11 +3,13 @@ package steps
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
 	dps3v2 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
-	"net/http"
-	"time"
+	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 
 	s3client "github.com/ONSdigital/dp-s3"
 	"github.com/aws/aws-sdk-go/aws"
@@ -27,7 +29,8 @@ import (
 )
 
 type fakeServiceContainer struct {
-	server *dphttp.Server
+	server     *dphttp.Server
+	decryptReq map[string]string
 }
 
 func (e *fakeServiceContainer) DoGetHTTPServer(bindAddr string, r http.Handler) service.HTTPServer {
@@ -55,6 +58,19 @@ func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.Ima
 	return &mock.ImageAPIClientMock{
 		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 			state.Update("OK", "Image API all good", 0)
+			return nil
+		},
+	}
+}
+
+func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {	
+	return &fmock.FilesServiceMock{
+		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+			state.Update("OK", "Files Service API all good", 0)
+			return nil
+		},
+		MarkFileDecryptedFunc: func(ctx context.Context, path string, etag string) error {
+			e.decryptReq[path] = "DECRYPTED"
 			return nil
 		},
 	}

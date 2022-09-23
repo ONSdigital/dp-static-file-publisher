@@ -5,21 +5,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"sync"
+	"time"
+
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
-	"github.com/ONSdigital/dp-net/request"
 	s3client "github.com/ONSdigital/dp-s3/v2"
 	vault "github.com/ONSdigital/dp-vault"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"sync"
-	"time"
 )
 
 type FilePublished struct {
@@ -32,7 +28,6 @@ type FilePublished struct {
 var (
 	expectedContentLength int
 	expectedContent       string
-	requests              map[string]actualRequest
 )
 
 type actualRequest struct {
@@ -48,7 +43,6 @@ func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
 	ctx.Step(`^there is an encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAnEncryptedSingleChunkFileInThePrivateBucketWithContent)
 	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
-	ctx.Step(`^files API is available$`, c.filesAPIIsAvailable)
 	ctx.Step(`^there is an encrypted multi-chunk file "([^"]*)" in the private bucket$`, c.thereIsAnEncryptedMultichunkFileInThePrivateBucket)
 }
 
@@ -138,12 +132,10 @@ func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOrig
 }
 
 func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted(filename string) error {
-	actualRequest := requests[fmt.Sprintf("/files/%s|PATCH", filename)]
-
-	assert.Contains(c.ApiFeature, actualRequest.body, "DECRYPTED")
-	assert.NotEqualf(c.ApiFeature, "", actualRequest, "No request body")
-	assert.Equal(c.ApiFeature, "Bearer 4424A9F2-B903-40F4-85F1-240107D1AFAF", actualRequest.authHeader, "missing auth token")
-
+	if len(c.request) > 0 {
+		_, ok := c.request[filename]
+		assert.True(c.ApiFeature, ok, fmt.Sprintf("expecting files-api decrypt to be invoked with %s", filename))
+	}
 	return c.ApiFeature.StepError()
 }
 
@@ -202,21 +194,6 @@ func (c *FilePublisherComponent) thereIsAnEncryptionKeyForFileInVault(filename s
 	assert.NoError(c.ApiFeature, err)
 
 	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) filesAPIIsAvailable() error {
-	requests = make(map[string]actualRequest)
-
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := ioutil.ReadAll(r.Body)
-		authHeader := r.Header.Get(request.AuthHeaderKey)
-		requests[fmt.Sprintf("%s|%s", r.URL.Path, r.Method)] = actualRequest{string(body), authHeader}
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	os.Setenv("FILES_API_URL", s.URL)
-
-	return nil
 }
 
 func (c *FilePublisherComponent) thereIsAnEncryptedMultichunkFileInThePrivateBucket(filename string) error {

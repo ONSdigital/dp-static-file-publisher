@@ -3,6 +3,10 @@ package file_test
 import (
 	"context"
 	"errors"
+	"io"
+	"strings"
+	"testing"
+
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
@@ -12,11 +16,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	. "github.com/smartystreets/goconvey/convey"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 const (
@@ -27,6 +26,7 @@ const (
 var (
 	s3Client    *fileMock.S3ClientV2Mock
 	vaultClient *eventMock.VaultClientMock
+	fileClient  *fileMock.FilesServiceMock
 
 	nopCloser            = io.NopCloser(strings.NewReader("testing"))
 	validVaultReadFunc   = func(path string, key string) (string, error) { return "1234567890123456", nil }
@@ -34,6 +34,14 @@ var (
 	validGetWithPSKFunc  = func(key string, psk []byte) (io.ReadCloser, *int64, error) { return nopCloser, nil, nil }
 	validUploadFunc      = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 		return &s3manager.UploadOutput{ETag: aws.String("1234567890")}, nil
+	}
+
+	errFiles           = errors.New("files error")
+	inValidFilesClient = func(ctx context.Context, path string, etag string) error {
+		return errFiles
+	}
+	validFilesClient = func(ctx context.Context, path string, etag string) error {
+		return nil
 	}
 	serviceAuthToken = "Why can't I paste!"
 )
@@ -45,6 +53,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		FileExistsFunc: fileDoesNotExistFunc,
 	}
 	vaultClient = &eventMock.VaultClientMock{}
+	fileClient = &fileMock.FilesServiceMock{}
 
 	Convey("Given invalid message content", t, func() {
 
@@ -52,7 +61,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		msg.Data = []byte("Testing")
 
 		Convey("When the message is handled", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, msg)
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, msg)
 
 			Convey("Then a No Commit error should be returned", func() {
 				So(err, ShouldBeError)
@@ -65,7 +74,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		vaultClient.ReadKeyFunc = func(path string, key string) (string, error) { return "", errors.New("broken") }
 
 		Convey("When the message is handled", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
 				So(err, ShouldBeError)
@@ -91,7 +100,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 				vaultClient.ReadKeyFunc = func(path string, key string) (string, error) { return "", scenario.err }
 
 				Convey("When the message is handled", func() {
-					err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+					err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 					Convey("Then a No Commit error should be returned wrapping the original error", func() {
 						ensureNoCommitErrorWithMessage(err, scenario.err.Error())
@@ -105,7 +114,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		vaultClient.ReadKeyFunc = func(path string, key string) (string, error) { return "abcdefgh", nil }
 
 		Convey("When the message is handled", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
 				ensureNoCommitErrorWithPartMessage(err, "encoding/hex:")
@@ -120,7 +129,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		s3Client.FileExistsFunc = fileDoesNotExistFunc
 
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
 				ensureNoCommitErrorWithMessage(err, errMsg)
@@ -137,7 +146,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		}
 
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
 				ensureNoCommitErrorWithMessage(err, errMsg)
@@ -152,7 +161,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		s3Client.FileExistsFunc = func(key string) (bool, error) { return true, nil }
 
 		Convey("When the duplicate file is sent for decryption", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
 				ensureNoCommitErrorWithPartMessage(err, "decrypted file already exists")
@@ -167,7 +176,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		s3Client.FileExistsFunc = func(key string) (bool, error) { return false, errors.New(errMsg) }
 
 		Convey("When Head error is returned", func() {
-			err := generateDecrypterCopier("does not matter").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
 				ensureNoCommitErrorWithMessage(err, errMsg)
@@ -175,86 +184,38 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		})
 	})
 
-	Convey("Given the file api hostname is invalid", t, func() {
+	Convey("Given the file api returns an error", t, func() {
 		vaultClient.ReadKeyFunc = validVaultReadFunc
 
 		s3Client.GetWithPSKFunc = validGetWithPSKFunc
 		s3Client.FileExistsFunc = fileDoesNotExistFunc
 		s3Client.UploadFunc = validUploadFunc
-		Convey("When the hostname is invalid", func() {
-			err := generateDecrypterCopier("invalid").HandleFilePublishMessage(ctx, 1, generateMockMessage())
+		fileClient.MarkFileDecryptedFunc = inValidFilesClient
+
+		Convey("When files api returns error (api-client)", func() {
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
 			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithPartMessage(err, "unsupported protocol scheme")
+				ensureNoCommitErrorWithPartMessage(err, "files error")
 			})
 		})
 	})
 
-	Convey("Given the files API returns an error", t, func() {
-		var errorScenarios = []struct {
-			description string
-			status      int
-			errorString string
-			willCommit  Assertion
-		}{
-			{
-				"Given the file does not exists on Files API",
-				http.StatusNotFound,
-				"file not found on dp-files-api",
-				ShouldBeFalse,
-			},
-			{
-				"Given the file is in an unexpected state",
-				http.StatusBadRequest,
-				"invalid request to dp-files-api",
-				ShouldBeFalse,
-			},
-			{
-				"Given the file API has an internal error",
-				http.StatusInternalServerError,
-				"error received from dp-files-api",
-				ShouldBeFalse,
-			},
-			{
-				"Given we are unauthorized to contact dp-files-api",
-				http.StatusUnauthorized,
-				"unauthorized request to dp-files-api",
-				ShouldBeFalse,
-			},
-			{
-				"Given we are forbidden to contact dp-files-api",
-				http.StatusForbidden,
-				"forbidden request to dp-files-api",
-				ShouldBeFalse,
-			},
-			{
-				"Given dp-files-api returns an unexpect http response",
-				http.StatusTeapot,
-				"unexpected response from dp-files-api",
-				ShouldBeFalse,
-			},
-		}
+	Convey("Given the file api returns success", t, func() {
+		vaultClient.ReadKeyFunc = validVaultReadFunc
 
-		for _, errorScenario := range errorScenarios {
-			Convey(errorScenario.description, func() {
-				vaultClient.ReadKeyFunc = validVaultReadFunc
+		s3Client.GetWithPSKFunc = validGetWithPSKFunc
+		s3Client.FileExistsFunc = fileDoesNotExistFunc
+		s3Client.UploadFunc = validUploadFunc
+		fileClient.MarkFileDecryptedFunc = validFilesClient
 
-				s3Client.GetWithPSKFunc = validGetWithPSKFunc
-				s3Client.FileExistsFunc = fileDoesNotExistFunc
-				s3Client.UploadFunc = validUploadFunc
+		Convey("When files api returns success", func() {
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-				s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(errorScenario.status)
-				}))
-				defer s.Close()
-
-				err := generateDecrypterCopier(s.URL).HandleFilePublishMessage(ctx, 1, generateMockMessage())
-
-				Convey("Then a No Commit error should be returned", func() {
-					ensureNoCommitErrorWithPartMessage(err, errorScenario.errorString)
-				})
+			Convey("Then a No Commit error should be returned", func() {
+				So(err, ShouldBeNil)
 			})
-		}
+		})
 	})
 }
 
@@ -277,8 +238,8 @@ func ensureNoCommitError(err error) {
 	So(commiter.Commit(), ShouldBeFalse)
 }
 
-func generateDecrypterCopier(fileAPIURL string) file.DecrypterCopier {
-	return file.NewDecrypterCopier(s3Client, s3Client, vaultClient, vaultPath, fileAPIURL, serviceAuthToken)
+func generateDecrypterCopier() file.DecrypterCopier {
+	return file.NewDecrypterCopier(s3Client, s3Client, vaultClient, vaultPath, fileClient)
 }
 
 func generateMockMessage() MockMessage {

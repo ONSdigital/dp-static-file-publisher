@@ -3,13 +3,14 @@ package steps
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"net/http"
-	"time"
 
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 
@@ -27,6 +28,7 @@ type FilePublisherComponent struct {
 	errChan      chan error
 	config       *config.Config
 	session      *session.Session
+	request      map[string]string
 }
 
 const (
@@ -44,8 +46,8 @@ func NewFilePublisherComponent() *FilePublisherComponent {
 	}
 
 	log.Namespace = "dp-static-file-publisher"
-
-	d.svcList = &fakeServiceContainer{s}
+	d.request = make(map[string]string, 10)
+	d.svcList = &fakeServiceContainer{s, d.request}
 	d.config, _ = config.Get()
 	d.session, _ = session.NewSession(&aws.Config{
 		Endpoint:         aws.String(localStackHost),

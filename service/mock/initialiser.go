@@ -24,6 +24,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //
 // 		// make and configure a mocked service.Initialiser
 // 		mockedInitialiser := &InitialiserMock{
+// 			DoGetFilesServiceFunc: func(ctx context.Context, cfg *config.Config) file.FilesService {
+// 				panic("mock out the DoGetFilesService method")
+// 			},
 // 			DoGetHTTPServerFunc: func(bindAddr string, router http.Handler) service.HTTPServer {
 // 				panic("mock out the DoGetHTTPServer method")
 // 			},
@@ -58,6 +61,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //
 // 	}
 type InitialiserMock struct {
+	// DoGetFilesServiceFunc mocks the DoGetFilesService method.
+	DoGetFilesServiceFunc func(ctx context.Context, cfg *config.Config) file.FilesService
+
 	// DoGetHTTPServerFunc mocks the DoGetHTTPServer method.
 	DoGetHTTPServerFunc func(bindAddr string, router http.Handler) service.HTTPServer
 
@@ -87,6 +93,13 @@ type InitialiserMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// DoGetFilesService holds details about calls to the DoGetFilesService method.
+		DoGetFilesService []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Cfg is the cfg argument value.
+			Cfg *config.Config
+		}
 		// DoGetHTTPServer holds details about calls to the DoGetHTTPServer method.
 		DoGetHTTPServer []struct {
 			// BindAddr is the bindAddr argument value.
@@ -155,6 +168,7 @@ type InitialiserMock struct {
 			Cfg *config.Config
 		}
 	}
+	lockDoGetFilesService        sync.RWMutex
 	lockDoGetHTTPServer          sync.RWMutex
 	lockDoGetHealthCheck         sync.RWMutex
 	lockDoGetImageAPIClient      sync.RWMutex
@@ -164,6 +178,41 @@ type InitialiserMock struct {
 	lockDoGetS3ClientV2          sync.RWMutex
 	lockDoGetS3ClientWithSession sync.RWMutex
 	lockDoGetVault               sync.RWMutex
+}
+
+// DoGetFilesService calls DoGetFilesServiceFunc.
+func (mock *InitialiserMock) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
+	if mock.DoGetFilesServiceFunc == nil {
+		panic("InitialiserMock.DoGetFilesServiceFunc: method is nil but Initialiser.DoGetFilesService was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Cfg *config.Config
+	}{
+		Ctx: ctx,
+		Cfg: cfg,
+	}
+	mock.lockDoGetFilesService.Lock()
+	mock.calls.DoGetFilesService = append(mock.calls.DoGetFilesService, callInfo)
+	mock.lockDoGetFilesService.Unlock()
+	return mock.DoGetFilesServiceFunc(ctx, cfg)
+}
+
+// DoGetFilesServiceCalls gets all the calls that were made to DoGetFilesService.
+// Check the length with:
+//     len(mockedInitialiser.DoGetFilesServiceCalls())
+func (mock *InitialiserMock) DoGetFilesServiceCalls() []struct {
+	Ctx context.Context
+	Cfg *config.Config
+} {
+	var calls []struct {
+		Ctx context.Context
+		Cfg *config.Config
+	}
+	mock.lockDoGetFilesService.RLock()
+	calls = mock.calls.DoGetFilesService
+	mock.lockDoGetFilesService.RUnlock()
+	return calls
 }
 
 // DoGetHTTPServer calls DoGetHTTPServerFunc.
