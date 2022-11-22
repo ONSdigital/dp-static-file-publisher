@@ -63,9 +63,9 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When the message is handled", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, msg)
 
-			Convey("Then a No Commit error should be returned", func() {
+			Convey("Then a Commit error should be returned", func() {
 				So(err, ShouldBeError)
-				ensureNoCommitError(err)
+				ensureCommitError(err)
 			})
 		})
 	})
@@ -76,9 +76,9 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When the message is handled", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
+			Convey("Then a Commit error should be returned", func() {
 				So(err, ShouldBeError)
-				ensureNoCommitError(err)
+				ensureCommitError(err)
 			})
 		})
 	})
@@ -102,8 +102,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 				Convey("When the message is handled", func() {
 					err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-					Convey("Then a No Commit error should be returned wrapping the original error", func() {
-						ensureNoCommitErrorWithMessage(err, scenario.err.Error())
+					Convey("Then a Commit error should be returned wrapping the original error", func() {
+						ensureCommitErrorWithMessage(err, scenario.err.Error())
 					})
 				})
 			})
@@ -116,8 +116,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When the message is handled", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithPartMessage(err, "encoding/hex:")
+			Convey("Then a Commit error should be returned", func() {
+				ensureCommitErrorWithPartMessage(err, "encoding/hex:")
 			})
 		})
 	})
@@ -131,8 +131,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithMessage(err, errMsg)
+			Convey("Then a Commit error should be returned", func() {
+				ensureCommitErrorWithMessage(err, errMsg)
 			})
 		})
 	})
@@ -148,8 +148,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithMessage(err, errMsg)
+			Convey("Then a Commit error should be returned", func() {
+				ensureCommitErrorWithMessage(err, errMsg)
 			})
 		})
 	})
@@ -163,8 +163,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When the duplicate file is sent for decryption", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithPartMessage(err, "decrypted file already exists")
+			Convey("Then a Commit error should be returned", func() {
+				ensureCommitErrorWithPartMessage(err, "decrypted file already exists")
 			})
 		})
 	})
@@ -178,8 +178,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When Head error is returned", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithMessage(err, errMsg)
+			Convey("Then a Commit error should be returned", func() {
+				ensureCommitErrorWithMessage(err, errMsg)
 			})
 		})
 	})
@@ -195,8 +195,8 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When files api returns error (api-client)", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
-				ensureNoCommitErrorWithPartMessage(err, "files error")
+			Convey("Then a Commit error should be returned", func() {
+				ensureCommitErrorWithPartMessage(err, "files error")
 			})
 		})
 	})
@@ -212,30 +212,30 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		Convey("When files api returns success", func() {
 			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
 
-			Convey("Then a No Commit error should be returned", func() {
+			Convey("Then a Commit error should be returned", func() {
 				So(err, ShouldBeNil)
 			})
 		})
 	})
 }
 
-func ensureNoCommitErrorWithPartMessage(err error, part string) {
+func ensureCommitErrorWithPartMessage(err error, part string) {
 	So(err, ShouldBeError)
 	So(err.Error(), ShouldContainSubstring, part)
-	ensureNoCommitError(err)
+	ensureCommitError(err)
 }
 
-func ensureNoCommitErrorWithMessage(err error, msg string) {
+func ensureCommitErrorWithMessage(err error, msg string) {
 	So(err, ShouldBeError)
 	So(err.Error(), ShouldEqual, msg)
-	ensureNoCommitError(err)
+	ensureCommitError(err)
 }
 
-func ensureNoCommitError(err error) {
+func ensureCommitError(err error) {
 	commiter, ok := err.(kafka.Commiter)
 
 	So(ok, ShouldBeTrue)
-	So(commiter.Commit(), ShouldBeFalse)
+	So(commiter.Commit(), ShouldBeTrue)
 }
 
 func generateDecrypterCopier() file.DecrypterCopier {

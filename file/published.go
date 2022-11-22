@@ -46,7 +46,7 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID 
 	fp := Published{}
 
 	if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
-		return NewNoCommitError(ctx, err, "Unmarshalling message", logData)
+		return NewCommitError(ctx, err, "Unmarshalling message", logData)
 	}
 
 	logData["file-published-message"] = fp
@@ -78,7 +78,7 @@ func (d DecrypterCopier) notifyFileApiDecryptionComplete(ctx context.Context, up
 	if err != nil {
 		logData["file_path"] = fp.Path
 		logData["etag"] = *uploadResponse.ETag
-		return NewNoCommitError(ctx, err, "recieved error from files service", logData)
+		return NewCommitError(ctx, err, "recieved error from files service", logData)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func (d DecrypterCopier) notifyFileApiDecryptionComplete(ctx context.Context, up
 func (d DecrypterCopier) decryptAndCopyFile(ctx context.Context, fp Published, encyptionKey []byte, logData log.Data) (*s3manager.UploadOutput, error) {
 	reader, _, err := d.PrivateClient.GetWithPSK(fp.Path, encyptionKey)
 	if err != nil {
-		return nil, NewNoCommitError(ctx, err, "Reading encrypted file from private s3 bucket", logData)
+		return nil, NewCommitError(ctx, err, "Reading encrypted file from private s3 bucket", logData)
 	}
 
 	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{
@@ -95,7 +95,7 @@ func (d DecrypterCopier) decryptAndCopyFile(ctx context.Context, fp Published, e
 		Body:        reader,
 	})
 	if err != nil {
-		return nil, NewNoCommitError(ctx, err, "Write decrypted file to public s3 bucket", logData)
+		return nil, NewCommitError(ctx, err, "Write decrypted file to public s3 bucket", logData)
 	}
 	return uploadResponse, nil
 }
@@ -103,12 +103,12 @@ func (d DecrypterCopier) decryptAndCopyFile(ctx context.Context, fp Published, e
 func (d DecrypterCopier) getEncyptionKey(ctx context.Context, fp Published, logData log.Data) ([]byte, error) {
 	keyString, err := d.VaultClient.ReadKey(fmt.Sprintf("%s/%s", d.VaultPath, fp.Path), "key")
 	if err != nil {
-		return nil, NewNoCommitError(ctx, err, "Getting encryption key", logData)
+		return nil, NewCommitError(ctx, err, "Getting encryption key", logData)
 	}
 
 	keyBytes, err := hex.DecodeString(keyString)
 	if err != nil {
-		return nil, NewNoCommitError(ctx, err, "Decoding encryption key", logData)
+		return nil, NewCommitError(ctx, err, "Decoding encryption key", logData)
 	}
 	return keyBytes, nil
 }
@@ -116,10 +116,10 @@ func (d DecrypterCopier) getEncyptionKey(ctx context.Context, fp Published, logD
 func (d DecrypterCopier) ensurePublicFileDoesNotAlreadyExists(ctx context.Context, fp Published, logData log.Data) error {
 	fileExists, err := d.PublicClient.FileExists(fp.Path)
 	if err != nil {
-		return NewNoCommitError(ctx, err, "failed to check if file exists", logData)
+		return NewCommitError(ctx, err, "failed to check if file exists", logData)
 	}
 	if fileExists {
-		return NewNoCommitError(ctx, errors.New("decrypted file already exists"), "File already exists in public bucket", logData)
+		return NewCommitError(ctx, errors.New("decrypted file already exists"), "File already exists in public bucket", logData)
 	}
 
 	return nil
