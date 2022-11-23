@@ -42,7 +42,7 @@ type DecrypterCopier struct {
 
 func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, msgs []kafka.Message) error {
 	logData := log.Data{}
-	schema := &avro.Schema{Definition: FilePublishAvroSchema}
+	schema := &avro.Schema{Definition: filePublishAvroSchema}
 	fp := Published{}
 	log.Info(ctx, fmt.Sprintf("HandleFilePublishMessage (batched) invoked with %d message(s)", len(msgs)))
 
