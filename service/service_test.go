@@ -142,8 +142,8 @@ func TestRun(t *testing.T) {
 
 		funcDoGetKafkaV3ConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 			return &serviceMock.KafkaConsumerV3Mock{
-				RegisterHandlerFunc: func(ctx context.Context, h kafkaV3.Handler) error { return nil },
-				StartFunc:           func() error { return nil },
+				RegisterBatchHandlerFunc: func(ctx context.Context, h kafkaV3.BatchHandler) error { return nil },
+				StartFunc:                func() error { return nil },
 			}, nil
 		}
 

@@ -40,33 +40,39 @@ type DecrypterCopier struct {
 	FilesService  FilesService
 }
 
-func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, workerID int, msg kafka.Message) error {
+func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, msgs []kafka.Message) error {
 	logData := log.Data{}
-	schema := &avro.Schema{Definition: filePublishAvroSchema}
+	schema := &avro.Schema{Definition: FilePublishAvroSchema}
 	fp := Published{}
+	log.Info(ctx, fmt.Sprintf("HandleFilePublishMessage (batched) invoked with %d message(s)", len(msgs)))
 
-	if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
-		return NewCommitError(ctx, err, "Unmarshalling message", logData)
-	}
+	for _, msg := range msgs {
 
-	logData["file-published-message"] = fp
+		if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
+			return NewCommitError(ctx, err, "Unmarshalling message", logData)
+		}
 
-	if err := d.ensurePublicFileDoesNotAlreadyExists(ctx, fp, logData); err != nil {
-		return err
-	}
+		fmt.Println(fp.Path)
 
-	encyptionKey, err := d.getEncyptionKey(ctx, fp, logData)
-	if err != nil {
-		return err
-	}
+		logData["file-published-message"] = fp
 
-	uploadResponse, err := d.decryptAndCopyFile(ctx, fp, encyptionKey, logData)
-	if err != nil {
-		return err
-	}
+		if err := d.ensurePublicFileDoesNotAlreadyExists(ctx, fp, logData); err != nil {
+			return err
+		}
 
-	if err := d.notifyFileApiDecryptionComplete(ctx, uploadResponse, fp, logData); err != nil {
-		return err
+		encyptionKey, err := d.getEncyptionKey(ctx, fp, logData)
+		if err != nil {
+			return err
+		}
+
+		uploadResponse, err := d.decryptAndCopyFile(ctx, fp, encyptionKey, logData)
+		if err != nil {
+			return err
+		}
+
+		if err := d.notifyFileApiDecryptionComplete(ctx, uploadResponse, fp, logData); err != nil {
+			return err
+		}
 	}
 
 	return nil

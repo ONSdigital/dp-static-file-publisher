@@ -57,5 +57,5 @@ type KafkaConsumer interface {
 
 type KafkaConsumerV3 interface {
 	Start() error
-	RegisterHandler(ctx context.Context, h kafkaV3.Handler) error
+	RegisterBatchHandler(ctx context.Context, batchHandler kafkaV3.BatchHandler) error
 }

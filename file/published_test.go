@@ -61,7 +61,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		msg.Data = []byte("Testing")
 
 		Convey("When the message is handled", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, msg)
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{msg})
 
 			Convey("Then a Commit error should be returned", func() {
 				So(err, ShouldBeError)
@@ -74,7 +74,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		vaultClient.ReadKeyFunc = func(path string, key string) (string, error) { return "", errors.New("broken") }
 
 		Convey("When the message is handled", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				So(err, ShouldBeError)
@@ -100,7 +100,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 				vaultClient.ReadKeyFunc = func(path string, key string) (string, error) { return "", scenario.err }
 
 				Convey("When the message is handled", func() {
-					err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+					err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 					Convey("Then a Commit error should be returned wrapping the original error", func() {
 						ensureCommitErrorWithMessage(err, scenario.err.Error())
@@ -114,7 +114,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		vaultClient.ReadKeyFunc = func(path string, key string) (string, error) { return "abcdefgh", nil }
 
 		Convey("When the message is handled", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				ensureCommitErrorWithPartMessage(err, "encoding/hex:")
@@ -129,7 +129,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		s3Client.FileExistsFunc = fileDoesNotExistFunc
 
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				ensureCommitErrorWithMessage(err, errMsg)
@@ -146,7 +146,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		}
 
 		Convey("Attempting to get a file from to  private s3 bucket", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				ensureCommitErrorWithMessage(err, errMsg)
@@ -161,7 +161,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		s3Client.FileExistsFunc = func(key string) (bool, error) { return true, nil }
 
 		Convey("When the duplicate file is sent for decryption", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				ensureCommitErrorWithPartMessage(err, "decrypted file already exists")
@@ -176,7 +176,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		s3Client.FileExistsFunc = func(key string) (bool, error) { return false, errors.New(errMsg) }
 
 		Convey("When Head error is returned", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				ensureCommitErrorWithMessage(err, errMsg)
@@ -193,7 +193,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		fileClient.MarkFileDecryptedFunc = inValidFilesClient
 
 		Convey("When files api returns error (api-client)", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
 			Convey("Then a Commit error should be returned", func() {
 				ensureCommitErrorWithPartMessage(err, "files error")
@@ -210,9 +210,9 @@ func TestHandleFilePublishMessage(t *testing.T) {
 		fileClient.MarkFileDecryptedFunc = validFilesClient
 
 		Convey("When files api returns success", func() {
-			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, 1, generateMockMessage())
+			err := generateDecrypterCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
 
-			Convey("Then a Commit error should be returned", func() {
+			Convey("Then a Commit error should not be returned", func() {
 				So(err, ShouldBeNil)
 			})
 		})

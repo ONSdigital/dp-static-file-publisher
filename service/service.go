@@ -91,7 +91,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 
-	if err := consumer.RegisterHandler(ctx, dc.HandleFilePublishMessage); err != nil {
+	if err := consumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
 		log.Fatal(ctx, "failed to register file published message handler", err)
 		return nil, err
 	}

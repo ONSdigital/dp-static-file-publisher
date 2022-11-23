@@ -20,8 +20,8 @@ var _ service.KafkaConsumerV3 = &KafkaConsumerV3Mock{}
 //
 // 		// make and configure a mocked service.KafkaConsumerV3
 // 		mockedKafkaConsumerV3 := &KafkaConsumerV3Mock{
-// 			RegisterHandlerFunc: func(ctx context.Context, h kafkaV3.Handler) error {
-// 				panic("mock out the RegisterHandler method")
+// 			RegisterBatchHandlerFunc: func(ctx context.Context, batchHandler kafkaV3.BatchHandler) error {
+// 				panic("mock out the RegisterBatchHandler method")
 // 			},
 // 			StartFunc: func() error {
 // 				panic("mock out the Start method")
@@ -33,61 +33,61 @@ var _ service.KafkaConsumerV3 = &KafkaConsumerV3Mock{}
 //
 // 	}
 type KafkaConsumerV3Mock struct {
-	// RegisterHandlerFunc mocks the RegisterHandler method.
-	RegisterHandlerFunc func(ctx context.Context, h kafkaV3.Handler) error
+	// RegisterBatchHandlerFunc mocks the RegisterBatchHandler method.
+	RegisterBatchHandlerFunc func(ctx context.Context, batchHandler kafkaV3.BatchHandler) error
 
 	// StartFunc mocks the Start method.
 	StartFunc func() error
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// RegisterHandler holds details about calls to the RegisterHandler method.
-		RegisterHandler []struct {
+		// RegisterBatchHandler holds details about calls to the RegisterBatchHandler method.
+		RegisterBatchHandler []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// H is the h argument value.
-			H kafkaV3.Handler
+			// BatchHandler is the batchHandler argument value.
+			BatchHandler kafkaV3.BatchHandler
 		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
 		}
 	}
-	lockRegisterHandler sync.RWMutex
-	lockStart           sync.RWMutex
+	lockRegisterBatchHandler sync.RWMutex
+	lockStart                sync.RWMutex
 }
 
-// RegisterHandler calls RegisterHandlerFunc.
-func (mock *KafkaConsumerV3Mock) RegisterHandler(ctx context.Context, h kafkaV3.Handler) error {
-	if mock.RegisterHandlerFunc == nil {
-		panic("KafkaConsumerV3Mock.RegisterHandlerFunc: method is nil but KafkaConsumerV3.RegisterHandler was just called")
+// RegisterBatchHandler calls RegisterBatchHandlerFunc.
+func (mock *KafkaConsumerV3Mock) RegisterBatchHandler(ctx context.Context, batchHandler kafkaV3.BatchHandler) error {
+	if mock.RegisterBatchHandlerFunc == nil {
+		panic("KafkaConsumerV3Mock.RegisterBatchHandlerFunc: method is nil but KafkaConsumerV3.RegisterBatchHandler was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		H   kafkaV3.Handler
+		Ctx          context.Context
+		BatchHandler kafkaV3.BatchHandler
 	}{
-		Ctx: ctx,
-		H:   h,
+		Ctx:          ctx,
+		BatchHandler: batchHandler,
 	}
-	mock.lockRegisterHandler.Lock()
-	mock.calls.RegisterHandler = append(mock.calls.RegisterHandler, callInfo)
-	mock.lockRegisterHandler.Unlock()
-	return mock.RegisterHandlerFunc(ctx, h)
+	mock.lockRegisterBatchHandler.Lock()
+	mock.calls.RegisterBatchHandler = append(mock.calls.RegisterBatchHandler, callInfo)
+	mock.lockRegisterBatchHandler.Unlock()
+	return mock.RegisterBatchHandlerFunc(ctx, batchHandler)
 }
 
-// RegisterHandlerCalls gets all the calls that were made to RegisterHandler.
+// RegisterBatchHandlerCalls gets all the calls that were made to RegisterBatchHandler.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.RegisterHandlerCalls())
-func (mock *KafkaConsumerV3Mock) RegisterHandlerCalls() []struct {
-	Ctx context.Context
-	H   kafkaV3.Handler
+//     len(mockedKafkaConsumerV3.RegisterBatchHandlerCalls())
+func (mock *KafkaConsumerV3Mock) RegisterBatchHandlerCalls() []struct {
+	Ctx          context.Context
+	BatchHandler kafkaV3.BatchHandler
 } {
 	var calls []struct {
-		Ctx context.Context
-		H   kafkaV3.Handler
+		Ctx          context.Context
+		BatchHandler kafkaV3.BatchHandler
 	}
-	mock.lockRegisterHandler.RLock()
-	calls = mock.calls.RegisterHandler
-	mock.lockRegisterHandler.RUnlock()
+	mock.lockRegisterBatchHandler.RLock()
+	calls = mock.calls.RegisterBatchHandler
+	mock.lockRegisterBatchHandler.RUnlock()
 	return calls
 }
 

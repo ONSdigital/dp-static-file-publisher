@@ -217,6 +217,8 @@ func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (Ka
 		GroupName:         cfg.ConsumerGroup,
 		BrokerAddrs:       cfg.KafkaAddr,
 		NumWorkers:        &cfg.KafkaConsumerWorkers,
+		BatchSize:         &cfg.BatchSize,
+		BatchWaitTime:     &cfg.BatchWaitTime,
 	}
 
 	if cfg.KafkaSecProtocol == "TLS" {
