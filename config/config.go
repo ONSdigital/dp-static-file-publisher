@@ -28,8 +28,8 @@ type Config struct {
 	KafkaSecSkipVerify         bool          `envconfig:"KAFKA_SEC_SKIP_VERIFY"`
 	KafkaConsumerWorkers       int           `envconfig:"KAFKA_CONSUMER_WORKERS"`
 	KafkaMinimumHealthyBrokers int           `envconfig:"KAFKA_MIN_HEALTHY_BROKERS"`
-	BatchSize                  int           `envconfig:"KAFKA_BATCH_SIZE"`
-	BatchWaitTime              time.Duration `envconfig:"KAFKA_BATCH_WAIT_TIME"`
+	KafkaBatchSize             int           `envconfig:"KAFKA_BATCH_SIZE"`
+	KafkaBatchWaitTime         time.Duration `envconfig:"KAFKA_BATCH_WAIT_TIME"`
 	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
 	StaticFilePublishedTopicV2 string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC_V2"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
@@ -67,8 +67,8 @@ func Get() (*Config, error) {
 		KafkaVersion:               "1.0.2",
 		KafkaConsumerWorkers:       1,
 		KafkaMinimumHealthyBrokers: 1,
-		BatchSize:                  500,
-		BatchWaitTime:              50 * time.Millisecond,
+		KafkaBatchSize:             500,
+		KafkaBatchWaitTime:         50 * time.Millisecond,
 		StaticFilePublishedTopic:   "static-file-published",
 		StaticFilePublishedTopicV2: "static-file-published-v2",
 		ConsumerGroup:              "dp-static-file-publisher",
