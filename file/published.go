@@ -52,8 +52,6 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, msgs []ka
 			return NewCommitError(ctx, err, "Unmarshalling message", logData)
 		}
 
-		fmt.Println(fp.Path)
-
 		logData["file-published-message"] = fp
 
 		if err := d.ensurePublicFileDoesNotAlreadyExists(ctx, fp, logData); err != nil {
