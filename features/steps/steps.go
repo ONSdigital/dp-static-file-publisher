@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"sync"
-	"time"
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
@@ -89,32 +87,6 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	}
 
 	c.Initialiser()
-
-	sub, err := kafka.NewConsumerGroup(ctx, &kafka.ConsumerGroupConfig{
-		KafkaVersion:      &c.config.KafkaVersion,
-		Offset:            nil,
-		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             c.config.StaticFilePublishedTopic,
-		GroupName:         "testing",
-		BrokerAddrs:       c.config.KafkaAddr,
-	})
-
-	if err != nil {
-		log.Error(ctx, "Create Kafka consumer group", err)
-	}
-
-	sub.Start()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	sub.RegisterHandler(ctx, func(ctx context.Context, workerID int, msg kafka.Message) error {
-		time.Sleep(2 * time.Second)
-		wg.Done()
-
-		return nil
-	})
-
-	wg.Wait()
-	sub.Stop()
 
 	return c.ApiFeature.StepError()
 }

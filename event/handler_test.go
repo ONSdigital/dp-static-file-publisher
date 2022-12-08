@@ -58,6 +58,15 @@ var (
 
 var testEventNoSrcPath = event.ImagePublished{}
 
+var testCtx = context.Background()
+
+var testEvent = event.ImagePublished{
+	SrcPath:      "images/ID1/original",
+	DstPath:      "images/ID1/original/public.png",
+	ImageID:      "ID1",
+	ImageVariant: "original",
+}
+
 func TestImagePublishedHandler_Handle(t *testing.T) {
 
 	Convey("Given S3 and Vault client mocks", t, func() {

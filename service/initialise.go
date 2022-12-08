@@ -12,7 +12,6 @@ import (
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	files "github.com/ONSdigital/dp-api-clients-go/v2/files"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
 
 	dphttp "github.com/ONSdigital/dp-net/http"
 	dps3 "github.com/ONSdigital/dp-s3"
@@ -97,7 +96,7 @@ func (e *ExternalServiceList) GetFilesService(ctx context.Context, cfg *config.C
 }
 
 // GetKafkaImagePublishedConsumer creates a Kafka consumer and sets the consumer flag to true
-func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
 	kafkaConsumerGroup, err := e.Init.DoGetKafkaImagePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -179,31 +178,34 @@ func (e *Init) DoGetFilesService(ctx context.Context, cfg *config.Config) file.F
 }
 
 // DoGetKafkaImagePublishedConsumer returns a Kafka Consumer group
-func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
-	cgChannels := kafkaV2.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
-	kafkaOffset := kafkaV2.OffsetOldest
+func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
 
-	cConfig := &kafkaV2.ConsumerGroupConfig{
-		Offset:       &kafkaOffset,
-		KafkaVersion: &cfg.KafkaVersion,
-	}
-	if cfg.KafkaSecProtocol == "TLS" {
-		cConfig.SecurityConfig = kafkaV2.GetSecurityConfig(
-			cfg.KafkaSecCACerts,
-			cfg.KafkaSecClientCert,
-			cfg.KafkaSecClientKey,
-			cfg.KafkaSecSkipVerify,
-		)
-	}
+	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.ImageFilePublishedTopic)
 
-	return kafkaV2.NewConsumerGroup(
-		ctx,
-		cfg.KafkaAddr,
-		cfg.ImageFilePublishedTopic,
-		cfg.ConsumerGroup,
-		cgChannels,
-		cConfig,
-	)
+	// cgChannels := kafkaV2.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
+	// kafkaOffset := kafkaV2.OffsetOldest
+
+	// cConfig := &kafkaV2.ConsumerGroupConfig{
+	// 	Offset:       &kafkaOffset,
+	// 	KafkaVersion: &cfg.KafkaVersion,
+	// }
+	// if cfg.KafkaSecProtocol == "TLS" {
+	// 	cConfig.SecurityConfig = kafkaV2.GetSecurityConfig(
+	// 		cfg.KafkaSecCACerts,
+	// 		cfg.KafkaSecClientCert,
+	// 		cfg.KafkaSecClientKey,
+	// 		cfg.KafkaSecSkipVerify,
+	// 	)
+	// }
+
+	// return kafkaV2.NewConsumerGroup(
+	// 	ctx,
+	// 	cfg.KafkaAddr,
+	// 	cfg.ImageFilePublishedTopic,
+	// 	cfg.ConsumerGroup,
+	// 	cgChannels,
+	// 	cConfig,
+	// )
 }
 
 func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, topic string) (KafkaConsumerV3, error) {

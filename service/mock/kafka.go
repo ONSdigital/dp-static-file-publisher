@@ -5,7 +5,8 @@ package mock
 
 import (
 	"context"
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-healthcheck/healthcheck"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
 	"sync"
 )
@@ -20,11 +21,47 @@ var _ service.KafkaConsumerV3 = &KafkaConsumerV3Mock{}
 //
 // 		// make and configure a mocked service.KafkaConsumerV3
 // 		mockedKafkaConsumerV3 := &KafkaConsumerV3Mock{
-// 			RegisterBatchHandlerFunc: func(ctx context.Context, batchHandler kafkaV3.BatchHandler) error {
+// 			ChannelsFunc: func() *kafka.ConsumerGroupChannels {
+// 				panic("mock out the Channels method")
+// 			},
+// 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+// 				panic("mock out the Checker method")
+// 			},
+// 			CloseFunc: func(ctx context.Context) error {
+// 				panic("mock out the Close method")
+// 			},
+// 			InitialiseFunc: func(ctx context.Context) error {
+// 				panic("mock out the Initialise method")
+// 			},
+// 			IsInitialisedFunc: func() bool {
+// 				panic("mock out the IsInitialised method")
+// 			},
+// 			LogErrorsFunc: func(ctx context.Context)  {
+// 				panic("mock out the LogErrors method")
+// 			},
+// 			OnHealthUpdateFunc: func(status string)  {
+// 				panic("mock out the OnHealthUpdate method")
+// 			},
+// 			RegisterBatchHandlerFunc: func(ctx context.Context, batchHandler kafka.BatchHandler) error {
 // 				panic("mock out the RegisterBatchHandler method")
+// 			},
+// 			RegisterHandlerFunc: func(ctx context.Context, h kafka.Handler) error {
+// 				panic("mock out the RegisterHandler method")
 // 			},
 // 			StartFunc: func() error {
 // 				panic("mock out the Start method")
+// 			},
+// 			StateFunc: func() kafka.State {
+// 				panic("mock out the State method")
+// 			},
+// 			StateWaitFunc: func(state kafka.State)  {
+// 				panic("mock out the StateWait method")
+// 			},
+// 			StopFunc: func() error {
+// 				panic("mock out the Stop method")
+// 			},
+// 			StopAndWaitFunc: func() error {
+// 				panic("mock out the StopAndWait method")
 // 			},
 // 		}
 //
@@ -33,37 +70,350 @@ var _ service.KafkaConsumerV3 = &KafkaConsumerV3Mock{}
 //
 // 	}
 type KafkaConsumerV3Mock struct {
+	// ChannelsFunc mocks the Channels method.
+	ChannelsFunc func() *kafka.ConsumerGroupChannels
+
+	// CheckerFunc mocks the Checker method.
+	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
+
+	// CloseFunc mocks the Close method.
+	CloseFunc func(ctx context.Context) error
+
+	// InitialiseFunc mocks the Initialise method.
+	InitialiseFunc func(ctx context.Context) error
+
+	// IsInitialisedFunc mocks the IsInitialised method.
+	IsInitialisedFunc func() bool
+
+	// LogErrorsFunc mocks the LogErrors method.
+	LogErrorsFunc func(ctx context.Context)
+
+	// OnHealthUpdateFunc mocks the OnHealthUpdate method.
+	OnHealthUpdateFunc func(status string)
+
 	// RegisterBatchHandlerFunc mocks the RegisterBatchHandler method.
-	RegisterBatchHandlerFunc func(ctx context.Context, batchHandler kafkaV3.BatchHandler) error
+	RegisterBatchHandlerFunc func(ctx context.Context, batchHandler kafka.BatchHandler) error
+
+	// RegisterHandlerFunc mocks the RegisterHandler method.
+	RegisterHandlerFunc func(ctx context.Context, h kafka.Handler) error
 
 	// StartFunc mocks the Start method.
 	StartFunc func() error
 
+	// StateFunc mocks the State method.
+	StateFunc func() kafka.State
+
+	// StateWaitFunc mocks the StateWait method.
+	StateWaitFunc func(state kafka.State)
+
+	// StopFunc mocks the Stop method.
+	StopFunc func() error
+
+	// StopAndWaitFunc mocks the StopAndWait method.
+	StopAndWaitFunc func() error
+
 	// calls tracks calls to the methods.
 	calls struct {
+		// Channels holds details about calls to the Channels method.
+		Channels []struct {
+		}
+		// Checker holds details about calls to the Checker method.
+		Checker []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// State is the state argument value.
+			State *healthcheck.CheckState
+		}
+		// Close holds details about calls to the Close method.
+		Close []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// Initialise holds details about calls to the Initialise method.
+		Initialise []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// IsInitialised holds details about calls to the IsInitialised method.
+		IsInitialised []struct {
+		}
+		// LogErrors holds details about calls to the LogErrors method.
+		LogErrors []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// OnHealthUpdate holds details about calls to the OnHealthUpdate method.
+		OnHealthUpdate []struct {
+			// Status is the status argument value.
+			Status string
+		}
 		// RegisterBatchHandler holds details about calls to the RegisterBatchHandler method.
 		RegisterBatchHandler []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// BatchHandler is the batchHandler argument value.
-			BatchHandler kafkaV3.BatchHandler
+			BatchHandler kafka.BatchHandler
+		}
+		// RegisterHandler holds details about calls to the RegisterHandler method.
+		RegisterHandler []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// H is the h argument value.
+			H kafka.Handler
 		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
 		}
+		// State holds details about calls to the State method.
+		State []struct {
+		}
+		// StateWait holds details about calls to the StateWait method.
+		StateWait []struct {
+			// State is the state argument value.
+			State kafka.State
+		}
+		// Stop holds details about calls to the Stop method.
+		Stop []struct {
+		}
+		// StopAndWait holds details about calls to the StopAndWait method.
+		StopAndWait []struct {
+		}
 	}
+	lockChannels             sync.RWMutex
+	lockChecker              sync.RWMutex
+	lockClose                sync.RWMutex
+	lockInitialise           sync.RWMutex
+	lockIsInitialised        sync.RWMutex
+	lockLogErrors            sync.RWMutex
+	lockOnHealthUpdate       sync.RWMutex
 	lockRegisterBatchHandler sync.RWMutex
+	lockRegisterHandler      sync.RWMutex
 	lockStart                sync.RWMutex
+	lockState                sync.RWMutex
+	lockStateWait            sync.RWMutex
+	lockStop                 sync.RWMutex
+	lockStopAndWait          sync.RWMutex
+}
+
+// Channels calls ChannelsFunc.
+func (mock *KafkaConsumerV3Mock) Channels() *kafka.ConsumerGroupChannels {
+	if mock.ChannelsFunc == nil {
+		panic("KafkaConsumerV3Mock.ChannelsFunc: method is nil but KafkaConsumerV3.Channels was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockChannels.Lock()
+	mock.calls.Channels = append(mock.calls.Channels, callInfo)
+	mock.lockChannels.Unlock()
+	return mock.ChannelsFunc()
+}
+
+// ChannelsCalls gets all the calls that were made to Channels.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.ChannelsCalls())
+func (mock *KafkaConsumerV3Mock) ChannelsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockChannels.RLock()
+	calls = mock.calls.Channels
+	mock.lockChannels.RUnlock()
+	return calls
+}
+
+// Checker calls CheckerFunc.
+func (mock *KafkaConsumerV3Mock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
+	if mock.CheckerFunc == nil {
+		panic("KafkaConsumerV3Mock.CheckerFunc: method is nil but KafkaConsumerV3.Checker was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		State *healthcheck.CheckState
+	}{
+		Ctx:   ctx,
+		State: state,
+	}
+	mock.lockChecker.Lock()
+	mock.calls.Checker = append(mock.calls.Checker, callInfo)
+	mock.lockChecker.Unlock()
+	return mock.CheckerFunc(ctx, state)
+}
+
+// CheckerCalls gets all the calls that were made to Checker.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.CheckerCalls())
+func (mock *KafkaConsumerV3Mock) CheckerCalls() []struct {
+	Ctx   context.Context
+	State *healthcheck.CheckState
+} {
+	var calls []struct {
+		Ctx   context.Context
+		State *healthcheck.CheckState
+	}
+	mock.lockChecker.RLock()
+	calls = mock.calls.Checker
+	mock.lockChecker.RUnlock()
+	return calls
+}
+
+// Close calls CloseFunc.
+func (mock *KafkaConsumerV3Mock) Close(ctx context.Context) error {
+	if mock.CloseFunc == nil {
+		panic("KafkaConsumerV3Mock.CloseFunc: method is nil but KafkaConsumerV3.Close was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockClose.Lock()
+	mock.calls.Close = append(mock.calls.Close, callInfo)
+	mock.lockClose.Unlock()
+	return mock.CloseFunc(ctx)
+}
+
+// CloseCalls gets all the calls that were made to Close.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.CloseCalls())
+func (mock *KafkaConsumerV3Mock) CloseCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockClose.RLock()
+	calls = mock.calls.Close
+	mock.lockClose.RUnlock()
+	return calls
+}
+
+// Initialise calls InitialiseFunc.
+func (mock *KafkaConsumerV3Mock) Initialise(ctx context.Context) error {
+	if mock.InitialiseFunc == nil {
+		panic("KafkaConsumerV3Mock.InitialiseFunc: method is nil but KafkaConsumerV3.Initialise was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockInitialise.Lock()
+	mock.calls.Initialise = append(mock.calls.Initialise, callInfo)
+	mock.lockInitialise.Unlock()
+	return mock.InitialiseFunc(ctx)
+}
+
+// InitialiseCalls gets all the calls that were made to Initialise.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.InitialiseCalls())
+func (mock *KafkaConsumerV3Mock) InitialiseCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockInitialise.RLock()
+	calls = mock.calls.Initialise
+	mock.lockInitialise.RUnlock()
+	return calls
+}
+
+// IsInitialised calls IsInitialisedFunc.
+func (mock *KafkaConsumerV3Mock) IsInitialised() bool {
+	if mock.IsInitialisedFunc == nil {
+		panic("KafkaConsumerV3Mock.IsInitialisedFunc: method is nil but KafkaConsumerV3.IsInitialised was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockIsInitialised.Lock()
+	mock.calls.IsInitialised = append(mock.calls.IsInitialised, callInfo)
+	mock.lockIsInitialised.Unlock()
+	return mock.IsInitialisedFunc()
+}
+
+// IsInitialisedCalls gets all the calls that were made to IsInitialised.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.IsInitialisedCalls())
+func (mock *KafkaConsumerV3Mock) IsInitialisedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockIsInitialised.RLock()
+	calls = mock.calls.IsInitialised
+	mock.lockIsInitialised.RUnlock()
+	return calls
+}
+
+// LogErrors calls LogErrorsFunc.
+func (mock *KafkaConsumerV3Mock) LogErrors(ctx context.Context) {
+	if mock.LogErrorsFunc == nil {
+		panic("KafkaConsumerV3Mock.LogErrorsFunc: method is nil but KafkaConsumerV3.LogErrors was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockLogErrors.Lock()
+	mock.calls.LogErrors = append(mock.calls.LogErrors, callInfo)
+	mock.lockLogErrors.Unlock()
+	mock.LogErrorsFunc(ctx)
+}
+
+// LogErrorsCalls gets all the calls that were made to LogErrors.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.LogErrorsCalls())
+func (mock *KafkaConsumerV3Mock) LogErrorsCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockLogErrors.RLock()
+	calls = mock.calls.LogErrors
+	mock.lockLogErrors.RUnlock()
+	return calls
+}
+
+// OnHealthUpdate calls OnHealthUpdateFunc.
+func (mock *KafkaConsumerV3Mock) OnHealthUpdate(status string) {
+	if mock.OnHealthUpdateFunc == nil {
+		panic("KafkaConsumerV3Mock.OnHealthUpdateFunc: method is nil but KafkaConsumerV3.OnHealthUpdate was just called")
+	}
+	callInfo := struct {
+		Status string
+	}{
+		Status: status,
+	}
+	mock.lockOnHealthUpdate.Lock()
+	mock.calls.OnHealthUpdate = append(mock.calls.OnHealthUpdate, callInfo)
+	mock.lockOnHealthUpdate.Unlock()
+	mock.OnHealthUpdateFunc(status)
+}
+
+// OnHealthUpdateCalls gets all the calls that were made to OnHealthUpdate.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.OnHealthUpdateCalls())
+func (mock *KafkaConsumerV3Mock) OnHealthUpdateCalls() []struct {
+	Status string
+} {
+	var calls []struct {
+		Status string
+	}
+	mock.lockOnHealthUpdate.RLock()
+	calls = mock.calls.OnHealthUpdate
+	mock.lockOnHealthUpdate.RUnlock()
+	return calls
 }
 
 // RegisterBatchHandler calls RegisterBatchHandlerFunc.
-func (mock *KafkaConsumerV3Mock) RegisterBatchHandler(ctx context.Context, batchHandler kafkaV3.BatchHandler) error {
+func (mock *KafkaConsumerV3Mock) RegisterBatchHandler(ctx context.Context, batchHandler kafka.BatchHandler) error {
 	if mock.RegisterBatchHandlerFunc == nil {
 		panic("KafkaConsumerV3Mock.RegisterBatchHandlerFunc: method is nil but KafkaConsumerV3.RegisterBatchHandler was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
-		BatchHandler kafkaV3.BatchHandler
+		BatchHandler kafka.BatchHandler
 	}{
 		Ctx:          ctx,
 		BatchHandler: batchHandler,
@@ -79,15 +429,50 @@ func (mock *KafkaConsumerV3Mock) RegisterBatchHandler(ctx context.Context, batch
 //     len(mockedKafkaConsumerV3.RegisterBatchHandlerCalls())
 func (mock *KafkaConsumerV3Mock) RegisterBatchHandlerCalls() []struct {
 	Ctx          context.Context
-	BatchHandler kafkaV3.BatchHandler
+	BatchHandler kafka.BatchHandler
 } {
 	var calls []struct {
 		Ctx          context.Context
-		BatchHandler kafkaV3.BatchHandler
+		BatchHandler kafka.BatchHandler
 	}
 	mock.lockRegisterBatchHandler.RLock()
 	calls = mock.calls.RegisterBatchHandler
 	mock.lockRegisterBatchHandler.RUnlock()
+	return calls
+}
+
+// RegisterHandler calls RegisterHandlerFunc.
+func (mock *KafkaConsumerV3Mock) RegisterHandler(ctx context.Context, h kafka.Handler) error {
+	if mock.RegisterHandlerFunc == nil {
+		panic("KafkaConsumerV3Mock.RegisterHandlerFunc: method is nil but KafkaConsumerV3.RegisterHandler was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		H   kafka.Handler
+	}{
+		Ctx: ctx,
+		H:   h,
+	}
+	mock.lockRegisterHandler.Lock()
+	mock.calls.RegisterHandler = append(mock.calls.RegisterHandler, callInfo)
+	mock.lockRegisterHandler.Unlock()
+	return mock.RegisterHandlerFunc(ctx, h)
+}
+
+// RegisterHandlerCalls gets all the calls that were made to RegisterHandler.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.RegisterHandlerCalls())
+func (mock *KafkaConsumerV3Mock) RegisterHandlerCalls() []struct {
+	Ctx context.Context
+	H   kafka.Handler
+} {
+	var calls []struct {
+		Ctx context.Context
+		H   kafka.Handler
+	}
+	mock.lockRegisterHandler.RLock()
+	calls = mock.calls.RegisterHandler
+	mock.lockRegisterHandler.RUnlock()
 	return calls
 }
 
@@ -114,5 +499,114 @@ func (mock *KafkaConsumerV3Mock) StartCalls() []struct {
 	mock.lockStart.RLock()
 	calls = mock.calls.Start
 	mock.lockStart.RUnlock()
+	return calls
+}
+
+// State calls StateFunc.
+func (mock *KafkaConsumerV3Mock) State() kafka.State {
+	if mock.StateFunc == nil {
+		panic("KafkaConsumerV3Mock.StateFunc: method is nil but KafkaConsumerV3.State was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockState.Lock()
+	mock.calls.State = append(mock.calls.State, callInfo)
+	mock.lockState.Unlock()
+	return mock.StateFunc()
+}
+
+// StateCalls gets all the calls that were made to State.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.StateCalls())
+func (mock *KafkaConsumerV3Mock) StateCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockState.RLock()
+	calls = mock.calls.State
+	mock.lockState.RUnlock()
+	return calls
+}
+
+// StateWait calls StateWaitFunc.
+func (mock *KafkaConsumerV3Mock) StateWait(state kafka.State) {
+	if mock.StateWaitFunc == nil {
+		panic("KafkaConsumerV3Mock.StateWaitFunc: method is nil but KafkaConsumerV3.StateWait was just called")
+	}
+	callInfo := struct {
+		State kafka.State
+	}{
+		State: state,
+	}
+	mock.lockStateWait.Lock()
+	mock.calls.StateWait = append(mock.calls.StateWait, callInfo)
+	mock.lockStateWait.Unlock()
+	mock.StateWaitFunc(state)
+}
+
+// StateWaitCalls gets all the calls that were made to StateWait.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.StateWaitCalls())
+func (mock *KafkaConsumerV3Mock) StateWaitCalls() []struct {
+	State kafka.State
+} {
+	var calls []struct {
+		State kafka.State
+	}
+	mock.lockStateWait.RLock()
+	calls = mock.calls.StateWait
+	mock.lockStateWait.RUnlock()
+	return calls
+}
+
+// Stop calls StopFunc.
+func (mock *KafkaConsumerV3Mock) Stop() error {
+	if mock.StopFunc == nil {
+		panic("KafkaConsumerV3Mock.StopFunc: method is nil but KafkaConsumerV3.Stop was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStop.Lock()
+	mock.calls.Stop = append(mock.calls.Stop, callInfo)
+	mock.lockStop.Unlock()
+	return mock.StopFunc()
+}
+
+// StopCalls gets all the calls that were made to Stop.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.StopCalls())
+func (mock *KafkaConsumerV3Mock) StopCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStop.RLock()
+	calls = mock.calls.Stop
+	mock.lockStop.RUnlock()
+	return calls
+}
+
+// StopAndWait calls StopAndWaitFunc.
+func (mock *KafkaConsumerV3Mock) StopAndWait() error {
+	if mock.StopAndWaitFunc == nil {
+		panic("KafkaConsumerV3Mock.StopAndWaitFunc: method is nil but KafkaConsumerV3.StopAndWait was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStopAndWait.Lock()
+	mock.calls.StopAndWait = append(mock.calls.StopAndWait, callInfo)
+	mock.lockStopAndWait.Unlock()
+	return mock.StopAndWaitFunc()
+}
+
+// StopAndWaitCalls gets all the calls that were made to StopAndWait.
+// Check the length with:
+//     len(mockedKafkaConsumerV3.StopAndWaitCalls())
+func (mock *KafkaConsumerV3Mock) StopAndWaitCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStopAndWait.RLock()
+	calls = mock.calls.StopAndWait
+	mock.lockStopAndWait.RUnlock()
 	return calls
 }

@@ -15,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 
-	kafka "github.com/ONSdigital/dp-kafka/v2"
-
 	vault "github.com/ONSdigital/dp-vault"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
@@ -76,15 +74,19 @@ func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *confi
 	}
 }
 
-func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-	kafkaOffset := kafka.OffsetOldest
-	cgConfig := &kafka.ConsumerGroupConfig{
-		KafkaVersion: &cfg.KafkaVersion,
-		Offset:       &kafkaOffset,
-	}
-	cg, err := kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.ImageFilePublishedTopic, cfg.ConsumerGroup, kafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers), cgConfig)
+func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+	kafkaOffset := kafkaV3.OffsetOldest
 
-	return cg, err
+	gc := kafkaV3.ConsumerGroupConfig{
+		KafkaVersion:      &cfg.KafkaVersion,
+		Offset:            &kafkaOffset,
+		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
+		Topic:             cfg.ImageFilePublishedTopic,
+		GroupName:         cfg.ConsumerGroup,
+		BrokerAddrs:       cfg.KafkaAddr,
+	}
+
+	return kafkaV3.NewConsumerGroup(ctx, &gc)
 }
 
 func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {

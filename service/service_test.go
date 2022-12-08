@@ -10,12 +10,11 @@ import (
 	"testing"
 
 	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	kafkatestV3 "github.com/ONSdigital/dp-kafka/v3/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
-	"github.com/ONSdigital/dp-kafka/v2/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
@@ -47,7 +46,7 @@ var funcDoGetVaultErr = func(cfg *config.Config) (event.VaultClient, error) {
 	return nil, errVault
 }
 
-var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 	return nil, errKafkaConsumer
 }
 
@@ -57,14 +56,6 @@ var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string, encrypt
 
 var funcDoGetHTTPServerNil = func(bindAddr string, router http.Handler) service.HTTPServer {
 	return nil
-}
-
-// kafkaStubConsumer mock which exposes Channels function returning empty channels
-// to be used on tests that are not supposed to receive any kafka message
-var kafkaStubConsumer = &kafkatest.IConsumerGroupMock{
-	ChannelsFunc: func() *dpkafka.ConsumerGroupChannels {
-		return &dpkafka.ConsumerGroupChannels{}
-	},
 }
 
 func TestRun(t *testing.T) {
@@ -114,10 +105,6 @@ func TestRun(t *testing.T) {
 
 		funcDoGetFilesClientFuncOK := func(ctx context.Context, cfg *config.Config) file.FilesService {
 			return filesSvcClientMock
-		}
-
-		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-			return kafkaStubConsumer, nil
 		}
 
 		funcDoGetS3ClientOK := func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
@@ -202,7 +189,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientFuncErr,
 			}
 			svcErrors := make(chan error, 1)
@@ -225,7 +212,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaV3ConsumerOK,
@@ -253,7 +240,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckErr,
@@ -281,7 +268,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
@@ -315,7 +302,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaV3ConsumerOK,
@@ -349,7 +336,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServer,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
@@ -397,7 +384,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetFailingHTTPServer,
 				DoGetVaultFunc:                       funcDoGetVaultOK,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaV3ConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
@@ -448,13 +435,14 @@ func TestClose(t *testing.T) {
 		}
 
 		// consumer group Close and StopListeningToConsumer will fail if healthcheck or http server are not stopped
-		kafkaConsumerMock := &kafkatest.IConsumerGroupMock{
-			StopListeningToConsumerFunc: func(ctx context.Context) error {
+		kafkaConsumerMock := &kafkatestV3.IConsumerGroupMock{
+			StopFunc: func() error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer StopListening before healthcheck or HTTP server")
 				}
 				return nil
 			},
+			StateWaitFunc: func(state kafkaV3.State) {},
 			CloseFunc: func(ctx context.Context) error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer stopped before healthcheck or HTTP server")
@@ -471,7 +459,7 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 					return kafkaConsumerMock, nil
 				},
 			}
@@ -480,18 +468,19 @@ func TestClose(t *testing.T) {
 			svcList.HealthCheck = true
 			svcList.KafkaConsumerPublished = true
 			svc := service.Service{
-				Config:             cfg,
-				ServiceList:        svcList,
-				Server:             serverMock,
-				HealthCheck:        hcMock,
-				KafkaConsumerGroup: kafkaConsumerMock,
+				Config:                      cfg,
+				ServiceList:                 svcList,
+				Server:                      serverMock,
+				HealthCheck:                 hcMock,
+				KafkaImagePublishedConsumer: kafkaConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
 			So(err, ShouldBeNil)
 			So(hcMock.StopCalls(), ShouldHaveLength, 1)
 			So(serverMock.ShutdownCalls(), ShouldHaveLength, 1)
-			So(kafkaConsumerMock.StopListeningToConsumerCalls(), ShouldHaveLength, 1)
+			So(kafkaConsumerMock.StopCalls(), ShouldHaveLength, 1)
+			So(kafkaConsumerMock.StateWaitCalls(), ShouldHaveLength, 1)
 			So(kafkaConsumerMock.CloseCalls(), ShouldHaveLength, 1)
 		})
 
@@ -504,13 +493,14 @@ func TestClose(t *testing.T) {
 				},
 			}
 
-			failingKafkaConsumerMock := &kafkatest.IConsumerGroupMock{
+			failingKafkaConsumerMock := &kafkatestV3.IConsumerGroupMock{
 				CloseFunc: func(ctx context.Context) error {
 					return errors.New("Failed to stop Kafka Consumer")
 				},
-				StopListeningToConsumerFunc: func(ctx context.Context) error {
+				StopFunc: func() error {
 					return errors.New("Failed to stop listening to consumer")
 				},
+				StateWaitFunc: func(state kafkaV3.State) {},
 			}
 
 			initMock := &serviceMock.InitialiserMock{
@@ -520,7 +510,7 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 					return failingKafkaConsumerMock, nil
 				},
 			}
@@ -529,18 +519,19 @@ func TestClose(t *testing.T) {
 			svcList.HealthCheck = true
 			svcList.KafkaConsumerPublished = true
 			svc := service.Service{
-				Config:             cfg,
-				ServiceList:        svcList,
-				Server:             failingserverMock,
-				HealthCheck:        hcMock,
-				KafkaConsumerGroup: failingKafkaConsumerMock,
+				Config:                      cfg,
+				ServiceList:                 svcList,
+				Server:                      failingserverMock,
+				HealthCheck:                 hcMock,
+				KafkaImagePublishedConsumer: failingKafkaConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
 			So(err, ShouldNotBeNil)
 			So(hcMock.StopCalls(), ShouldHaveLength, 1)
 			So(failingserverMock.ShutdownCalls(), ShouldHaveLength, 1)
-			So(failingKafkaConsumerMock.StopListeningToConsumerCalls(), ShouldHaveLength, 1)
+			So(failingKafkaConsumerMock.StopCalls(), ShouldHaveLength, 1)
+			So(failingKafkaConsumerMock.StateWaitCalls(), ShouldHaveLength, 1)
 			So(failingKafkaConsumerMock.CloseCalls(), ShouldHaveLength, 1)
 		})
 	})

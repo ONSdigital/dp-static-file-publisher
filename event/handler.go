@@ -11,6 +11,8 @@ import (
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-static-file-publisher/schema"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -140,6 +142,31 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	}
 	log.Info(ctx, "put image download to api", logData)
 	log.Info(ctx, "event successfully handled", logData)
+	return nil
+}
+
+func (h *ImagePublishedHandler) KafkaHandler(ctx context.Context, msgs []kafka.Message) error {
+	logData := log.Data{}
+	schema := schema.ImagePublishedEvent
+	fp := ImagePublished{}
+	log.Info(ctx, fmt.Sprintf("HandleImagePublishedMessage (batched) invoked with %d message(s)", len(msgs)))
+
+	for _, msg := range msgs {
+
+		if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
+			return fmt.Errorf("couldn't unmarshal message: %w", err)
+		}
+
+		logData["image-published-message"] = fp
+		log.Info(ctx, "message received", logData)
+
+		err := h.Handle(ctx, &fp)
+		if err != nil {
+			log.Error(ctx, "failed to handle event", err)
+			return err
+		}
+
+	}
 	return nil
 }
 

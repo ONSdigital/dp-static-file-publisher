@@ -25,7 +25,7 @@ type Initialiser interface {
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
 	DoGetVault(cfg *config.Config) (event.VaultClient, error)
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
-	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
+	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error)
 	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error)
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
@@ -59,4 +59,17 @@ type KafkaConsumer interface {
 type KafkaConsumerV3 interface {
 	Start() error
 	RegisterBatchHandler(ctx context.Context, batchHandler kafkaV3.BatchHandler) error
+	Stop() error
+	StateWait(state kafkaV3.State)
+	Checker(ctx context.Context, state *healthcheck.CheckState) error
+
+	Channels() *kafkaV3.ConsumerGroupChannels
+	Close(ctx context.Context) (err error)
+	Initialise(ctx context.Context) error
+	IsInitialised() bool
+	State() kafkaV3.State
+	RegisterHandler(ctx context.Context, h kafkaV3.Handler) error
+	OnHealthUpdate(status string)
+	StopAndWait() error
+	LogErrors(ctx context.Context)
 }
