@@ -51,7 +51,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
 
 	// Initialise Kafka Consumer
-	svc.KafkaConsumerGroup, err = serviceList.GetKafkaConsumer(ctx, cfg)
+	svc.KafkaConsumerGroup, err = serviceList.GetKafkaImagePublishedConsumer(ctx, cfg)
 	if err != nil {
 		log.Fatal(ctx, "could not instantiate kafka consumer", err)
 		return nil, err
@@ -76,12 +76,12 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	}
 	event.Consume(ctx, svc.KafkaConsumerGroup, handler, cfg.KafkaConsumerWorkers)
 
-	consumer, err := serviceList.GetKafkaConsumerV3(ctx, cfg)
+	filePublishedConsumer, err := serviceList.GetKafkaFilePublishedConsumer(ctx, cfg)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate Kafka V3 client", err)
 		return nil, err
 	}
-	if err := consumer.Start(); err != nil {
+	if err := filePublishedConsumer.Start(); err != nil {
 		log.Fatal(ctx, "Could not start kafka consumer", err)
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 
-	if err := consumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
+	if err := filePublishedConsumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
 		log.Fatal(ctx, "failed to register file published message handler", err)
 		return nil, err
 	}
