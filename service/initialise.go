@@ -178,8 +178,8 @@ func (e *Init) DoGetFilesService(ctx context.Context, cfg *config.Config) file.F
 	return apiClient
 }
 
-// DoGetKafkaConsumer returns a Kafka Consumer group
-func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+// DoGetKafkaImagePublishedConsumer returns a Kafka Consumer group
+func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
 	cgChannels := kafkaV2.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
 	kafkaOffset := kafkaV2.OffsetOldest
 
@@ -199,21 +199,21 @@ func (e *Init) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (Kafk
 	return kafkaV2.NewConsumerGroup(
 		ctx,
 		cfg.KafkaAddr,
-		cfg.StaticFilePublishedTopic,
+		cfg.ImageFilePublishedTopic,
 		cfg.ConsumerGroup,
 		cgChannels,
 		cConfig,
 	)
 }
 
-func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
+func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, topic string) (KafkaConsumerV3, error) {
 	kafkaOffset := kafkaV3.OffsetOldest
 
 	gc := kafkaV3.ConsumerGroupConfig{
 		KafkaVersion:      &cfg.KafkaVersion,
 		Offset:            &kafkaOffset,
 		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
-		Topic:             cfg.StaticFilePublishedTopicV2,
+		Topic:             topic,
 		GroupName:         cfg.ConsumerGroup,
 		BrokerAddrs:       cfg.KafkaAddr,
 		NumWorkers:        &cfg.KafkaConsumerWorkers,
@@ -231,6 +231,10 @@ func (e *Init) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (Ka
 	}
 
 	return kafkaV3.NewConsumerGroup(ctx, &gc)
+}
+
+func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
+	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.StaticFilePublishedTopic)
 }
 
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.

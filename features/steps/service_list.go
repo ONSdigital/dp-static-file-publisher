@@ -63,7 +63,7 @@ func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.Ima
 	}
 }
 
-func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {	
+func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
 	return &fmock.FilesServiceMock{
 		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 			state.Update("OK", "Files Service API all good", 0)
@@ -82,7 +82,7 @@ func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *conf
 		KafkaVersion: &cfg.KafkaVersion,
 		Offset:       &kafkaOffset,
 	}
-	cg, err := kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers), cgConfig)
+	cg, err := kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.ImageFilePublishedTopic, cfg.ConsumerGroup, kafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers), cgConfig)
 
 	return cg, err
 }
@@ -94,7 +94,7 @@ func (e *fakeServiceContainer) DoGetKafkaV3Consumer(ctx context.Context, cfg *co
 		KafkaVersion:      &cfg.KafkaVersion,
 		Offset:            &kafkaOffset,
 		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
-		Topic:             cfg.StaticFilePublishedTopicV2,
+		Topic:             cfg.StaticFilePublishedTopic,
 		GroupName:         cfg.ConsumerGroup,
 		BrokerAddrs:       cfg.KafkaAddr,
 	}

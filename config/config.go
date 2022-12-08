@@ -30,8 +30,8 @@ type Config struct {
 	KafkaMinimumHealthyBrokers int           `envconfig:"KAFKA_MIN_HEALTHY_BROKERS"`
 	KafkaBatchSize             int           `envconfig:"KAFKA_BATCH_SIZE"`
 	KafkaBatchWaitTime         time.Duration `envconfig:"KAFKA_BATCH_WAIT_TIME"`
-	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
-	StaticFilePublishedTopicV2 string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC_V2"`
+	ImageFilePublishedTopic    string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC"`
+	StaticFilePublishedTopic   string        `envconfig:"STATIC_FILE_PUBLISHED_TOPIC_V2"`
 	ConsumerGroup              string        `envconfig:"CONSUMER_GROUP"`
 	AwsRegion                  string        `envconfig:"AWS_REGION"`
 	PrivateBucketName          string        `envconfig:"S3_PRIVATE_BUCKET_NAME"`
@@ -69,8 +69,8 @@ func Get() (*Config, error) {
 		KafkaMinimumHealthyBrokers: 1,
 		KafkaBatchSize:             500,
 		KafkaBatchWaitTime:         50 * time.Millisecond,
-		StaticFilePublishedTopic:   "static-file-published",
-		StaticFilePublishedTopicV2: "static-file-published-v2",
+		ImageFilePublishedTopic:    "static-file-published",
+		StaticFilePublishedTopic:   "static-file-published-v2",
 		ConsumerGroup:              "dp-static-file-publisher",
 		AwsRegion:                  "eu-west-1",
 		PrivateBucketName:          "csv-exported",

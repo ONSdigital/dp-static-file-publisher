@@ -54,7 +54,7 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	pub, err := kafka.NewProducer(ctx, &kafka.ProducerConfig{
 		KafkaVersion:      &c.config.KafkaVersion,
 		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             c.config.StaticFilePublishedTopicV2,
+		Topic:             c.config.StaticFilePublishedTopic,
 		BrokerAddrs:       c.config.KafkaAddr,
 	})
 
@@ -94,7 +94,7 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 		KafkaVersion:      &c.config.KafkaVersion,
 		Offset:            nil,
 		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             c.config.StaticFilePublishedTopicV2,
+		Topic:             c.config.StaticFilePublishedTopic,
 		GroupName:         "testing",
 		BrokerAddrs:       c.config.KafkaAddr,
 	})
