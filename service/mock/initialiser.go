@@ -36,11 +36,11 @@ var _ service.Initialiser = &InitialiserMock{}
 // 			DoGetImageAPIClientFunc: func(cfg *config.Config) event.ImageAPIClient {
 // 				panic("mock out the DoGetImageAPIClient method")
 // 			},
-// 			DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-// 				panic("mock out the DoGetKafkaConsumer method")
+// 			DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+// 				panic("mock out the DoGetKafkaFilePublishedConsumer method")
 // 			},
-// 			DoGetKafkaV3ConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
-// 				panic("mock out the DoGetKafkaV3Consumer method")
+// 			DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+// 				panic("mock out the DoGetKafkaImagePublishedConsumer method")
 // 			},
 // 			DoGetS3ClientFunc: func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 // 				panic("mock out the DoGetS3Client method")
@@ -73,11 +73,11 @@ type InitialiserMock struct {
 	// DoGetImageAPIClientFunc mocks the DoGetImageAPIClient method.
 	DoGetImageAPIClientFunc func(cfg *config.Config) event.ImageAPIClient
 
-	// DoGetKafkaConsumerFunc mocks the DoGetKafkaConsumer method.
-	DoGetKafkaConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error)
+	// DoGetKafkaFilePublishedConsumerFunc mocks the DoGetKafkaFilePublishedConsumer method.
+	DoGetKafkaFilePublishedConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error)
 
-	// DoGetKafkaV3ConsumerFunc mocks the DoGetKafkaV3Consumer method.
-	DoGetKafkaV3ConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error)
+	// DoGetKafkaImagePublishedConsumerFunc mocks the DoGetKafkaImagePublishedConsumer method.
+	DoGetKafkaImagePublishedConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error)
 
 	// DoGetS3ClientFunc mocks the DoGetS3Client method.
 	DoGetS3ClientFunc func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
@@ -123,15 +123,15 @@ type InitialiserMock struct {
 			// Cfg is the cfg argument value.
 			Cfg *config.Config
 		}
-		// DoGetKafkaConsumer holds details about calls to the DoGetKafkaConsumer method.
-		DoGetKafkaConsumer []struct {
+		// DoGetKafkaFilePublishedConsumer holds details about calls to the DoGetKafkaFilePublishedConsumer method.
+		DoGetKafkaFilePublishedConsumer []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
 			Cfg *config.Config
 		}
-		// DoGetKafkaV3Consumer holds details about calls to the DoGetKafkaV3Consumer method.
-		DoGetKafkaV3Consumer []struct {
+		// DoGetKafkaImagePublishedConsumer holds details about calls to the DoGetKafkaImagePublishedConsumer method.
+		DoGetKafkaImagePublishedConsumer []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Cfg is the cfg argument value.
@@ -168,16 +168,16 @@ type InitialiserMock struct {
 			Cfg *config.Config
 		}
 	}
-	lockDoGetFilesService        sync.RWMutex
-	lockDoGetHTTPServer          sync.RWMutex
-	lockDoGetHealthCheck         sync.RWMutex
-	lockDoGetImageAPIClient      sync.RWMutex
-	lockDoGetKafkaConsumer       sync.RWMutex
-	lockDoGetKafkaV3Consumer     sync.RWMutex
-	lockDoGetS3Client            sync.RWMutex
-	lockDoGetS3ClientV2          sync.RWMutex
-	lockDoGetS3ClientWithSession sync.RWMutex
-	lockDoGetVault               sync.RWMutex
+	lockDoGetFilesService                sync.RWMutex
+	lockDoGetHTTPServer                  sync.RWMutex
+	lockDoGetHealthCheck                 sync.RWMutex
+	lockDoGetImageAPIClient              sync.RWMutex
+	lockDoGetKafkaFilePublishedConsumer  sync.RWMutex
+	lockDoGetKafkaImagePublishedConsumer sync.RWMutex
+	lockDoGetS3Client                    sync.RWMutex
+	lockDoGetS3ClientV2                  sync.RWMutex
+	lockDoGetS3ClientWithSession         sync.RWMutex
+	lockDoGetVault                       sync.RWMutex
 }
 
 // DoGetFilesService calls DoGetFilesServiceFunc.
@@ -324,10 +324,10 @@ func (mock *InitialiserMock) DoGetImageAPIClientCalls() []struct {
 	return calls
 }
 
-// DoGetKafkaConsumer calls DoGetKafkaConsumerFunc.
-func (mock *InitialiserMock) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-	if mock.DoGetKafkaConsumerFunc == nil {
-		panic("InitialiserMock.DoGetKafkaConsumerFunc: method is nil but Initialiser.DoGetKafkaConsumer was just called")
+// DoGetKafkaFilePublishedConsumer calls DoGetKafkaFilePublishedConsumerFunc.
+func (mock *InitialiserMock) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+	if mock.DoGetKafkaFilePublishedConsumerFunc == nil {
+		panic("InitialiserMock.DoGetKafkaFilePublishedConsumerFunc: method is nil but Initialiser.DoGetKafkaFilePublishedConsumer was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -336,16 +336,16 @@ func (mock *InitialiserMock) DoGetKafkaConsumer(ctx context.Context, cfg *config
 		Ctx: ctx,
 		Cfg: cfg,
 	}
-	mock.lockDoGetKafkaConsumer.Lock()
-	mock.calls.DoGetKafkaConsumer = append(mock.calls.DoGetKafkaConsumer, callInfo)
-	mock.lockDoGetKafkaConsumer.Unlock()
-	return mock.DoGetKafkaConsumerFunc(ctx, cfg)
+	mock.lockDoGetKafkaFilePublishedConsumer.Lock()
+	mock.calls.DoGetKafkaFilePublishedConsumer = append(mock.calls.DoGetKafkaFilePublishedConsumer, callInfo)
+	mock.lockDoGetKafkaFilePublishedConsumer.Unlock()
+	return mock.DoGetKafkaFilePublishedConsumerFunc(ctx, cfg)
 }
 
-// DoGetKafkaConsumerCalls gets all the calls that were made to DoGetKafkaConsumer.
+// DoGetKafkaFilePublishedConsumerCalls gets all the calls that were made to DoGetKafkaFilePublishedConsumer.
 // Check the length with:
-//     len(mockedInitialiser.DoGetKafkaConsumerCalls())
-func (mock *InitialiserMock) DoGetKafkaConsumerCalls() []struct {
+//     len(mockedInitialiser.DoGetKafkaFilePublishedConsumerCalls())
+func (mock *InitialiserMock) DoGetKafkaFilePublishedConsumerCalls() []struct {
 	Ctx context.Context
 	Cfg *config.Config
 } {
@@ -353,16 +353,16 @@ func (mock *InitialiserMock) DoGetKafkaConsumerCalls() []struct {
 		Ctx context.Context
 		Cfg *config.Config
 	}
-	mock.lockDoGetKafkaConsumer.RLock()
-	calls = mock.calls.DoGetKafkaConsumer
-	mock.lockDoGetKafkaConsumer.RUnlock()
+	mock.lockDoGetKafkaFilePublishedConsumer.RLock()
+	calls = mock.calls.DoGetKafkaFilePublishedConsumer
+	mock.lockDoGetKafkaFilePublishedConsumer.RUnlock()
 	return calls
 }
 
-// DoGetKafkaV3Consumer calls DoGetKafkaV3ConsumerFunc.
-func (mock *InitialiserMock) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
-	if mock.DoGetKafkaV3ConsumerFunc == nil {
-		panic("InitialiserMock.DoGetKafkaV3ConsumerFunc: method is nil but Initialiser.DoGetKafkaV3Consumer was just called")
+// DoGetKafkaImagePublishedConsumer calls DoGetKafkaImagePublishedConsumerFunc.
+func (mock *InitialiserMock) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+	if mock.DoGetKafkaImagePublishedConsumerFunc == nil {
+		panic("InitialiserMock.DoGetKafkaImagePublishedConsumerFunc: method is nil but Initialiser.DoGetKafkaImagePublishedConsumer was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -371,16 +371,16 @@ func (mock *InitialiserMock) DoGetKafkaV3Consumer(ctx context.Context, cfg *conf
 		Ctx: ctx,
 		Cfg: cfg,
 	}
-	mock.lockDoGetKafkaV3Consumer.Lock()
-	mock.calls.DoGetKafkaV3Consumer = append(mock.calls.DoGetKafkaV3Consumer, callInfo)
-	mock.lockDoGetKafkaV3Consumer.Unlock()
-	return mock.DoGetKafkaV3ConsumerFunc(ctx, cfg)
+	mock.lockDoGetKafkaImagePublishedConsumer.Lock()
+	mock.calls.DoGetKafkaImagePublishedConsumer = append(mock.calls.DoGetKafkaImagePublishedConsumer, callInfo)
+	mock.lockDoGetKafkaImagePublishedConsumer.Unlock()
+	return mock.DoGetKafkaImagePublishedConsumerFunc(ctx, cfg)
 }
 
-// DoGetKafkaV3ConsumerCalls gets all the calls that were made to DoGetKafkaV3Consumer.
+// DoGetKafkaImagePublishedConsumerCalls gets all the calls that were made to DoGetKafkaImagePublishedConsumer.
 // Check the length with:
-//     len(mockedInitialiser.DoGetKafkaV3ConsumerCalls())
-func (mock *InitialiserMock) DoGetKafkaV3ConsumerCalls() []struct {
+//     len(mockedInitialiser.DoGetKafkaImagePublishedConsumerCalls())
+func (mock *InitialiserMock) DoGetKafkaImagePublishedConsumerCalls() []struct {
 	Ctx context.Context
 	Cfg *config.Config
 } {
@@ -388,9 +388,9 @@ func (mock *InitialiserMock) DoGetKafkaV3ConsumerCalls() []struct {
 		Ctx context.Context
 		Cfg *config.Config
 	}
-	mock.lockDoGetKafkaV3Consumer.RLock()
-	calls = mock.calls.DoGetKafkaV3Consumer
-	mock.lockDoGetKafkaV3Consumer.RUnlock()
+	mock.lockDoGetKafkaImagePublishedConsumer.RLock()
+	calls = mock.calls.DoGetKafkaImagePublishedConsumer
+	mock.lockDoGetKafkaImagePublishedConsumer.RUnlock()
 	return calls
 }
 

@@ -98,7 +98,7 @@ func (e *ExternalServiceList) GetFilesService(ctx context.Context, cfg *config.C
 
 // GetKafkaConsumer creates a Kafka consumer and sets the consumer flag to true
 func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
-	kafkaConsumerGroup, err := e.Init.DoGetKafkaConsumer(ctx, cfg)
+	kafkaConsumerGroup, err := e.Init.DoGetKafkaImagePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (e *ExternalServiceList) GetKafkaConsumer(ctx context.Context, cfg *config.
 
 // GetKafkaConsumerV3 creates a Kafka consumer and sets the consumer flag to true
 func (e *ExternalServiceList) GetKafkaConsumerV3(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
-	kafkaV3ConsumerGroup, err := e.Init.DoGetKafkaV3Consumer(ctx, cfg)
+	kafkaV3ConsumerGroup, err := e.Init.DoGetKafkaFilePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

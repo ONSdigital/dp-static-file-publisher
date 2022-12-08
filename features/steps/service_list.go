@@ -76,7 +76,7 @@ func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *confi
 	}
 }
 
-func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 	kafkaOffset := kafka.OffsetOldest
 	cgConfig := &kafka.ConsumerGroupConfig{
 		KafkaVersion: &cfg.KafkaVersion,
@@ -87,7 +87,7 @@ func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *conf
 	return cg, err
 }
 
-func (e *fakeServiceContainer) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
 	kafkaOffset := kafkaV3.OffsetOldest
 
 	gc := kafkaV3.ConsumerGroupConfig{

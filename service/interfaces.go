@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"net/http"
+
+	"github.com/ONSdigital/dp-static-file-publisher/file"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
@@ -24,8 +25,8 @@ type Initialiser interface {
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
 	DoGetVault(cfg *config.Config) (event.VaultClient, error)
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
-	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
-	DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error)
+	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
+	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error)
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
 	DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error)
