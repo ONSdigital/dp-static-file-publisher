@@ -49,17 +49,8 @@ type HealthChecker interface {
 type KafkaConsumer interface {
 	Start() error
 	RegisterBatchHandler(ctx context.Context, batchHandler kafka.BatchHandler) error
+	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Stop() error
 	StateWait(state kafka.State)
-	Checker(ctx context.Context, state *healthcheck.CheckState) error
-
-	Channels() *kafka.ConsumerGroupChannels
 	Close(ctx context.Context) (err error)
-	Initialise(ctx context.Context) error
-	IsInitialised() bool
-	State() kafka.State
-	RegisterHandler(ctx context.Context, h kafka.Handler) error
-	OnHealthUpdate(status string)
-	StopAndWait() error
-	LogErrors(ctx context.Context)
 }
