@@ -36,10 +36,10 @@ var _ service.Initialiser = &InitialiserMock{}
 // 			DoGetImageAPIClientFunc: func(cfg *config.Config) event.ImageAPIClient {
 // 				panic("mock out the DoGetImageAPIClient method")
 // 			},
-// 			DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+// 			DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 // 				panic("mock out the DoGetKafkaFilePublishedConsumer method")
 // 			},
-// 			DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+// 			DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 // 				panic("mock out the DoGetKafkaImagePublishedConsumer method")
 // 			},
 // 			DoGetS3ClientFunc: func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
@@ -74,10 +74,10 @@ type InitialiserMock struct {
 	DoGetImageAPIClientFunc func(cfg *config.Config) event.ImageAPIClient
 
 	// DoGetKafkaFilePublishedConsumerFunc mocks the DoGetKafkaFilePublishedConsumer method.
-	DoGetKafkaFilePublishedConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error)
+	DoGetKafkaFilePublishedConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error)
 
 	// DoGetKafkaImagePublishedConsumerFunc mocks the DoGetKafkaImagePublishedConsumer method.
-	DoGetKafkaImagePublishedConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error)
+	DoGetKafkaImagePublishedConsumerFunc func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error)
 
 	// DoGetS3ClientFunc mocks the DoGetS3Client method.
 	DoGetS3ClientFunc func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
@@ -325,7 +325,7 @@ func (mock *InitialiserMock) DoGetImageAPIClientCalls() []struct {
 }
 
 // DoGetKafkaFilePublishedConsumer calls DoGetKafkaFilePublishedConsumerFunc.
-func (mock *InitialiserMock) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+func (mock *InitialiserMock) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 	if mock.DoGetKafkaFilePublishedConsumerFunc == nil {
 		panic("InitialiserMock.DoGetKafkaFilePublishedConsumerFunc: method is nil but Initialiser.DoGetKafkaFilePublishedConsumer was just called")
 	}
@@ -360,7 +360,7 @@ func (mock *InitialiserMock) DoGetKafkaFilePublishedConsumerCalls() []struct {
 }
 
 // DoGetKafkaImagePublishedConsumer calls DoGetKafkaImagePublishedConsumerFunc.
-func (mock *InitialiserMock) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+func (mock *InitialiserMock) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 	if mock.DoGetKafkaImagePublishedConsumerFunc == nil {
 		panic("InitialiserMock.DoGetKafkaImagePublishedConsumerFunc: method is nil but Initialiser.DoGetKafkaImagePublishedConsumer was just called")
 	}

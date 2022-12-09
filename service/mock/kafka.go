@@ -11,16 +11,16 @@ import (
 	"sync"
 )
 
-// Ensure, that KafkaConsumerV3Mock does implement service.KafkaConsumerV3.
+// Ensure, that KafkaConsumerMock does implement service.KafkaConsumer.
 // If this is not the case, regenerate this file with moq.
-var _ service.KafkaConsumerV3 = &KafkaConsumerV3Mock{}
+var _ service.KafkaConsumer = &KafkaConsumerMock{}
 
-// KafkaConsumerV3Mock is a mock implementation of service.KafkaConsumerV3.
+// KafkaConsumerMock is a mock implementation of service.KafkaConsumer.
 //
-// 	func TestSomethingThatUsesKafkaConsumerV3(t *testing.T) {
+// 	func TestSomethingThatUsesKafkaConsumer(t *testing.T) {
 //
-// 		// make and configure a mocked service.KafkaConsumerV3
-// 		mockedKafkaConsumerV3 := &KafkaConsumerV3Mock{
+// 		// make and configure a mocked service.KafkaConsumer
+// 		mockedKafkaConsumer := &KafkaConsumerMock{
 // 			ChannelsFunc: func() *kafka.ConsumerGroupChannels {
 // 				panic("mock out the Channels method")
 // 			},
@@ -65,11 +65,11 @@ var _ service.KafkaConsumerV3 = &KafkaConsumerV3Mock{}
 // 			},
 // 		}
 //
-// 		// use mockedKafkaConsumerV3 in code that requires service.KafkaConsumerV3
+// 		// use mockedKafkaConsumer in code that requires service.KafkaConsumer
 // 		// and then make assertions.
 //
 // 	}
-type KafkaConsumerV3Mock struct {
+type KafkaConsumerMock struct {
 	// ChannelsFunc mocks the Channels method.
 	ChannelsFunc func() *kafka.ConsumerGroupChannels
 
@@ -196,9 +196,9 @@ type KafkaConsumerV3Mock struct {
 }
 
 // Channels calls ChannelsFunc.
-func (mock *KafkaConsumerV3Mock) Channels() *kafka.ConsumerGroupChannels {
+func (mock *KafkaConsumerMock) Channels() *kafka.ConsumerGroupChannels {
 	if mock.ChannelsFunc == nil {
-		panic("KafkaConsumerV3Mock.ChannelsFunc: method is nil but KafkaConsumerV3.Channels was just called")
+		panic("KafkaConsumerMock.ChannelsFunc: method is nil but KafkaConsumer.Channels was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -210,8 +210,8 @@ func (mock *KafkaConsumerV3Mock) Channels() *kafka.ConsumerGroupChannels {
 
 // ChannelsCalls gets all the calls that were made to Channels.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.ChannelsCalls())
-func (mock *KafkaConsumerV3Mock) ChannelsCalls() []struct {
+//     len(mockedKafkaConsumer.ChannelsCalls())
+func (mock *KafkaConsumerMock) ChannelsCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -222,9 +222,9 @@ func (mock *KafkaConsumerV3Mock) ChannelsCalls() []struct {
 }
 
 // Checker calls CheckerFunc.
-func (mock *KafkaConsumerV3Mock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
+func (mock *KafkaConsumerMock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
 	if mock.CheckerFunc == nil {
-		panic("KafkaConsumerV3Mock.CheckerFunc: method is nil but KafkaConsumerV3.Checker was just called")
+		panic("KafkaConsumerMock.CheckerFunc: method is nil but KafkaConsumer.Checker was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
@@ -241,8 +241,8 @@ func (mock *KafkaConsumerV3Mock) Checker(ctx context.Context, state *healthcheck
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.CheckerCalls())
-func (mock *KafkaConsumerV3Mock) CheckerCalls() []struct {
+//     len(mockedKafkaConsumer.CheckerCalls())
+func (mock *KafkaConsumerMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
 } {
@@ -257,9 +257,9 @@ func (mock *KafkaConsumerV3Mock) CheckerCalls() []struct {
 }
 
 // Close calls CloseFunc.
-func (mock *KafkaConsumerV3Mock) Close(ctx context.Context) error {
+func (mock *KafkaConsumerMock) Close(ctx context.Context) error {
 	if mock.CloseFunc == nil {
-		panic("KafkaConsumerV3Mock.CloseFunc: method is nil but KafkaConsumerV3.Close was just called")
+		panic("KafkaConsumerMock.CloseFunc: method is nil but KafkaConsumer.Close was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -274,8 +274,8 @@ func (mock *KafkaConsumerV3Mock) Close(ctx context.Context) error {
 
 // CloseCalls gets all the calls that were made to Close.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.CloseCalls())
-func (mock *KafkaConsumerV3Mock) CloseCalls() []struct {
+//     len(mockedKafkaConsumer.CloseCalls())
+func (mock *KafkaConsumerMock) CloseCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -288,9 +288,9 @@ func (mock *KafkaConsumerV3Mock) CloseCalls() []struct {
 }
 
 // Initialise calls InitialiseFunc.
-func (mock *KafkaConsumerV3Mock) Initialise(ctx context.Context) error {
+func (mock *KafkaConsumerMock) Initialise(ctx context.Context) error {
 	if mock.InitialiseFunc == nil {
-		panic("KafkaConsumerV3Mock.InitialiseFunc: method is nil but KafkaConsumerV3.Initialise was just called")
+		panic("KafkaConsumerMock.InitialiseFunc: method is nil but KafkaConsumer.Initialise was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -305,8 +305,8 @@ func (mock *KafkaConsumerV3Mock) Initialise(ctx context.Context) error {
 
 // InitialiseCalls gets all the calls that were made to Initialise.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.InitialiseCalls())
-func (mock *KafkaConsumerV3Mock) InitialiseCalls() []struct {
+//     len(mockedKafkaConsumer.InitialiseCalls())
+func (mock *KafkaConsumerMock) InitialiseCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -319,9 +319,9 @@ func (mock *KafkaConsumerV3Mock) InitialiseCalls() []struct {
 }
 
 // IsInitialised calls IsInitialisedFunc.
-func (mock *KafkaConsumerV3Mock) IsInitialised() bool {
+func (mock *KafkaConsumerMock) IsInitialised() bool {
 	if mock.IsInitialisedFunc == nil {
-		panic("KafkaConsumerV3Mock.IsInitialisedFunc: method is nil but KafkaConsumerV3.IsInitialised was just called")
+		panic("KafkaConsumerMock.IsInitialisedFunc: method is nil but KafkaConsumer.IsInitialised was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -333,8 +333,8 @@ func (mock *KafkaConsumerV3Mock) IsInitialised() bool {
 
 // IsInitialisedCalls gets all the calls that were made to IsInitialised.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.IsInitialisedCalls())
-func (mock *KafkaConsumerV3Mock) IsInitialisedCalls() []struct {
+//     len(mockedKafkaConsumer.IsInitialisedCalls())
+func (mock *KafkaConsumerMock) IsInitialisedCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -345,9 +345,9 @@ func (mock *KafkaConsumerV3Mock) IsInitialisedCalls() []struct {
 }
 
 // LogErrors calls LogErrorsFunc.
-func (mock *KafkaConsumerV3Mock) LogErrors(ctx context.Context) {
+func (mock *KafkaConsumerMock) LogErrors(ctx context.Context) {
 	if mock.LogErrorsFunc == nil {
-		panic("KafkaConsumerV3Mock.LogErrorsFunc: method is nil but KafkaConsumerV3.LogErrors was just called")
+		panic("KafkaConsumerMock.LogErrorsFunc: method is nil but KafkaConsumer.LogErrors was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -362,8 +362,8 @@ func (mock *KafkaConsumerV3Mock) LogErrors(ctx context.Context) {
 
 // LogErrorsCalls gets all the calls that were made to LogErrors.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.LogErrorsCalls())
-func (mock *KafkaConsumerV3Mock) LogErrorsCalls() []struct {
+//     len(mockedKafkaConsumer.LogErrorsCalls())
+func (mock *KafkaConsumerMock) LogErrorsCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -376,9 +376,9 @@ func (mock *KafkaConsumerV3Mock) LogErrorsCalls() []struct {
 }
 
 // OnHealthUpdate calls OnHealthUpdateFunc.
-func (mock *KafkaConsumerV3Mock) OnHealthUpdate(status string) {
+func (mock *KafkaConsumerMock) OnHealthUpdate(status string) {
 	if mock.OnHealthUpdateFunc == nil {
-		panic("KafkaConsumerV3Mock.OnHealthUpdateFunc: method is nil but KafkaConsumerV3.OnHealthUpdate was just called")
+		panic("KafkaConsumerMock.OnHealthUpdateFunc: method is nil but KafkaConsumer.OnHealthUpdate was just called")
 	}
 	callInfo := struct {
 		Status string
@@ -393,8 +393,8 @@ func (mock *KafkaConsumerV3Mock) OnHealthUpdate(status string) {
 
 // OnHealthUpdateCalls gets all the calls that were made to OnHealthUpdate.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.OnHealthUpdateCalls())
-func (mock *KafkaConsumerV3Mock) OnHealthUpdateCalls() []struct {
+//     len(mockedKafkaConsumer.OnHealthUpdateCalls())
+func (mock *KafkaConsumerMock) OnHealthUpdateCalls() []struct {
 	Status string
 } {
 	var calls []struct {
@@ -407,9 +407,9 @@ func (mock *KafkaConsumerV3Mock) OnHealthUpdateCalls() []struct {
 }
 
 // RegisterBatchHandler calls RegisterBatchHandlerFunc.
-func (mock *KafkaConsumerV3Mock) RegisterBatchHandler(ctx context.Context, batchHandler kafka.BatchHandler) error {
+func (mock *KafkaConsumerMock) RegisterBatchHandler(ctx context.Context, batchHandler kafka.BatchHandler) error {
 	if mock.RegisterBatchHandlerFunc == nil {
-		panic("KafkaConsumerV3Mock.RegisterBatchHandlerFunc: method is nil but KafkaConsumerV3.RegisterBatchHandler was just called")
+		panic("KafkaConsumerMock.RegisterBatchHandlerFunc: method is nil but KafkaConsumer.RegisterBatchHandler was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
@@ -426,8 +426,8 @@ func (mock *KafkaConsumerV3Mock) RegisterBatchHandler(ctx context.Context, batch
 
 // RegisterBatchHandlerCalls gets all the calls that were made to RegisterBatchHandler.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.RegisterBatchHandlerCalls())
-func (mock *KafkaConsumerV3Mock) RegisterBatchHandlerCalls() []struct {
+//     len(mockedKafkaConsumer.RegisterBatchHandlerCalls())
+func (mock *KafkaConsumerMock) RegisterBatchHandlerCalls() []struct {
 	Ctx          context.Context
 	BatchHandler kafka.BatchHandler
 } {
@@ -442,9 +442,9 @@ func (mock *KafkaConsumerV3Mock) RegisterBatchHandlerCalls() []struct {
 }
 
 // RegisterHandler calls RegisterHandlerFunc.
-func (mock *KafkaConsumerV3Mock) RegisterHandler(ctx context.Context, h kafka.Handler) error {
+func (mock *KafkaConsumerMock) RegisterHandler(ctx context.Context, h kafka.Handler) error {
 	if mock.RegisterHandlerFunc == nil {
-		panic("KafkaConsumerV3Mock.RegisterHandlerFunc: method is nil but KafkaConsumerV3.RegisterHandler was just called")
+		panic("KafkaConsumerMock.RegisterHandlerFunc: method is nil but KafkaConsumer.RegisterHandler was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -461,8 +461,8 @@ func (mock *KafkaConsumerV3Mock) RegisterHandler(ctx context.Context, h kafka.Ha
 
 // RegisterHandlerCalls gets all the calls that were made to RegisterHandler.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.RegisterHandlerCalls())
-func (mock *KafkaConsumerV3Mock) RegisterHandlerCalls() []struct {
+//     len(mockedKafkaConsumer.RegisterHandlerCalls())
+func (mock *KafkaConsumerMock) RegisterHandlerCalls() []struct {
 	Ctx context.Context
 	H   kafka.Handler
 } {
@@ -477,9 +477,9 @@ func (mock *KafkaConsumerV3Mock) RegisterHandlerCalls() []struct {
 }
 
 // Start calls StartFunc.
-func (mock *KafkaConsumerV3Mock) Start() error {
+func (mock *KafkaConsumerMock) Start() error {
 	if mock.StartFunc == nil {
-		panic("KafkaConsumerV3Mock.StartFunc: method is nil but KafkaConsumerV3.Start was just called")
+		panic("KafkaConsumerMock.StartFunc: method is nil but KafkaConsumer.Start was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -491,8 +491,8 @@ func (mock *KafkaConsumerV3Mock) Start() error {
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.StartCalls())
-func (mock *KafkaConsumerV3Mock) StartCalls() []struct {
+//     len(mockedKafkaConsumer.StartCalls())
+func (mock *KafkaConsumerMock) StartCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -503,9 +503,9 @@ func (mock *KafkaConsumerV3Mock) StartCalls() []struct {
 }
 
 // State calls StateFunc.
-func (mock *KafkaConsumerV3Mock) State() kafka.State {
+func (mock *KafkaConsumerMock) State() kafka.State {
 	if mock.StateFunc == nil {
-		panic("KafkaConsumerV3Mock.StateFunc: method is nil but KafkaConsumerV3.State was just called")
+		panic("KafkaConsumerMock.StateFunc: method is nil but KafkaConsumer.State was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -517,8 +517,8 @@ func (mock *KafkaConsumerV3Mock) State() kafka.State {
 
 // StateCalls gets all the calls that were made to State.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.StateCalls())
-func (mock *KafkaConsumerV3Mock) StateCalls() []struct {
+//     len(mockedKafkaConsumer.StateCalls())
+func (mock *KafkaConsumerMock) StateCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -529,9 +529,9 @@ func (mock *KafkaConsumerV3Mock) StateCalls() []struct {
 }
 
 // StateWait calls StateWaitFunc.
-func (mock *KafkaConsumerV3Mock) StateWait(state kafka.State) {
+func (mock *KafkaConsumerMock) StateWait(state kafka.State) {
 	if mock.StateWaitFunc == nil {
-		panic("KafkaConsumerV3Mock.StateWaitFunc: method is nil but KafkaConsumerV3.StateWait was just called")
+		panic("KafkaConsumerMock.StateWaitFunc: method is nil but KafkaConsumer.StateWait was just called")
 	}
 	callInfo := struct {
 		State kafka.State
@@ -546,8 +546,8 @@ func (mock *KafkaConsumerV3Mock) StateWait(state kafka.State) {
 
 // StateWaitCalls gets all the calls that were made to StateWait.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.StateWaitCalls())
-func (mock *KafkaConsumerV3Mock) StateWaitCalls() []struct {
+//     len(mockedKafkaConsumer.StateWaitCalls())
+func (mock *KafkaConsumerMock) StateWaitCalls() []struct {
 	State kafka.State
 } {
 	var calls []struct {
@@ -560,9 +560,9 @@ func (mock *KafkaConsumerV3Mock) StateWaitCalls() []struct {
 }
 
 // Stop calls StopFunc.
-func (mock *KafkaConsumerV3Mock) Stop() error {
+func (mock *KafkaConsumerMock) Stop() error {
 	if mock.StopFunc == nil {
-		panic("KafkaConsumerV3Mock.StopFunc: method is nil but KafkaConsumerV3.Stop was just called")
+		panic("KafkaConsumerMock.StopFunc: method is nil but KafkaConsumer.Stop was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -574,8 +574,8 @@ func (mock *KafkaConsumerV3Mock) Stop() error {
 
 // StopCalls gets all the calls that were made to Stop.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.StopCalls())
-func (mock *KafkaConsumerV3Mock) StopCalls() []struct {
+//     len(mockedKafkaConsumer.StopCalls())
+func (mock *KafkaConsumerMock) StopCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -586,9 +586,9 @@ func (mock *KafkaConsumerV3Mock) StopCalls() []struct {
 }
 
 // StopAndWait calls StopAndWaitFunc.
-func (mock *KafkaConsumerV3Mock) StopAndWait() error {
+func (mock *KafkaConsumerMock) StopAndWait() error {
 	if mock.StopAndWaitFunc == nil {
-		panic("KafkaConsumerV3Mock.StopAndWaitFunc: method is nil but KafkaConsumerV3.StopAndWait was just called")
+		panic("KafkaConsumerMock.StopAndWaitFunc: method is nil but KafkaConsumer.StopAndWait was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -600,8 +600,8 @@ func (mock *KafkaConsumerV3Mock) StopAndWait() error {
 
 // StopAndWaitCalls gets all the calls that were made to StopAndWait.
 // Check the length with:
-//     len(mockedKafkaConsumerV3.StopAndWaitCalls())
-func (mock *KafkaConsumerV3Mock) StopAndWaitCalls() []struct {
+//     len(mockedKafkaConsumer.StopAndWaitCalls())
+func (mock *KafkaConsumerMock) StopAndWaitCalls() []struct {
 } {
 	var calls []struct {
 	}

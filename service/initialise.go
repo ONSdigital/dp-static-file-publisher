@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -24,31 +24,31 @@ import (
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
-	Vault                    bool
-	ImageAPI                 bool
-	FilesService             bool
-	HealthCheck              bool
-	KafkaConsumerPublished   bool
-	KafkaConsumerV3Published bool
-	S3Private                bool
-	S3Public                 bool
-	S3ClientV2               bool
-	Init                     Initialiser
+	Vault                       bool
+	ImageAPI                    bool
+	FilesService                bool
+	HealthCheck                 bool
+	KafkaImagePublishedConsumer bool
+	KafkaFilePublishedConsumer  bool
+	S3Private                   bool
+	S3Public                    bool
+	S3ClientV2                  bool
+	Init                        Initialiser
 }
 
 // NewServiceList creates a new service list with the provided initialiser
 func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 	return &ExternalServiceList{
-		Vault:                    false,
-		ImageAPI:                 false,
-		HealthCheck:              false,
-		KafkaConsumerPublished:   false,
-		KafkaConsumerV3Published: false,
-		S3Private:                false,
-		S3Public:                 false,
-		S3ClientV2:               false,
-		FilesService:             false,
-		Init:                     initialiser,
+		Vault:                       false,
+		ImageAPI:                    false,
+		HealthCheck:                 false,
+		KafkaImagePublishedConsumer: false,
+		KafkaFilePublishedConsumer:  false,
+		S3Private:                   false,
+		S3Public:                    false,
+		S3ClientV2:                  false,
+		FilesService:                false,
+		Init:                        initialiser,
 	}
 }
 
@@ -96,23 +96,23 @@ func (e *ExternalServiceList) GetFilesService(ctx context.Context, cfg *config.C
 }
 
 // GetKafkaImagePublishedConsumer creates a Kafka consumer and sets the consumer flag to true
-func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
-	kafkaConsumerGroup, err := e.Init.DoGetKafkaImagePublishedConsumer(ctx, cfg)
+func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+	imagePublishedConsumer, err := e.Init.DoGetKafkaImagePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	e.KafkaConsumerPublished = true
-	return kafkaConsumerGroup, nil
+	e.KafkaImagePublishedConsumer = true
+	return imagePublishedConsumer, nil
 }
 
 // GetKafkaFilePublishedConsumer creates a Kafka consumer and sets the consumer flag to true
-func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
-	kafkaV3ConsumerGroup, err := e.Init.DoGetKafkaFilePublishedConsumer(ctx, cfg)
+func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+	filePublishedConsumer, err := e.Init.DoGetKafkaFilePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	e.KafkaConsumerV3Published = true
-	return kafkaV3ConsumerGroup, nil
+	e.KafkaFilePublishedConsumer = true
+	return filePublishedConsumer, nil
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
@@ -178,40 +178,14 @@ func (e *Init) DoGetFilesService(ctx context.Context, cfg *config.Config) file.F
 }
 
 // DoGetKafkaImagePublishedConsumer returns a Kafka Consumer group
-func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
-
+func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
 	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.ImageFilePublishedTopic)
-
-	// cgChannels := kafkaV2.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers)
-	// kafkaOffset := kafkaV2.OffsetOldest
-
-	// cConfig := &kafkaV2.ConsumerGroupConfig{
-	// 	Offset:       &kafkaOffset,
-	// 	KafkaVersion: &cfg.KafkaVersion,
-	// }
-	// if cfg.KafkaSecProtocol == "TLS" {
-	// 	cConfig.SecurityConfig = kafkaV2.GetSecurityConfig(
-	// 		cfg.KafkaSecCACerts,
-	// 		cfg.KafkaSecClientCert,
-	// 		cfg.KafkaSecClientKey,
-	// 		cfg.KafkaSecSkipVerify,
-	// 	)
-	// }
-
-	// return kafkaV2.NewConsumerGroup(
-	// 	ctx,
-	// 	cfg.KafkaAddr,
-	// 	cfg.ImageFilePublishedTopic,
-	// 	cfg.ConsumerGroup,
-	// 	cgChannels,
-	// 	cConfig,
-	// )
 }
 
-func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, topic string) (KafkaConsumerV3, error) {
-	kafkaOffset := kafkaV3.OffsetOldest
+func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, topic string) (KafkaConsumer, error) {
+	kafkaOffset := kafka.OffsetOldest
 
-	gc := kafkaV3.ConsumerGroupConfig{
+	gc := kafka.ConsumerGroupConfig{
 		KafkaVersion:      &cfg.KafkaVersion,
 		Offset:            &kafkaOffset,
 		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
@@ -224,7 +198,7 @@ func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, 
 	}
 
 	if cfg.KafkaSecProtocol == "TLS" {
-		gc.SecurityConfig = &kafkaV3.SecurityConfig{
+		gc.SecurityConfig = &kafka.SecurityConfig{
 			RootCACerts:        cfg.KafkaSecCACerts,
 			ClientCert:         cfg.KafkaSecClientCert,
 			ClientKey:          cfg.KafkaSecClientKey,
@@ -232,10 +206,10 @@ func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, 
 		}
 	}
 
-	return kafkaV3.NewConsumerGroup(ctx, &gc)
+	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error) {
+func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
 	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.StaticFilePublishedTopic)
 }
 

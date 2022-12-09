@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
 	dps3v2 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
@@ -74,10 +74,10 @@ func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *confi
 	}
 }
 
-func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
-	kafkaOffset := kafkaV3.OffsetOldest
+func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+	kafkaOffset := kafka.OffsetOldest
 
-	gc := kafkaV3.ConsumerGroupConfig{
+	gc := kafka.ConsumerGroupConfig{
 		KafkaVersion:      &cfg.KafkaVersion,
 		Offset:            &kafkaOffset,
 		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
@@ -86,13 +86,13 @@ func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Cont
 		BrokerAddrs:       cfg.KafkaAddr,
 	}
 
-	return kafkaV3.NewConsumerGroup(ctx, &gc)
+	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
-	kafkaOffset := kafkaV3.OffsetOldest
+func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+	kafkaOffset := kafka.OffsetOldest
 
-	gc := kafkaV3.ConsumerGroupConfig{
+	gc := kafka.ConsumerGroupConfig{
 		KafkaVersion:      &cfg.KafkaVersion,
 		Offset:            &kafkaOffset,
 		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
@@ -101,7 +101,7 @@ func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Conte
 		BrokerAddrs:       cfg.KafkaAddr,
 	}
 
-	return kafkaV3.NewConsumerGroup(ctx, &gc)
+	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
 func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {

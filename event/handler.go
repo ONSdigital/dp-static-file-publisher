@@ -77,7 +77,7 @@ type ImageAPIClient interface {
 
 // Handle takes a single event. It reads the PSK from Vault, uses it to decrypt the encrypted file
 // from the private S3 bucket, and writes it to the public static bucket without using the vault psk for encryption.
-func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished) (err error) {
+func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished) error {
 	privateBucket := h.S3Private.BucketName()
 	publicBucket := h.S3Public.BucketName()
 	logData := log.Data{
@@ -93,7 +93,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	if err != nil {
 		log.Error(ctx, "error getting image variant from API", err, logData)
 		h.setImageStatusToFailed(ctx, event.ImageID, fmt.Sprintf("error getting image variant '%s' from API", event.ImageVariant))
-		return
+		return err
 	}
 
 	privatePath := event.SrcPath
@@ -114,7 +114,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	if err != nil {
 		log.Error(ctx, "error getting s3 object reader", err, logData)
 		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "error getting s3 object reader")
-		return
+		return err
 	}
 	defer reader.Close()
 
@@ -127,7 +127,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	if err != nil {
 		log.Error(ctx, "error uploading to s3", err, logData)
 		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "failed to upload image to s3")
-		return
+		return err
 	}
 	endTime := time.Now().UTC()
 
@@ -138,7 +138,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	if err != nil {
 		log.Error(ctx, "error putting image variant to API", err, logData)
 		h.setImageStatusToFailed(ctx, event.ImageID, fmt.Sprintf("error putting updated image variant '%s' to API", event.ImageVariant))
-		return
+		return err
 	}
 	log.Info(ctx, "put image download to api", logData)
 	log.Info(ctx, "event successfully handled", logData)
@@ -149,20 +149,20 @@ func (h *ImagePublishedHandler) KafkaHandler(ctx context.Context, msgs []kafka.M
 	logData := log.Data{}
 	schema := schema.ImagePublishedEvent
 	fp := ImagePublished{}
-	log.Info(ctx, fmt.Sprintf("HandleImagePublishedMessage (batched) invoked with %d message(s)", len(msgs)))
+	log.Info(ctx, fmt.Sprintf("ImagePublishedHandler (batched) invoked with %d message(s)", len(msgs)))
 
 	for _, msg := range msgs {
 
 		if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
-			return fmt.Errorf("couldn't unmarshal message: %w", err)
+			return fmt.Errorf("ImagePublishedHandler: couldn't unmarshal message: %w", err)
 		}
 
-		logData["image-published-message"] = fp
-		log.Info(ctx, "message received", logData)
+		logData["message"] = fp
+		log.Info(ctx, "ImagePublishedHandler: message received", logData)
 
 		err := h.Handle(ctx, &fp)
 		if err != nil {
-			log.Error(ctx, "failed to handle event", err)
+			log.Error(ctx, "ImagePublishedHandler: failed to handle event", err)
 			return err
 		}
 
