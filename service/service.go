@@ -21,6 +21,7 @@ type Service struct {
 	HealthCheck                 HealthChecker
 	ImageAPICli                 event.ImageAPIClient
 	KafkaImagePublishedConsumer KafkaConsumer
+	KafkaFilePublishedConsumer  KafkaConsumer
 	S3Public                    event.S3Writer
 	S3Private                   event.S3Reader
 	VaultCli                    event.VaultClient
@@ -58,7 +59,12 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 
-	// Event Handler/Processor for KafkaImagePublishedConsumer with the created S3 Clients and Vault
+	// Initialise KafkaImagePublishedConsumer
+	svc.KafkaImagePublishedConsumer, err = serviceList.GetKafkaImagePublishedConsumer(ctx, cfg)
+	if err != nil {
+		log.Fatal(ctx, "could not instantiate KafkaImagePublishedConsumer", err)
+		return nil, err
+	}
 	handler := &event.ImagePublishedHandler{
 		AuthToken:       cfg.ServiceAuthToken,
 		S3Private:       svc.S3Private,
@@ -68,14 +74,6 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		ImageAPICli:     svc.ImageAPICli,
 		PublicBucketURL: cfg.PublicBucketURL,
 	}
-
-	// Initialise KafkaImagePublishedConsumer
-	svc.KafkaImagePublishedConsumer, err = serviceList.GetKafkaImagePublishedConsumer(ctx, cfg)
-	if err != nil {
-		log.Fatal(ctx, "could not instantiate KafkaImagePublishedConsumer", err)
-		return nil, err
-	}
-
 	if err := svc.KafkaImagePublishedConsumer.RegisterBatchHandler(ctx, handler.KafkaHandler); err != nil {
 		log.Fatal(ctx, "failed to register image published message handler", err)
 		return nil, err
@@ -86,24 +84,21 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	}
 
 	// Initialise KafkaFilePublishedConsumer
-	// TODO: asfsa
-	filePublishedConsumer, err := serviceList.GetKafkaFilePublishedConsumer(ctx, cfg)
+	svc.KafkaFilePublishedConsumer, err = serviceList.GetKafkaFilePublishedConsumer(ctx, cfg)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate KafkaFilePublishedConsumer", err)
 		return nil, err
 	}
-	if err := filePublishedConsumer.Start(); err != nil {
-		log.Fatal(ctx, "Could not start KafkaFilePublishedConsumer", err)
-		return nil, err
-	}
-
 	dc, err := getDecrypterCopier(ctx, cfg, serviceList, svc)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := filePublishedConsumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
+	if err := svc.KafkaFilePublishedConsumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
 		log.Fatal(ctx, "failed to register file published message handler", err)
+		return nil, err
+	}
+	if err := svc.KafkaFilePublishedConsumer.Start(); err != nil {
+		log.Fatal(ctx, "Could not start KafkaFilePublishedConsumer", err)
 		return nil, err
 	}
 
@@ -172,19 +167,38 @@ func (svc *Service) Close(ctx context.Context) error {
 			hasShutdownError = true
 		}
 
-		// Stop listening Kafka Consumer, if present
+		// Request Kafka consumers to stop, if they're present
 		if svc.ServiceList.KafkaImagePublishedConsumer {
 			if err := svc.KafkaImagePublishedConsumer.Stop(); err != nil {
-				log.Error(ctx, "failed to stop listening kafka consumer", err)
+				log.Error(ctx, "failed to stop KafkaImagePublishedConsumer", err)
 				hasShutdownError = true
 			}
-			svc.KafkaImagePublishedConsumer.StateWait(kafka.Stopped)
+		}
+		if svc.ServiceList.KafkaFilePublishedConsumer {
+			if err := svc.KafkaFilePublishedConsumer.Stop(); err != nil {
+				log.Error(ctx, "failed to stop KafkaFilePublishedConsumer", err)
+				hasShutdownError = true
+			}
 		}
 
-		// Close Kafka Consumer, if present
+		// Wait for them to stop
+		if svc.ServiceList.KafkaImagePublishedConsumer {
+			svc.KafkaImagePublishedConsumer.StateWait(kafka.Stopped)
+		}
+		if svc.ServiceList.KafkaFilePublishedConsumer {
+			svc.KafkaFilePublishedConsumer.StateWait(kafka.Stopped)
+		}
+
+		// Close the Kafka consumers
 		if svc.ServiceList.KafkaImagePublishedConsumer {
 			if err := svc.KafkaImagePublishedConsumer.Close(ctx); err != nil {
-				log.Error(ctx, "failed to stop kafka consumer group", err)
+				log.Error(ctx, "failed to close KafkaImagePublishedConsumer", err)
+				hasShutdownError = true
+			}
+		}
+		if svc.ServiceList.KafkaFilePublishedConsumer {
+			if err := svc.KafkaFilePublishedConsumer.Close(ctx); err != nil {
+				log.Error(ctx, "failed to close KafkaFilePublishedConsumer", err)
 				hasShutdownError = true
 			}
 		}
@@ -223,9 +237,14 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 		log.Error(ctx, "failed to add image api client checker", err)
 	}
 
-	if err = svc.HealthCheck.AddCheck("Kafka Consumer", svc.KafkaImagePublishedConsumer.Checker); err != nil {
+	if err = svc.HealthCheck.AddCheck("Kafka ImagePublished Consumer", svc.KafkaImagePublishedConsumer.Checker); err != nil {
 		hasErrors = true
-		log.Error(ctx, "failed to add kafka consumer checker", err)
+		log.Error(ctx, "failed to add KafkaImagePublishedConsumer checker", err)
+	}
+
+	if err = svc.HealthCheck.AddCheck("Kafka FilePublished Consumer", svc.KafkaFilePublishedConsumer.Checker); err != nil {
+		hasErrors = true
+		log.Error(ctx, "failed to add KafkaFilePublishedConsumer checker", err)
 	}
 
 	if err = svc.HealthCheck.AddCheck("S3 Public", svc.S3Public.Checker); err != nil {
