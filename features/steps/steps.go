@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"sync"
-	"time"
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
@@ -30,11 +28,6 @@ var (
 	expectedContent       string
 )
 
-type actualRequest struct {
-	body       string
-	authHeader string
-}
-
 func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a message to publish the file "([^"]*)" is sent$`, c.aMessageToPublishTheFileIsSent)
 	ctx.Step(`^the content of file "([^"]*)" in the public bucket matches the original plain text content$`, c.theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent)
@@ -54,7 +47,7 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	pub, err := kafka.NewProducer(ctx, &kafka.ProducerConfig{
 		KafkaVersion:      &c.config.KafkaVersion,
 		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             c.config.StaticFilePublishedTopicV2,
+		Topic:             c.config.StaticFilePublishedTopic,
 		BrokerAddrs:       c.config.KafkaAddr,
 	})
 
@@ -89,32 +82,6 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 	}
 
 	c.Initialiser()
-
-	sub, err := kafka.NewConsumerGroup(ctx, &kafka.ConsumerGroupConfig{
-		KafkaVersion:      &c.config.KafkaVersion,
-		Offset:            nil,
-		MinBrokersHealthy: &minBrokersHealthy,
-		Topic:             c.config.StaticFilePublishedTopicV2,
-		GroupName:         "testing",
-		BrokerAddrs:       c.config.KafkaAddr,
-	})
-
-	if err != nil {
-		log.Error(ctx, "Create Kafka consumer group", err)
-	}
-
-	sub.Start()
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	sub.RegisterHandler(ctx, func(ctx context.Context, workerID int, msg kafka.Message) error {
-		time.Sleep(2 * time.Second)
-		wg.Done()
-
-		return nil
-	})
-
-	wg.Wait()
-	sub.Stop()
 
 	return c.ApiFeature.StepError()
 }

@@ -9,13 +9,12 @@ import (
 	"sync"
 	"testing"
 
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
+	"github.com/ONSdigital/dp-kafka/v3/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
-	"github.com/ONSdigital/dp-kafka/v2/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
@@ -57,14 +56,6 @@ var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string, encrypt
 
 var funcDoGetHTTPServerNil = func(bindAddr string, router http.Handler) service.HTTPServer {
 	return nil
-}
-
-// kafkaStubConsumer mock which exposes Channels function returning empty channels
-// to be used on tests that are not supposed to receive any kafka message
-var kafkaStubConsumer = &kafkatest.IConsumerGroupMock{
-	ChannelsFunc: func() *dpkafka.ConsumerGroupChannels {
-		return &dpkafka.ConsumerGroupChannels{}
-	},
 }
 
 func TestRun(t *testing.T) {
@@ -116,10 +107,6 @@ func TestRun(t *testing.T) {
 			return filesSvcClientMock
 		}
 
-		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-			return kafkaStubConsumer, nil
-		}
-
 		funcDoGetS3ClientOK := func(awsRegion string, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
 			return s3ClientMock, nil
 		}
@@ -140,9 +127,9 @@ func TestRun(t *testing.T) {
 			return failingServerMock
 		}
 
-		funcDoGetKafkaV3ConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
-			return &serviceMock.KafkaConsumerV3Mock{
-				RegisterBatchHandlerFunc: func(ctx context.Context, h kafkaV3.BatchHandler) error { return nil },
+		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+			return &serviceMock.KafkaConsumerMock{
+				RegisterBatchHandlerFunc: func(ctx context.Context, h kafka.BatchHandler) error { return nil },
 				StartFunc:                func() error { return nil },
 			}, nil
 		}
@@ -170,39 +157,17 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errVault)
-				So(svcList.KafkaConsumerPublished, ShouldBeFalse)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeFalse)
 				So(svcList.S3Public, ShouldBeFalse)
 				So(svcList.S3Private, ShouldBeFalse)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
-
-		Convey("Given that initialising kafka consumer returns an error", func() {
-			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
-				DoGetVaultFunc:          funcDoGetVaultOK,
-				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:  funcDoGetKafkaConsumerErr,
-			}
-			svcErrors := make(chan error, 1)
-			svcList := service.NewServiceList(initMock)
-			_, err := service.Run(ctx, cfg, svcList, testBuildTime, testGitCommit, testVersion, svcErrors)
-
-			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
-				So(err, ShouldResemble, errKafkaConsumer)
-				So(svcList.KafkaConsumerPublished, ShouldBeFalse)
-				So(svcList.S3Public, ShouldBeFalse)
-				So(svcList.S3Private, ShouldBeFalse)
-				So(svcList.HealthCheck, ShouldBeFalse)
-			})
-		})
-
 		Convey("Given that initialising the S3 client returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
 				DoGetVaultFunc:          funcDoGetVaultOK,
 				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:  funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:       funcDoGetS3ClientFuncErr,
 			}
 			svcErrors := make(chan error, 1)
@@ -211,9 +176,31 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errS3)
-				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeFalse)
 				So(svcList.S3Public, ShouldBeFalse)
 				So(svcList.S3Private, ShouldBeFalse)
+				So(svcList.HealthCheck, ShouldBeFalse)
+			})
+		})
+
+		Convey("Given that initialising kafka consumer returns an error", func() {
+			initMock := &serviceMock.InitialiserMock{
+				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerErr,
+			}
+			svcErrors := make(chan error, 1)
+			svcList := service.NewServiceList(initMock)
+			_, err := service.Run(ctx, cfg, svcList, testBuildTime, testGitCommit, testVersion, svcErrors)
+
+			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
+				So(err, ShouldResemble, errKafkaConsumer)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeFalse)
+				So(svcList.S3Public, ShouldBeTrue)
+				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
@@ -222,14 +209,14 @@ func TestRun(t *testing.T) {
 			s3v2clientErr := errors.New("could not create S3 client v2")
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetHTTPServerNil,
-				DoGetVaultFunc:               funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
-				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
+				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
+				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetS3ClientV2Func: func(awsRegion string, bucketName string) (file.S3ClientV2, error) {
 					return nil, s3v2clientErr
 				},
@@ -240,7 +227,7 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, s3v2clientErr)
-				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeTrue)
 				So(svcList.S3Public, ShouldBeTrue)
 				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.S3ClientV2, ShouldBeFalse)
@@ -250,16 +237,16 @@ func TestRun(t *testing.T) {
 
 		Convey("Given that initialising healthcheck returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetHTTPServerNil,
-				DoGetVaultFunc:               funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:         funcDoGetHealthcheckErr,
-				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
-				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
-				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
+				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:                 funcDoGetHealthcheckErr,
+				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
+				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -267,25 +254,25 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run fails with the same error and the flag is not set", func() {
 				So(err, ShouldResemble, errHealthcheck)
-				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeTrue)
 				So(svcList.S3Public, ShouldBeTrue)
 				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
 
-		Convey("Given that initialising Kafka V3 returns an error", func() {
-			expectedError := errors.New("Kafka V3 failed to initialise")
+		Convey("Given that initialising FilePublishedConsumer returns an error", func() {
+			expectedError := errors.New("FilePublishedConsumer failed to initialise")
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetHTTPServerNil,
-				DoGetVaultFunc:               funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
-				DoGetKafkaV3ConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
+				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
+				DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return nil, expectedError
 				},
 				DoGetS3ClientV2Func:   funcDoGetS3ClientV2OK,
@@ -297,10 +284,10 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run fails with the same error and the flag is not set", func() {
 				So(err, ShouldResemble, expectedError)
-				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeTrue)
 				So(svcList.S3Public, ShouldBeTrue)
 				So(svcList.S3Private, ShouldBeTrue)
-				So(svcList.KafkaConsumerV3Published, ShouldBeFalse)
+				So(svcList.KafkaFilePublishedConsumer, ShouldBeFalse)
 			})
 		})
 
@@ -312,15 +299,15 @@ func TestRun(t *testing.T) {
 			}
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetHTTPServerNil,
-				DoGetVaultFunc:               funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
-				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
-				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
+				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
+				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMockAddFail, nil
 				},
@@ -333,29 +320,30 @@ func TestRun(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddheckFail.Error()))
 				So(svcList.HealthCheck, ShouldBeTrue)
-				So(hcMockAddFail.AddCheckCalls(), ShouldHaveLength, 6)
+				So(hcMockAddFail.AddCheckCalls(), ShouldHaveLength, 7)
 				So(hcMockAddFail.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
 				So(hcMockAddFail.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
-				So(hcMockAddFail.AddCheckCalls()[2].Name, ShouldResemble, "Kafka Consumer")
-				So(hcMockAddFail.AddCheckCalls()[3].Name, ShouldResemble, "S3 Public")
-				So(hcMockAddFail.AddCheckCalls()[4].Name, ShouldResemble, "S3 Private")
-				So(hcMockAddFail.AddCheckCalls()[5].Name, ShouldResemble, "Files Service")
+				So(hcMockAddFail.AddCheckCalls()[2].Name, ShouldResemble, "Kafka ImagePublished Consumer")
+				So(hcMockAddFail.AddCheckCalls()[3].Name, ShouldResemble, "Kafka FilePublished Consumer")
+				So(hcMockAddFail.AddCheckCalls()[4].Name, ShouldResemble, "S3 Public")
+				So(hcMockAddFail.AddCheckCalls()[5].Name, ShouldResemble, "S3 Private")
+				So(hcMockAddFail.AddCheckCalls()[6].Name, ShouldResemble, "Files Service")
 			})
 		})
 
 		Convey("Given that all dependencies are successfully initialised", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetHTTPServer,
-				DoGetVaultFunc:               funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
-				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
-				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
-				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
+				DoGetHTTPServerFunc:                  funcDoGetHTTPServer,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
+				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
+				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -364,20 +352,21 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run succeeds and all the flags are set", func() {
 				So(err, ShouldBeNil)
-				So(svcList.KafkaConsumerPublished, ShouldBeTrue)
+				So(svcList.KafkaImagePublishedConsumer, ShouldBeTrue)
 				So(svcList.S3Public, ShouldBeTrue)
 				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
 				So(svcList.FilesService, ShouldBeTrue)
 
 				Convey("And all healthcheck checks are registered", func() {
-					So(hcMock.AddCheckCalls(), ShouldHaveLength, 6)
+					So(hcMock.AddCheckCalls(), ShouldHaveLength, 7)
 					So(hcMock.AddCheckCalls()[0].Name, ShouldResemble, "Vault")
 					So(hcMock.AddCheckCalls()[1].Name, ShouldResemble, "Image API")
-					So(hcMock.AddCheckCalls()[2].Name, ShouldResemble, "Kafka Consumer")
-					So(hcMock.AddCheckCalls()[3].Name, ShouldResemble, "S3 Public")
-					So(hcMock.AddCheckCalls()[4].Name, ShouldResemble, "S3 Private")
-					So(hcMock.AddCheckCalls()[5].Name, ShouldResemble, "Files Service")
+					So(hcMock.AddCheckCalls()[2].Name, ShouldResemble, "Kafka ImagePublished Consumer")
+					So(hcMock.AddCheckCalls()[3].Name, ShouldResemble, "Kafka FilePublished Consumer")
+					So(hcMock.AddCheckCalls()[4].Name, ShouldResemble, "S3 Public")
+					So(hcMock.AddCheckCalls()[5].Name, ShouldResemble, "S3 Private")
+					So(hcMock.AddCheckCalls()[6].Name, ShouldResemble, "Files Service")
 				})
 			})
 
@@ -394,16 +383,16 @@ func TestRun(t *testing.T) {
 		Convey("Given that all dependencies are successfully initialised but the http server fails", func() {
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:          funcDoGetFailingHTTPServer,
-				DoGetVaultFunc:               funcDoGetVaultOK,
-				DoGetImageAPIClientFunc:      funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaConsumerFunc:       funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:            funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc: funcDoGetS3UploaderWithSessionOK,
-				DoGetHealthCheckFunc:         funcDoGetHealthcheckOK,
-				DoGetKafkaV3ConsumerFunc:     funcDoGetKafkaV3ConsumerOK,
-				DoGetS3ClientV2Func:          funcDoGetS3ClientV2OK,
-				DoGetFilesServiceFunc:        funcDoGetFilesClientFuncOK,
+				DoGetHTTPServerFunc:                  funcDoGetFailingHTTPServer,
+				DoGetVaultFunc:                       funcDoGetVaultOK,
+				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
+				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
+				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
+				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
+				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
+				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -449,12 +438,13 @@ func TestClose(t *testing.T) {
 
 		// consumer group Close and StopListeningToConsumer will fail if healthcheck or http server are not stopped
 		kafkaConsumerMock := &kafkatest.IConsumerGroupMock{
-			StopListeningToConsumerFunc: func(ctx context.Context) error {
+			StopFunc: func() error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer StopListening before healthcheck or HTTP server")
 				}
 				return nil
 			},
+			StateWaitFunc: func(state kafka.State) {},
 			CloseFunc: func(ctx context.Context) error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer stopped before healthcheck or HTTP server")
@@ -471,27 +461,28 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return kafkaConsumerMock, nil
 				},
 			}
 
 			svcList := service.NewServiceList(initMock)
 			svcList.HealthCheck = true
-			svcList.KafkaConsumerPublished = true
+			svcList.KafkaImagePublishedConsumer = true
 			svc := service.Service{
-				Config:             cfg,
-				ServiceList:        svcList,
-				Server:             serverMock,
-				HealthCheck:        hcMock,
-				KafkaConsumerGroup: kafkaConsumerMock,
+				Config:                      cfg,
+				ServiceList:                 svcList,
+				Server:                      serverMock,
+				HealthCheck:                 hcMock,
+				KafkaImagePublishedConsumer: kafkaConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
 			So(err, ShouldBeNil)
 			So(hcMock.StopCalls(), ShouldHaveLength, 1)
 			So(serverMock.ShutdownCalls(), ShouldHaveLength, 1)
-			So(kafkaConsumerMock.StopListeningToConsumerCalls(), ShouldHaveLength, 1)
+			So(kafkaConsumerMock.StopCalls(), ShouldHaveLength, 1)
+			So(kafkaConsumerMock.StateWaitCalls(), ShouldHaveLength, 1)
 			So(kafkaConsumerMock.CloseCalls(), ShouldHaveLength, 1)
 		})
 
@@ -508,9 +499,10 @@ func TestClose(t *testing.T) {
 				CloseFunc: func(ctx context.Context) error {
 					return errors.New("Failed to stop Kafka Consumer")
 				},
-				StopListeningToConsumerFunc: func(ctx context.Context) error {
+				StopFunc: func() error {
 					return errors.New("Failed to stop listening to consumer")
 				},
+				StateWaitFunc: func(state kafka.State) {},
 			}
 
 			initMock := &serviceMock.InitialiserMock{
@@ -520,27 +512,28 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return failingKafkaConsumerMock, nil
 				},
 			}
 
 			svcList := service.NewServiceList(initMock)
 			svcList.HealthCheck = true
-			svcList.KafkaConsumerPublished = true
+			svcList.KafkaImagePublishedConsumer = true
 			svc := service.Service{
-				Config:             cfg,
-				ServiceList:        svcList,
-				Server:             failingserverMock,
-				HealthCheck:        hcMock,
-				KafkaConsumerGroup: failingKafkaConsumerMock,
+				Config:                      cfg,
+				ServiceList:                 svcList,
+				Server:                      failingserverMock,
+				HealthCheck:                 hcMock,
+				KafkaImagePublishedConsumer: failingKafkaConsumerMock,
 			}
 
 			err := svc.Close(context.Background())
 			So(err, ShouldNotBeNil)
 			So(hcMock.StopCalls(), ShouldHaveLength, 1)
 			So(failingserverMock.ShutdownCalls(), ShouldHaveLength, 1)
-			So(failingKafkaConsumerMock.StopListeningToConsumerCalls(), ShouldHaveLength, 1)
+			So(failingKafkaConsumerMock.StopCalls(), ShouldHaveLength, 1)
+			So(failingKafkaConsumerMock.StateWaitCalls(), ShouldHaveLength, 1)
 			So(failingKafkaConsumerMock.CloseCalls(), ShouldHaveLength, 1)
 		})
 	})

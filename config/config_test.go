@@ -34,7 +34,7 @@ func TestConfig(t *testing.T) {
 				So(cfg.KafkaAddr, ShouldResemble, []string{"localhost:9092", "localhost:9093", "localhost:9094"})
 				So(cfg.KafkaVersion, ShouldEqual, "1.0.2")
 				So(cfg.KafkaConsumerWorkers, ShouldEqual, 1)
-				So(cfg.StaticFilePublishedTopic, ShouldEqual, "static-file-published")
+				So(cfg.ImageFilePublishedTopic, ShouldEqual, "static-file-published")
 				So(cfg.ConsumerGroup, ShouldEqual, "dp-static-file-publisher")
 				So(cfg.AwsRegion, ShouldEqual, "eu-west-1")
 				So(cfg.PrivateBucketName, ShouldEqual, "csv-exported")

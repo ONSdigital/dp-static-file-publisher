@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"net/http"
 
+	"github.com/ONSdigital/dp-static-file-publisher/file"
+
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafkaV2 "github.com/ONSdigital/dp-kafka/v2"
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -16,7 +16,7 @@ import (
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
 //go:generate moq -out mock/server.go -pkg mock . HTTPServer
 //go:generate moq -out mock/healthcheck.go -pkg mock . HealthChecker
-//go:generate moq -out mock/kafka.go -pkg mock . KafkaConsumerV3
+//go:generate moq -out mock/kafka.go -pkg mock . KafkaConsumer
 
 // Initialiser defines the methods to initialise external services
 type Initialiser interface {
@@ -24,8 +24,8 @@ type Initialiser interface {
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
 	DoGetVault(cfg *config.Config) (event.VaultClient, error)
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
-	DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
-	DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (KafkaConsumerV3, error)
+	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
+	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
 	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
 	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
 	DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error)
@@ -47,15 +47,10 @@ type HealthChecker interface {
 }
 
 type KafkaConsumer interface {
-	Initialise(ctx context.Context) error
-	IsInitialised() bool
-	StopListeningToConsumer(ctx context.Context) (err error)
-	Close(ctx context.Context) (err error)
-	Checker(ctx context.Context, state *healthcheck.CheckState) error
-	Channels() *kafkaV2.ConsumerGroupChannels
-}
-
-type KafkaConsumerV3 interface {
 	Start() error
-	RegisterBatchHandler(ctx context.Context, batchHandler kafkaV3.BatchHandler) error
+	RegisterBatchHandler(ctx context.Context, batchHandler kafka.BatchHandler) error
+	Checker(ctx context.Context, state *healthcheck.CheckState) error
+	Stop() error
+	StateWait(state kafka.State)
+	Close(ctx context.Context) (err error)
 }

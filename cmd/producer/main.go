@@ -41,9 +41,9 @@ func main() {
 		)
 	}
 
-	kafkaProducer, err := dpkafka.NewProducer(ctx, config.KafkaAddr, config.StaticFilePublishedTopic, pChannels, pConfig)
+	kafkaProducer, err := dpkafka.NewProducer(ctx, config.KafkaAddr, config.ImageFilePublishedTopic, pChannels, pConfig)
 	if err != nil {
-		log.Fatal(ctx, "fatal error trying to create kafka producer", err, log.Data{"topic": config.StaticFilePublishedTopic})
+		log.Fatal(ctx, "fatal error trying to create kafka producer", err, log.Data{"topic": config.ImageFilePublishedTopic})
 		os.Exit(1)
 	}
 

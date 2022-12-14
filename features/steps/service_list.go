@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	kafkaV3 "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v3"
 	dps3v2 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
@@ -14,8 +14,6 @@ import (
 	s3client "github.com/ONSdigital/dp-s3"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-
-	kafka "github.com/ONSdigital/dp-kafka/v2"
 
 	vault "github.com/ONSdigital/dp-vault"
 
@@ -63,7 +61,7 @@ func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.Ima
 	}
 }
 
-func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {	
+func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
 	return &fmock.FilesServiceMock{
 		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 			state.Update("OK", "Files Service API all good", 0)
@@ -76,30 +74,34 @@ func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *confi
 	}
 }
 
-func (e *fakeServiceContainer) DoGetKafkaConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 	kafkaOffset := kafka.OffsetOldest
-	cgConfig := &kafka.ConsumerGroupConfig{
-		KafkaVersion: &cfg.KafkaVersion,
-		Offset:       &kafkaOffset,
-	}
-	cg, err := kafka.NewConsumerGroup(ctx, cfg.KafkaAddr, cfg.StaticFilePublishedTopic, cfg.ConsumerGroup, kafka.CreateConsumerGroupChannels(cfg.KafkaConsumerWorkers), cgConfig)
 
-	return cg, err
-}
-
-func (e *fakeServiceContainer) DoGetKafkaV3Consumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumerV3, error) {
-	kafkaOffset := kafkaV3.OffsetOldest
-
-	gc := kafkaV3.ConsumerGroupConfig{
+	gc := kafka.ConsumerGroupConfig{
 		KafkaVersion:      &cfg.KafkaVersion,
 		Offset:            &kafkaOffset,
 		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
-		Topic:             cfg.StaticFilePublishedTopicV2,
+		Topic:             cfg.ImageFilePublishedTopic,
 		GroupName:         cfg.ConsumerGroup,
 		BrokerAddrs:       cfg.KafkaAddr,
 	}
 
-	return kafkaV3.NewConsumerGroup(ctx, &gc)
+	return kafka.NewConsumerGroup(ctx, &gc)
+}
+
+func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+	kafkaOffset := kafka.OffsetOldest
+
+	gc := kafka.ConsumerGroupConfig{
+		KafkaVersion:      &cfg.KafkaVersion,
+		Offset:            &kafkaOffset,
+		MinBrokersHealthy: &cfg.KafkaMinimumHealthyBrokers,
+		Topic:             cfg.StaticFilePublishedTopic,
+		GroupName:         cfg.ConsumerGroup,
+		BrokerAddrs:       cfg.KafkaAddr,
+	}
+
+	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
 func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
