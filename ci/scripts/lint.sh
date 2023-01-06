@@ -1,6 +1,9 @@
 #!/bin/bash -eux
 
-pushd dp-static-file-publisher
-  go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.43.0
+cwd=$(pwd)
+
+pushd $cwd/log.go
+# Install golangci-lint
+  go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1
   make lint
 popd
