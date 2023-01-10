@@ -20,6 +20,9 @@ exclude github.com/prometheus/client_golang v0.9.2
 // to avoid 'sonatype-2020-1055' non-CVE Vulnerability
 exclude github.com/go-ldap/ldap/v3 v3.1.3
 
+// for linter warning in CI
+replace github.com/blizzy78/varnamelen => github.com/blizzy78/varnamelen v0.8.0
+
 require (
 	github.com/ONSdigital/dp-api-clients-go v1.43.0
 	github.com/ONSdigital/dp-component-test v0.6.5
@@ -48,7 +51,6 @@ require (
 	github.com/ONSdigital/dp-mongodb-in-memory v1.2.0 // indirect
 	github.com/ONSdigital/s3crypto v0.0.0-20180725145621-f8943119a487 // indirect
 	github.com/Shopify/sarama v1.30.1 // indirect
-	github.com/blizzy78/varnamelen v0.8.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20211126220118-81fa0469ad77 // indirect
 	github.com/chromedp/chromedp v0.7.6 // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
@@ -116,7 +118,6 @@ require (
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	golang.org/x/text v0.3.8 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	golang.org/x/tools v0.1.12 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
