@@ -74,11 +74,11 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		ImageAPICli:     svc.ImageAPICli,
 		PublicBucketURL: cfg.PublicBucketURL,
 	}
-	if err := svc.KafkaImagePublishedConsumer.RegisterBatchHandler(ctx, handler.KafkaHandler); err != nil {
+	if err = svc.KafkaImagePublishedConsumer.RegisterBatchHandler(ctx, handler.KafkaHandler); err != nil {
 		log.Fatal(ctx, "failed to register image published message handler", err)
 		return nil, err
 	}
-	if err := svc.KafkaImagePublishedConsumer.Start(); err != nil {
+	if err = svc.KafkaImagePublishedConsumer.Start(); err != nil {
 		log.Fatal(ctx, "Could not start KafkaImagePublishedConsumer", err)
 		return nil, err
 	}
@@ -93,11 +93,11 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	if err != nil {
 		return nil, err
 	}
-	if err := svc.KafkaFilePublishedConsumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
+	if err = svc.KafkaFilePublishedConsumer.RegisterBatchHandler(ctx, dc.HandleFilePublishMessage); err != nil {
 		log.Fatal(ctx, "failed to register file published message handler", err)
 		return nil, err
 	}
-	if err := svc.KafkaFilePublishedConsumer.Start(); err != nil {
+	if err = svc.KafkaFilePublishedConsumer.Start(); err != nil {
 		log.Fatal(ctx, "Could not start KafkaFilePublishedConsumer", err)
 		return nil, err
 	}

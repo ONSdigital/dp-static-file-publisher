@@ -21,7 +21,7 @@ func main() {
 	ctx := context.Background()
 
 	// Get Config
-	config, err := config.Get()
+	cfg, err := config.Get()
 	if err != nil {
 		log.Fatal(ctx, "error getting config", err)
 		os.Exit(1)
@@ -30,20 +30,20 @@ func main() {
 	// Create Kafka Producer
 	pChannels := dpkafka.CreateProducerChannels()
 	pConfig := &dpkafka.ProducerConfig{
-		KafkaVersion: &config.KafkaVersion,
+		KafkaVersion: &cfg.KafkaVersion,
 	}
-	if config.KafkaSecProtocol == "TLS" {
+	if cfg.KafkaSecProtocol == "TLS" {
 		pConfig.SecurityConfig = dpkafka.GetSecurityConfig(
-			config.KafkaSecCACerts,
-			config.KafkaSecClientCert,
-			config.KafkaSecClientKey,
-			config.KafkaSecSkipVerify,
+			cfg.KafkaSecCACerts,
+			cfg.KafkaSecClientCert,
+			cfg.KafkaSecClientKey,
+			cfg.KafkaSecSkipVerify,
 		)
 	}
 
-	kafkaProducer, err := dpkafka.NewProducer(ctx, config.KafkaAddr, config.ImageFilePublishedTopic, pChannels, pConfig)
+	kafkaProducer, err := dpkafka.NewProducer(ctx, cfg.KafkaAddr, cfg.ImageFilePublishedTopic, pChannels, pConfig)
 	if err != nil {
-		log.Fatal(ctx, "fatal error trying to create kafka producer", err, log.Data{"topic": config.ImageFilePublishedTopic})
+		log.Fatal(ctx, "fatal error trying to create kafka producer", err, log.Data{"topic": cfg.ImageFilePublishedTopic})
 		os.Exit(1)
 	}
 
