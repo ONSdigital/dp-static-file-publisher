@@ -32,7 +32,7 @@ const (
 // ErrVaultFilenameEmpty is an error returned when trying to obtain a PSK for an empty file name
 var ErrVaultFilenameEmpty = errors.New("vault filename required but was empty")
 
-// ImagePublishedHandler ...
+// ImagePublishedHandler hold the details for publishing to s3.
 type ImagePublishedHandler struct {
 	AuthToken       string
 	S3Public        S3Writer
