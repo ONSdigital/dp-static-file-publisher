@@ -40,4 +40,5 @@ docker-local:
 	docker-compose -f docker-compose-services.yml -f docker-compose-local.yml exec dp-static-file-publisher bash
 
 lint:
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
 	golangci-lint run ./... --timeout 5m --tests=false --skip-dirs=features
