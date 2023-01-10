@@ -41,4 +41,4 @@ docker-local:
 
 lint:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
-	golangci-lint run ./... --timeout 5m --tests=false --skip-dirs=features
+	golangci-lint run ./... --timeout 10m --tests=false --skip-dirs=features
