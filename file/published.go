@@ -47,7 +47,6 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, msgs []ka
 	log.Info(ctx, fmt.Sprintf("HandleFilePublishMessage (batched) invoked with %d message(s)", len(msgs)))
 
 	for _, msg := range msgs {
-
 		if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
 			return NewCommitError(ctx, err, "Unmarshalling message", logData)
 		}
@@ -68,7 +67,7 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, msgs []ka
 			return err
 		}
 
-		if err := d.notifyFileApiDecryptionComplete(ctx, uploadResponse, fp, logData); err != nil {
+		if err := d.notifyFileAPIDecryptionComplete(ctx, uploadResponse, fp, logData); err != nil {
 			return err
 		}
 	}
@@ -76,8 +75,7 @@ func (d DecrypterCopier) HandleFilePublishMessage(ctx context.Context, msgs []ka
 	return nil
 }
 
-func (d DecrypterCopier) notifyFileApiDecryptionComplete(ctx context.Context, uploadResponse *s3manager.UploadOutput, fp Published, logData log.Data) error {
-
+func (d DecrypterCopier) notifyFileAPIDecryptionComplete(ctx context.Context, uploadResponse *s3manager.UploadOutput, fp Published, logData log.Data) error {
 	err := d.FilesService.MarkFileDecrypted(ctx, fp.Path, *uploadResponse.ETag)
 	if err != nil {
 		logData["file_path"] = fp.Path

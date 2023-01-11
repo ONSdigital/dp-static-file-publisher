@@ -32,7 +32,7 @@ const (
 // ErrVaultFilenameEmpty is an error returned when trying to obtain a PSK for an empty file name
 var ErrVaultFilenameEmpty = errors.New("vault filename required but was empty")
 
-// ImagePublishedHandler ...
+// ImagePublishedHandler hold the details for publishing to s3.
 type ImagePublishedHandler struct {
 	AuthToken       string
 	S3Public        S3Writer
@@ -147,13 +147,12 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 
 func (h *ImagePublishedHandler) KafkaHandler(ctx context.Context, msgs []kafka.Message) error {
 	logData := log.Data{}
-	schema := schema.ImagePublishedEvent
+	schem := schema.ImagePublishedEvent
 	fp := ImagePublished{}
 	log.Info(ctx, fmt.Sprintf("ImagePublishedHandler (batched) invoked with %d message(s)", len(msgs)))
 
 	for _, msg := range msgs {
-
-		if err := schema.Unmarshal(msg.GetData(), &fp); err != nil {
+		if err := schem.Unmarshal(msg.GetData(), &fp); err != nil {
 			return fmt.Errorf("ImagePublishedHandler: couldn't unmarshal message: %w", err)
 		}
 
@@ -165,22 +164,21 @@ func (h *ImagePublishedHandler) KafkaHandler(ctx context.Context, msgs []kafka.M
 			log.Error(ctx, "ImagePublishedHandler: failed to handle event", err)
 			return err
 		}
-
 	}
 	return nil
 }
 
 // Get an S3 reader
-func (h *ImagePublishedHandler) getS3Reader(path string, psk []byte) (reader io.ReadCloser, err error) {
+func (h *ImagePublishedHandler) getS3Reader(imagePath string, psk []byte) (reader io.ReadCloser, err error) {
 	if psk != nil {
 		// Decrypt image from upload bucket using PSK obtained from Vault
-		reader, _, err = h.S3Private.GetWithPSK(path, psk)
+		reader, _, err = h.S3Private.GetWithPSK(imagePath, psk)
 		if err != nil {
 			return
 		}
 	} else {
 		// Get image from upload bucket
-		reader, _, err = h.S3Private.Get(path)
+		reader, _, err = h.S3Private.Get(imagePath)
 		if err != nil {
 			return
 		}
@@ -189,12 +187,12 @@ func (h *ImagePublishedHandler) getS3Reader(path string, psk []byte) (reader io.
 }
 
 // Upload to public S3 from a reader
-func (h *ImagePublishedHandler) uploadToS3(path string, reader io.Reader) error {
+func (h *ImagePublishedHandler) uploadToS3(thePath string, reader io.Reader) error {
 	publicBucket := h.S3Public.BucketName()
 	uploadInput := &s3manager.UploadInput{
 		Body:   reader,
 		Bucket: &publicBucket,
-		Key:    &path,
+		Key:    &thePath,
 	}
 
 	// Upload file to public bucket
@@ -208,7 +206,7 @@ func (h *ImagePublishedHandler) uploadToS3(path string, reader io.Reader) error 
 
 // getVaultKeyForFile reads the encryption key from Vault for the provided path
 func (h *ImagePublishedHandler) getVaultKeyForFile(keyPath string) ([]byte, error) {
-	if len(keyPath) == 0 {
+	if keyPath == "" {
 		return nil, ErrVaultFilenameEmpty
 	}
 
@@ -226,15 +224,15 @@ func (h *ImagePublishedHandler) getVaultKeyForFile(keyPath string) ([]byte, erro
 	return psk, nil
 }
 
-func (h *ImagePublishedHandler) setImageStatusToFailed(ctx context.Context, imageID string, desc string) {
-	image, err := h.ImageAPICli.GetImage(ctx, "", h.AuthToken, "", imageID)
+func (h *ImagePublishedHandler) setImageStatusToFailed(ctx context.Context, imageID, desc string) {
+	img, err := h.ImageAPICli.GetImage(ctx, "", h.AuthToken, "", imageID)
 	if err != nil {
 		log.Error(ctx, "error getting image from API to set failed_publish status", err)
 		return
 	}
-	image.State = failedState
-	image.Error = desc
-	_, err = h.ImageAPICli.PutImage(ctx, "", h.AuthToken, "", imageID, image)
+	img.State = failedState
+	img.Error = desc
+	_, err = h.ImageAPICli.PutImage(ctx, "", h.AuthToken, "", imageID, img)
 	if err != nil {
 		log.Error(ctx, "error putting image to API to set failed_publish  status", err)
 		return

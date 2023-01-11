@@ -1,6 +1,6 @@
 module github.com/ONSdigital/dp-static-file-publisher
 
-go 1.17
+go 1.19
 
 replace github.com/coreos/etcd => github.com/coreos/etcd v3.3.24+incompatible
 
@@ -20,19 +20,22 @@ exclude github.com/prometheus/client_golang v0.9.2
 // to avoid 'sonatype-2020-1055' non-CVE Vulnerability
 exclude github.com/go-ldap/ldap/v3 v3.1.3
 
+// for linter warning in CI
+replace github.com/blizzy78/varnamelen => github.com/blizzy78/varnamelen v0.8.0
+
 require (
 	github.com/ONSdigital/dp-api-clients-go v1.43.0
 	github.com/ONSdigital/dp-component-test v0.6.5
-	github.com/ONSdigital/dp-healthcheck v1.3.0
-	github.com/ONSdigital/dp-kafka/v2 v2.4.4
+	github.com/ONSdigital/dp-healthcheck v1.5.0
+	github.com/ONSdigital/dp-kafka/v2 v2.5.0
 	github.com/ONSdigital/dp-kafka/v3 v3.3.1
 	github.com/ONSdigital/dp-net v1.5.0
-	github.com/ONSdigital/dp-net/v2 v2.4.0
+	github.com/ONSdigital/dp-net/v2 v2.6.0
 	github.com/ONSdigital/dp-s3 v1.6.0
 	github.com/ONSdigital/dp-s3/v2 v2.0.0-beta.3
 	github.com/ONSdigital/dp-vault v1.2.0
 	github.com/ONSdigital/go-ns v0.0.0-20210410105122-6d6a140e952e
-	github.com/ONSdigital/log.go/v2 v2.2.0
+	github.com/ONSdigital/log.go/v2 v2.3.0
 	github.com/aws/aws-sdk-go v1.44.76
 	github.com/cucumber/godog v0.12.4
 	github.com/gorilla/mux v1.8.0
@@ -42,7 +45,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 )
 
-require github.com/ONSdigital/dp-api-clients-go/v2 v2.181.0
+require github.com/ONSdigital/dp-api-clients-go/v2 v2.187.0
 
 require (
 	github.com/ONSdigital/dp-mongodb-in-memory v1.2.0 // indirect
@@ -111,7 +114,7 @@ require (
 	go.mongodb.org/mongo-driver v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	golang.org/x/text v0.3.8 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
