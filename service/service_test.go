@@ -445,7 +445,7 @@ func TestClose(t *testing.T) {
 				return nil
 			},
 			StateWaitFunc: func(state kafka.State) {},
-			CloseFunc: func(ctx context.Context) error {
+			CloseFunc: func(ctx context.Context, optFuncs ...kafka.OptFunc) error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer stopped before healthcheck or HTTP server")
 				}
@@ -496,7 +496,7 @@ func TestClose(t *testing.T) {
 			}
 
 			failingKafkaConsumerMock := &kafkatest.IConsumerGroupMock{
-				CloseFunc: func(ctx context.Context) error {
+				CloseFunc: func(ctx context.Context, optFuncs ...kafka.OptFunc) error {
 					return errors.New("Failed to stop Kafka Consumer")
 				},
 				StopFunc: func() error {

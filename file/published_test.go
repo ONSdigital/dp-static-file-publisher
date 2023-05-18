@@ -272,3 +272,5 @@ func (m MockMessage) Mark()                       {}
 func (m MockMessage) Commit()                     {}
 func (m MockMessage) Release()                    {}
 func (m MockMessage) CommitAndRelease()           {}
+func (m MockMessage) Context() context.Context    { return nil }
+func (m MockMessage) GetHeader(key string) string { return "" }
