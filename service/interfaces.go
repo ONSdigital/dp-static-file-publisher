@@ -52,5 +52,5 @@ type KafkaConsumer interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Stop() error
 	StateWait(state kafka.State)
-	Close(ctx context.Context) (err error)
+	Close(ctx context.Context, optFuncs ...kafka.OptFunc) (err error)
 }
