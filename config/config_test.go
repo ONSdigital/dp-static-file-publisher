@@ -36,10 +36,10 @@ func TestConfig(t *testing.T) {
 				So(cfg.KafkaConsumerWorkers, ShouldEqual, 1)
 				So(cfg.ImageFilePublishedTopic, ShouldEqual, "static-file-published")
 				So(cfg.ConsumerGroup, ShouldEqual, "dp-static-file-publisher")
-				So(cfg.AwsRegion, ShouldEqual, "eu-west-1")
+				So(cfg.AwsRegion, ShouldEqual, "eu-west-2")
 				So(cfg.PrivateBucketName, ShouldEqual, "csv-exported")
 				So(cfg.PublicBucketName, ShouldEqual, "static-develop")
-				So(cfg.PublicBucketURL, ShouldEqual, "https://static-develop.s3.eu-west-1.amazonaws.com")
+				So(cfg.PublicBucketURL, ShouldEqual, "https://static-develop.s3.eu-west-2.amazonaws.com")
 			})
 
 			Convey("Then a second call to config should return the same config", func() {
