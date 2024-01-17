@@ -1,4 +1,4 @@
-version: "3"
+version: "3.3"
 
 services:
   zookeeper:
@@ -37,15 +37,15 @@ services:
       VAULT_DEV_LISTEN_ADDRESS: '0.0.0.0:8200'
 
   localstack:
-    image: localstack/localstack
+    image: localstack/localstack:2.2.0
     ports:
-      - '4566-4583'
+      - "4566:4583"
     environment:
       - SERVICES=s3
       - DEBUG=0
       - AWS_DEFAULT_REGION=eu-west-2
       - EDGE_PORT=4566
     volumes:
-      - ./aws:/docker-entrypoint-initaws.d
-      - "${TMPDIR:-/tmp}/localstack:/var/localstack"
+      - ./aws:/etc/localstack/init/ready.d/
+      - "${TMPDIR:-/tmp}/localstack:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
