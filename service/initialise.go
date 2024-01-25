@@ -172,7 +172,7 @@ func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
 }
 
 // DoGetFilesService returns a files service backend
-func (e *Init) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
+func (e *Init) DoGetFilesService(_ context.Context, cfg *config.Config) file.FilesService {
 	apiClient := files.NewAPIClient(cfg.FilesAPIURL, cfg.ServiceAuthToken)
 	return apiClient
 }
