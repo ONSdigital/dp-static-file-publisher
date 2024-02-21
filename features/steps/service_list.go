@@ -2,7 +2,6 @@ package steps
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -96,7 +95,7 @@ func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string) (even
 		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
 	})
 
-	return s3client.NewUploaderWithSession(bucketName, s), nil
+	return s3client.NewUploaderWithSession(bucketName, false, s), nil
 }
 
 func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
@@ -115,7 +114,7 @@ func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (fi
 }
 
 func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
-	return s3client.NewClientWithSession(bucketName, s)
+	return s3client.NewClientWithSession(bucketName, false, s)
 }
 
 func (e *fakeServiceContainer) Shutdown(ctx context.Context) error {

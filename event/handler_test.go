@@ -3,7 +3,6 @@ package event_test
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -147,7 +146,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private:   mockS3Private,
 				ImageAPICli: mockImageAPI,
 			}
-			err := eventHandler.Handle(testCtx, &testEvent)
+			eventHandler.Handle(testCtx, &testEvent)
 
 			Convey("The download variant is retrieved from the API and updated with a state of failed_publish", func() {
 				So(mockImageAPI.GetDownloadVariantCalls(), ShouldHaveLength, 1)
@@ -215,7 +214,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				S3Private:   mockS3Private,
 				ImageAPICli: mockImageAPI,
 			}
-			err := eventHandler.Handle(testCtx, &testEvent)
+			eventHandler.Handle(testCtx, &testEvent)
 		})
 
 		Convey("And an event handler with an image client that fails to update a variant, when Handle is triggered", func() {

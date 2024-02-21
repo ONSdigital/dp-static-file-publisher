@@ -46,7 +46,7 @@ func NewFilePublisherComponent() *FilePublisherComponent {
 
 	log.Namespace = "dp-static-file-publisher"
 	d.request = make(map[string]string, 10)
-	d.svcList = &fakeServiceContainer{s, d.request}
+	d.svcList = &fakeServiceContainer{s}
 	d.config, _ = config.Get()
 	d.session, _ = session.NewSession(&aws.Config{
 		Endpoint:         aws.String(localStackHost),

@@ -2,9 +2,6 @@ package steps
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"io"
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
