@@ -31,9 +31,6 @@ var _ event.S3Reader = &S3ReaderMock{}
 // 			GetFunc: func(key string) (io.ReadCloser, *int64, error) {
 // 				panic("mock out the Get method")
 // 			},
-// 			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-// 				panic("mock out the GetWithPSK method")
-// 			},
 // 			SessionFunc: func() *session.Session {
 // 				panic("mock out the Session method")
 // 			},
@@ -52,9 +49,6 @@ type S3ReaderMock struct {
 
 	// GetFunc mocks the Get method.
 	GetFunc func(key string) (io.ReadCloser, *int64, error)
-
-	// GetWithPSKFunc mocks the GetWithPSK method.
-	GetWithPSKFunc func(key string, psk []byte) (io.ReadCloser, *int64, error)
 
 	// SessionFunc mocks the Session method.
 	SessionFunc func() *session.Session
@@ -76,13 +70,6 @@ type S3ReaderMock struct {
 			// Key is the key argument value.
 			Key string
 		}
-		// GetWithPSK holds details about calls to the GetWithPSK method.
-		GetWithPSK []struct {
-			// Key is the key argument value.
-			Key string
-			// Psk is the psk argument value.
-			Psk []byte
-		}
 		// Session holds details about calls to the Session method.
 		Session []struct {
 		}
@@ -90,7 +77,6 @@ type S3ReaderMock struct {
 	lockBucketName sync.RWMutex
 	lockChecker    sync.RWMutex
 	lockGet        sync.RWMutex
-	lockGetWithPSK sync.RWMutex
 	lockSession    sync.RWMutex
 }
 
@@ -183,41 +169,6 @@ func (mock *S3ReaderMock) GetCalls() []struct {
 	mock.lockGet.RLock()
 	calls = mock.calls.Get
 	mock.lockGet.RUnlock()
-	return calls
-}
-
-// GetWithPSK calls GetWithPSKFunc.
-func (mock *S3ReaderMock) GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error) {
-	if mock.GetWithPSKFunc == nil {
-		panic("S3ReaderMock.GetWithPSKFunc: method is nil but S3Reader.GetWithPSK was just called")
-	}
-	callInfo := struct {
-		Key string
-		Psk []byte
-	}{
-		Key: key,
-		Psk: psk,
-	}
-	mock.lockGetWithPSK.Lock()
-	mock.calls.GetWithPSK = append(mock.calls.GetWithPSK, callInfo)
-	mock.lockGetWithPSK.Unlock()
-	return mock.GetWithPSKFunc(key, psk)
-}
-
-// GetWithPSKCalls gets all the calls that were made to GetWithPSK.
-// Check the length with:
-//     len(mockedS3Reader.GetWithPSKCalls())
-func (mock *S3ReaderMock) GetWithPSKCalls() []struct {
-	Key string
-	Psk []byte
-} {
-	var calls []struct {
-		Key string
-		Psk []byte
-	}
-	mock.lockGetWithPSK.RLock()
-	calls = mock.calls.GetWithPSK
-	mock.lockGetWithPSK.RUnlock()
 	return calls
 }
 

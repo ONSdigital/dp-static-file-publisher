@@ -18,13 +18,11 @@ import (
 	dps3v2 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
-	dpvault "github.com/ONSdigital/dp-vault"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
-	Vault                       bool
 	ImageAPI                    bool
 	FilesService                bool
 	HealthCheck                 bool
@@ -39,7 +37,6 @@ type ExternalServiceList struct {
 // NewServiceList creates a new service list with the provided initialiser
 func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 	return &ExternalServiceList{
-		Vault:                       false,
 		ImageAPI:                    false,
 		HealthCheck:                 false,
 		KafkaImagePublishedConsumer: false,
@@ -69,16 +66,6 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 	}
 	e.HealthCheck = true
 	return hc, nil
-}
-
-// GetVault creates a Vault client and sets the Vault flag to true
-func (e *ExternalServiceList) GetVault(cfg *config.Config) (event.VaultClient, error) {
-	vault, err := e.Init.DoGetVault(cfg)
-	if err != nil {
-		return nil, err
-	}
-	e.Vault = true
-	return vault, nil
 }
 
 // GetImageAPIClient creates an ImageAPI client and sets the ImageAPI flag to true
@@ -117,12 +104,12 @@ func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context,
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
 func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.S3Reader, s3Public event.S3Writer, err error) {
-	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName, false)
+	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName)
 	if err != nil {
 		return nil, nil, err
 	}
 	e.S3Public = true
-	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, !cfg.EncryptionDisabled, s3Public.Session())
+	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, s3Public.Session())
 	e.S3Private = true
 	return
 }
@@ -152,18 +139,6 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 	}
 	hc := healthcheck.New(versionInfo, cfg.HealthCheckCriticalTimeout, cfg.HealthCheckInterval)
 	return &hc, nil
-}
-
-// DoGetVault returns a VaultClient if encryption is enabled
-func (e *Init) DoGetVault(cfg *config.Config) (event.VaultClient, error) {
-	if cfg.EncryptionDisabled {
-		return nil, nil
-	}
-	vault, err := dpvault.CreateClient(cfg.VaultToken, cfg.VaultAddress, 3)
-	if err != nil {
-		return nil, err
-	}
-	return vault, nil
 }
 
 // DoGetImageAPIClient returns an Image API client
@@ -214,8 +189,8 @@ func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.
 }
 
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
-func (e *Init) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
-	return dps3.NewUploader(awsRegion, bucketName, encryptionEnabled)
+func (e *Init) DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error) {
+	return dps3.NewUploader(awsRegion, bucketName, false)
 }
 
 func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
@@ -244,6 +219,6 @@ func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, e
 
 // DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)
 // for the provided bucket name, using an existing AWS session
-func (e *Init) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
-	return dps3.NewClientWithSession(bucketName, encryptionEnabled, s)
+func (e *Init) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
+	return dps3.NewClientWithSession(bucketName, false, s)
 }

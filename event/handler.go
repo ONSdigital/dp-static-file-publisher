@@ -2,11 +2,8 @@ package event
 
 import (
 	"context"
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
-	"path"
 	"time"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
@@ -20,25 +17,18 @@ import (
 
 //go:generate moq -out mock/s3_reader.go -pkg mock . S3Reader
 //go:generate moq -out mock/s3_writer.go -pkg mock . S3Writer
-//go:generate moq -out mock/vault.go -pkg mock . VaultClient
 //go:generate moq -out mock/image_api.go -pkg mock . ImageAPIClient
 
 const (
-	vaultKey       = "key" // is the key under each vault secret that contains the PSK needed to decrypt files from S3
 	failedState    = "failed_publish"
 	completedState = "completed"
 )
-
-// ErrVaultFilenameEmpty is an error returned when trying to obtain a PSK for an empty file name
-var ErrVaultFilenameEmpty = errors.New("vault filename required but was empty")
 
 // ImagePublishedHandler hold the details for publishing to s3.
 type ImagePublishedHandler struct {
 	AuthToken       string
 	S3Public        S3Writer
 	S3Private       S3Reader
-	VaultCli        VaultClient
-	VaultPath       string
 	ImageAPICli     ImageAPIClient
 	PublicBucketURL string
 }
@@ -57,13 +47,6 @@ type S3Reader interface {
 	Session() *session.Session
 	BucketName() string
 	Get(key string) (io.ReadCloser, *int64, error)
-	GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error)
-}
-
-// VaultClient defines the required methods from dp-vault client
-type VaultClient interface {
-	ReadKey(path, key string) (string, error)
-	Checker(ctx context.Context, state *healthcheck.CheckState) error
 }
 
 // ImageAPIClient defines the required methods from image API client
@@ -75,8 +58,7 @@ type ImageAPIClient interface {
 	PutDownloadVariant(ctx context.Context, userAuthToken, serviceAuthToken, collectionID, imageID, variant string, data image.ImageDownload) (image.ImageDownload, error)
 }
 
-// Handle takes a single event. It reads the PSK from Vault, uses it to decrypt the encrypted file
-// from the private S3 bucket, and writes it to the public static bucket without using the vault psk for encryption.
+// Handle takes a single event. It writes the file to the public static bucket.
 func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublished) error {
 	privateBucket := h.S3Private.BucketName()
 	publicBucket := h.S3Public.BucketName()
@@ -84,7 +66,6 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 		"event":          event,
 		"private_bucket": privateBucket,
 		"public_bucket":  publicBucket,
-		"vault_path":     h.VaultPath,
 	}
 	log.Info(ctx, "event handler called", logData)
 
@@ -98,19 +79,8 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 
 	privatePath := event.SrcPath
 
-	// Get PSK from Vault
-	var privatePsk []byte
-	if h.VaultCli != nil {
-		privatePsk, err = h.getVaultKeyForFile(privatePath)
-		if err != nil {
-			log.Error(ctx, "error reading key from vault", err, logData)
-			h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "error reading key from vault")
-			return err
-		}
-	}
-
-	// Decrypt image from private bucket optionally using PSK obtained from Vault
-	reader, err := h.getS3Reader(privatePath, privatePsk)
+	// Read image from private bucket
+	reader, err := h.getS3Reader(privatePath)
 	if err != nil {
 		log.Error(ctx, "error getting s3 object reader", err, logData)
 		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "error getting s3 object reader")
@@ -169,19 +139,11 @@ func (h *ImagePublishedHandler) KafkaHandler(ctx context.Context, msgs []kafka.M
 }
 
 // Get an S3 reader
-func (h *ImagePublishedHandler) getS3Reader(imagePath string, psk []byte) (reader io.ReadCloser, err error) {
-	if psk != nil {
-		// Decrypt image from upload bucket using PSK obtained from Vault
-		reader, _, err = h.S3Private.GetWithPSK(imagePath, psk)
-		if err != nil {
-			return
-		}
-	} else {
-		// Get image from upload bucket
-		reader, _, err = h.S3Private.Get(imagePath)
-		if err != nil {
-			return
-		}
+func (h *ImagePublishedHandler) getS3Reader(imagePath string) (reader io.ReadCloser, err error) {
+	// Get image from upload bucket
+	reader, _, err = h.S3Private.Get(imagePath)
+	if err != nil {
+		return
 	}
 	return
 }
@@ -202,26 +164,6 @@ func (h *ImagePublishedHandler) uploadToS3(thePath string, reader io.Reader) err
 	}
 
 	return nil
-}
-
-// getVaultKeyForFile reads the encryption key from Vault for the provided path
-func (h *ImagePublishedHandler) getVaultKeyForFile(keyPath string) ([]byte, error) {
-	if keyPath == "" {
-		return nil, ErrVaultFilenameEmpty
-	}
-
-	vp := path.Join(h.VaultPath, keyPath)
-	pskStr, err := h.VaultCli.ReadKey(vp, vaultKey)
-	if err != nil {
-		return nil, err
-	}
-
-	psk, err := hex.DecodeString(pskStr)
-	if err != nil {
-		return nil, err
-	}
-
-	return psk, nil
 }
 
 func (h *ImagePublishedHandler) setImageStatusToFailed(ctx context.Context, imageID, desc string) {

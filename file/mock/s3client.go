@@ -23,8 +23,8 @@ var _ file.S3ClientV2 = &S3ClientV2Mock{}
 // 			FileExistsFunc: func(key string) (bool, error) {
 // 				panic("mock out the FileExists method")
 // 			},
-// 			GetWithPSKFunc: func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-// 				panic("mock out the GetWithPSK method")
+// 			GetFunc: func(key string) (io.ReadCloser, *int64, error) {
+// 				panic("mock out the Get method")
 // 			},
 // 			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 // 				panic("mock out the Upload method")
@@ -39,8 +39,8 @@ type S3ClientV2Mock struct {
 	// FileExistsFunc mocks the FileExists method.
 	FileExistsFunc func(key string) (bool, error)
 
-	// GetWithPSKFunc mocks the GetWithPSK method.
-	GetWithPSKFunc func(key string, psk []byte) (io.ReadCloser, *int64, error)
+	// GetFunc mocks the Get method.
+	GetFunc func(key string) (io.ReadCloser, *int64, error)
 
 	// UploadFunc mocks the Upload method.
 	UploadFunc func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
@@ -52,12 +52,10 @@ type S3ClientV2Mock struct {
 			// Key is the key argument value.
 			Key string
 		}
-		// GetWithPSK holds details about calls to the GetWithPSK method.
-		GetWithPSK []struct {
+		// Get holds details about calls to the Get method.
+		Get []struct {
 			// Key is the key argument value.
 			Key string
-			// Psk is the psk argument value.
-			Psk []byte
 		}
 		// Upload holds details about calls to the Upload method.
 		Upload []struct {
@@ -68,7 +66,7 @@ type S3ClientV2Mock struct {
 		}
 	}
 	lockFileExists sync.RWMutex
-	lockGetWithPSK sync.RWMutex
+	lockGet sync.RWMutex
 	lockUpload     sync.RWMutex
 }
 
@@ -103,38 +101,34 @@ func (mock *S3ClientV2Mock) FileExistsCalls() []struct {
 	return calls
 }
 
-// GetWithPSK calls GetWithPSKFunc.
-func (mock *S3ClientV2Mock) GetWithPSK(key string, psk []byte) (io.ReadCloser, *int64, error) {
-	if mock.GetWithPSKFunc == nil {
-		panic("S3ClientV2Mock.GetWithPSKFunc: method is nil but S3ClientV2.GetWithPSK was just called")
+// Get calls GetFunc.
+func (mock *S3ClientV2Mock) Get(key string) (io.ReadCloser, *int64, error) {
+	if mock.GetFunc == nil {
+		panic("S3ClientV2Mock.GetFunc: method is nil but S3ClientV2.Get was just called")
 	}
 	callInfo := struct {
 		Key string
-		Psk []byte
 	}{
 		Key: key,
-		Psk: psk,
 	}
-	mock.lockGetWithPSK.Lock()
-	mock.calls.GetWithPSK = append(mock.calls.GetWithPSK, callInfo)
-	mock.lockGetWithPSK.Unlock()
-	return mock.GetWithPSKFunc(key, psk)
+	mock.lockGet.Lock()
+	mock.calls.Get = append(mock.calls.Get, callInfo)
+	mock.lockGet.Unlock()
+	return mock.GetFunc(key)
 }
 
-// GetWithPSKCalls gets all the calls that were made to GetWithPSK.
+// GetCalls gets all the calls that were made to Get.
 // Check the length with:
-//     len(mockedS3ClientV2.GetWithPSKCalls())
-func (mock *S3ClientV2Mock) GetWithPSKCalls() []struct {
+//     len(mockedS3ClientV2.GetCalls())
+func (mock *S3ClientV2Mock) GetCalls() []struct {
 	Key string
-	Psk []byte
 } {
 	var calls []struct {
 		Key string
-		Psk []byte
 	}
-	mock.lockGetWithPSK.RLock()
-	calls = mock.calls.GetWithPSK
-	mock.lockGetWithPSK.RUnlock()
+	mock.lockGet.RLock()
+	calls = mock.calls.Get
+	mock.lockGet.RUnlock()
 	return calls
 }
 

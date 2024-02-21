@@ -10,7 +10,6 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	s3client "github.com/ONSdigital/dp-s3/v2"
-	vault "github.com/ONSdigital/dp-vault"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
 	"github.com/stretchr/testify/assert"
@@ -31,12 +30,6 @@ var (
 func (c *FilePublisherComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a message to publish the file "([^"]*)" is sent$`, c.aMessageToPublishTheFileIsSent)
 	ctx.Step(`^the content of file "([^"]*)" in the public bucket matches the original plain text content$`, c.theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent)
-	ctx.Step(`^the files API should be informed the file "([^"]*)" has been decrypted$`, c.theFilesAPIShouldBeInformedTheFileHasBeenDecrypted)
-	ctx.Step(`^the private bucket still has a encrypted file called "([^"]*)"$`, c.thePrivateBucketStillHasAEncryptedFileCalled)
-	ctx.Step(`^the public bucket contains a decrypted file called "([^"]*)"$`, c.thePublicBucketContainsADecryptedFileCalled)
-	ctx.Step(`^there is an encrypted single chunk file "([^"]*)" in the private bucket with content:$`, c.thereIsAnEncryptedSingleChunkFileInThePrivateBucketWithContent)
-	ctx.Step(`^there is an encryption key for file "([^"]*)" in vault$`, c.thereIsAnEncryptionKeyForFileInVault)
-	ctx.Step(`^there is an encrypted multi-chunk file "([^"]*)" in the private bucket$`, c.thereIsAnEncryptedMultichunkFileInThePrivateBucket)
 }
 
 func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) error {
@@ -94,109 +87,6 @@ func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOrig
 
 	assert.NoError(c.ApiFeature, err)
 	assert.Equal(c.ApiFeature, expectedContent, string(b), "Public bucket file content does not match")
-
-	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenDecrypted(filename string) error {
-	if len(c.request) > 0 {
-		_, ok := c.request[filename]
-		assert.True(c.ApiFeature, ok, fmt.Sprintf("expecting files-api decrypt to be invoked with %s", filename))
-	}
-	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) thePrivateBucketStillHasAEncryptedFileCalled(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
-	result, err := client.Head(filename)
-
-	assert.Equal(c.ApiFeature, expectedContentLength, int(*result.ContentLength))
-	assert.Equal(c.ApiFeature, "text/plain", *result.ContentType)
-
-	assert.NoError(c.ApiFeature, err)
-
-	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) thePublicBucketContainsADecryptedFileCalled(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PublicBucketName, c.session)
-	result, err := client.Head(filename)
-
-	assert.NoError(c.ApiFeature, err)
-
-	if err == nil {
-		assert.Equal(c.ApiFeature, expectedContentLength, int(*result.ContentLength))
-		assert.Equal(c.ApiFeature, "text/plain", *result.ContentType)
-	}
-
-	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) thereIsAnEncryptedSingleChunkFileInThePrivateBucketWithContent(filename string, fileContent *godog.DocString) error {
-	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
-
-	expectedContentLength = len(fileContent.Content)
-	expectedContent = fileContent.Content
-
-	decodeString, _ := hex.DecodeString(encryptionKey)
-	_, err := client.UploadPartWithPsk(context.Background(), &s3client.UploadPartRequest{
-		UploadKey:   filename,
-		Type:        "text/plain",
-		ChunkNumber: 1,
-		TotalChunks: 1,
-		FileName:    filename,
-	},
-		[]byte(fileContent.Content),
-		decodeString,
-	)
-	assert.NoError(c.ApiFeature, err)
-
-	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) thereIsAnEncryptionKeyForFileInVault(filename string) error {
-	v, _ := vault.CreateClient(c.config.VaultToken, c.config.VaultAddress, 5)
-
-	err := v.WriteKey(fmt.Sprintf("%s/%s", c.config.VaultPath, filename), "key", encryptionKey)
-	assert.NoError(c.ApiFeature, err)
-
-	return c.ApiFeature.StepError()
-}
-
-func (c *FilePublisherComponent) thereIsAnEncryptedMultichunkFileInThePrivateBucket(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
-
-	expectedContentLength = 6 * 1024 * 1024
-
-	content := make([]byte, expectedContentLength)
-	rand.Read(content)
-
-	expectedContent = string(content)
-
-	decodeString, _ := hex.DecodeString(encryptionKey)
-
-	for i := 1; i <= 2; i++ {
-		var b []byte
-
-		if i == 1 {
-			b = content[:(5 * 1024 * 1024)]
-		} else {
-			b = content[(5 * 1024 * 1024):]
-		}
-
-		_, err := client.UploadPartWithPsk(context.Background(), &s3client.UploadPartRequest{
-			UploadKey:   filename,
-			Type:        "text/plain",
-			ChunkNumber: int64(i),
-			TotalChunks: 2,
-			FileName:    filename,
-		},
-			b,
-			decodeString,
-		)
-
-		assert.NoError(c.ApiFeature, err)
-	}
 
 	return c.ApiFeature.StepError()
 }

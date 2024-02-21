@@ -22,12 +22,11 @@ import (
 type Initialiser interface {
 	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
-	DoGetVault(cfg *config.Config) (event.VaultClient, error)
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
 	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
 	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
-	DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error)
-	DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader
+	DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error)
+	DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader
 	DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error)
 	DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService
 }
