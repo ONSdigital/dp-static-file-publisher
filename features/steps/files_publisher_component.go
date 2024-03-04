@@ -60,7 +60,7 @@ func NewFilePublisherComponent() *FilePublisherComponent {
 func (c *FilePublisherComponent) Initialiser() (http.Handler, error) {
 	cfg, _ := config.Get()
 	c.svc, _ = service.Run(context.Background(), cfg, service.NewServiceList(c.svcList), "0", "0", "1.0.0", c.errChan)
-	time.Sleep(5 * time.Second)
+	time.Sleep(30 * time.Second)
 	return c.DpHttpServer.Handler, nil
 }
 
