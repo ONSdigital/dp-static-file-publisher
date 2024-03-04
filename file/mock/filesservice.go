@@ -23,8 +23,8 @@ var _ file.FilesService = &FilesServiceMock{}
 // 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 // 				panic("mock out the Checker method")
 // 			},
-// 			MarkFileDecryptedFunc: func(ctx context.Context, path string, etag string) error {
-// 				panic("mock out the MarkFileDecrypted method")
+// 			MarkFileMovedFunc: func(ctx context.Context, path string, etag string) error {
+// 				panic("mock out the MarkFileMoved method")
 // 			},
 // 		}
 //
@@ -36,8 +36,8 @@ type FilesServiceMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
-	// MarkFileDecryptedFunc mocks the MarkFileDecrypted method.
-	MarkFileDecryptedFunc func(ctx context.Context, path string, etag string) error
+	// MarkFileMovedFunc mocks the MarkFileMoved method.
+	MarkFileMovedFunc func(ctx context.Context, path string, etag string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -48,8 +48,8 @@ type FilesServiceMock struct {
 			// State is the state argument value.
 			State *healthcheck.CheckState
 		}
-		// MarkFileDecrypted holds details about calls to the MarkFileDecrypted method.
-		MarkFileDecrypted []struct {
+		// MarkFileMoved holds details about calls to the MarkFileMoved method.
+		MarkFileMoved []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Path is the path argument value.
@@ -59,7 +59,7 @@ type FilesServiceMock struct {
 		}
 	}
 	lockChecker           sync.RWMutex
-	lockMarkFileDecrypted sync.RWMutex
+	lockMarkFileMoved sync.RWMutex
 }
 
 // Checker calls CheckerFunc.
@@ -97,10 +97,10 @@ func (mock *FilesServiceMock) CheckerCalls() []struct {
 	return calls
 }
 
-// MarkFileDecrypted calls MarkFileDecryptedFunc.
-func (mock *FilesServiceMock) MarkFileDecrypted(ctx context.Context, path string, etag string) error {
-	if mock.MarkFileDecryptedFunc == nil {
-		panic("FilesServiceMock.MarkFileDecryptedFunc: method is nil but FilesService.MarkFileDecrypted was just called")
+// MarkFileMoved calls MarkFileMovedFunc.
+func (mock *FilesServiceMock) MarkFileMoved(ctx context.Context, path string, etag string) error {
+	if mock.MarkFileMovedFunc == nil {
+		panic("FilesServiceMock.MarkFileMovedFunc: method is nil but FilesService.MarkFileMoved was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
@@ -111,16 +111,16 @@ func (mock *FilesServiceMock) MarkFileDecrypted(ctx context.Context, path string
 		Path: path,
 		Etag: etag,
 	}
-	mock.lockMarkFileDecrypted.Lock()
-	mock.calls.MarkFileDecrypted = append(mock.calls.MarkFileDecrypted, callInfo)
-	mock.lockMarkFileDecrypted.Unlock()
-	return mock.MarkFileDecryptedFunc(ctx, path, etag)
+	mock.lockMarkFileMoved.Lock()
+	mock.calls.MarkFileMoved = append(mock.calls.MarkFileMoved, callInfo)
+	mock.lockMarkFileMoved.Unlock()
+	return mock.MarkFileMovedFunc(ctx, path, etag)
 }
 
-// MarkFileDecryptedCalls gets all the calls that were made to MarkFileDecrypted.
+// MarkFileMovedCalls gets all the calls that were made to MarkFileMoved.
 // Check the length with:
-//     len(mockedFilesService.MarkFileDecryptedCalls())
-func (mock *FilesServiceMock) MarkFileDecryptedCalls() []struct {
+//     len(mockedFilesService.MarkFileMovedCalls())
+func (mock *FilesServiceMock) MarkFileMovedCalls() []struct {
 	Ctx  context.Context
 	Path string
 	Etag string
@@ -130,8 +130,8 @@ func (mock *FilesServiceMock) MarkFileDecryptedCalls() []struct {
 		Path string
 		Etag string
 	}
-	mock.lockMarkFileDecrypted.RLock()
-	calls = mock.calls.MarkFileDecrypted
-	mock.lockMarkFileDecrypted.RUnlock()
+	mock.lockMarkFileMoved.RLock()
+	calls = mock.calls.MarkFileMoved
+	mock.lockMarkFileMoved.RUnlock()
 	return calls
 }

@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	testVaultPath            = "/vault/path/for/testing"
-	testVaultPrivateFilePath = "/vault/path/for/testing/images/ID1/original"
 	testAuthToken            = "auth-123"
 	testPublicBucketURL      = "http://some.bucket.url"
 	failedState              = "failed_publish"
@@ -33,8 +31,6 @@ var (
 	testSize          int64         = 1234
 	fileBytes         []byte        = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	testFileContent   io.ReadCloser = ioutil.NopCloser(bytes.NewReader(fileBytes))
-	encodedPSK        string        = "48656C6C6F20576F726C64"
-	errVault                        = errors.New("vault error")
 	errS3Private                    = errors.New("S3Private error")
 	errS3Public                     = errors.New("S3Public error")
 	errImageAPI                     = errors.New("imageAPI error")
@@ -69,7 +65,7 @@ var testEvent = event.ImagePublished{
 
 func TestImagePublishedHandler_Handle(t *testing.T) {
 
-	Convey("Given S3 and Vault client mocks", t, func() {
+	Convey("Given S3 mocks", t, func() {
 
 		mockS3Private := &mock.S3ReaderMock{
 			BucketNameFunc: func() string {
@@ -79,11 +75,6 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		mockS3Public := &mock.S3WriterMock{
 			BucketNameFunc: func() string {
 				return testPublicBucket
-			},
-		}
-		mockVault := &mock.VaultClientMock{
-			ReadKeyFunc: func(path string, key string) (string, error) {
-				return encodedPSK, nil
 			},
 		}
 		mockImageAPI := &mock.ImageAPIClientMock{
@@ -100,11 +91,9 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				return testCompletedDownload, nil
 			},
 		}
-		psk, err := hex.DecodeString(encodedPSK)
-		So(err, ShouldBeNil)
 
 		Convey("And a successful event handler, when Handle is triggered", func() {
-			mockS3Private.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
 			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
@@ -114,24 +103,14 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				AuthToken:       testAuthToken,
 				S3Public:        mockS3Public,
 				S3Private:       mockS3Private,
-				VaultCli:        mockVault,
-				VaultPath:       testVaultPath,
 				ImageAPICli:     mockImageAPI,
 				PublicBucketURL: testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 			So(err, ShouldBeNil)
 
-			Convey("Encryption key is read from Vault with the expected path", func() {
-				So(mockVault.ReadKeyCalls(), ShouldHaveLength, 1)
-				So(mockVault.ReadKeyCalls()[0].Path, ShouldEqual, testVaultPrivateFilePath)
-				So(mockVault.ReadKeyCalls()[0].Key, ShouldEqual, "key")
-			})
-
-			Convey("The file is obtained from the private bucket and decrypted with the psk obtained from Vault", func() {
-				So(mockS3Private.GetWithPSKCalls(), ShouldHaveLength, 1)
-				So(mockS3Private.GetWithPSKCalls()[0].Key, ShouldEqual, testEvent.SrcPath)
-				So(mockS3Private.GetWithPSKCalls()[0].Psk, ShouldResemble, psk)
+			Convey("The file is obtained from the private bucket and moved", func() {
+				So(mockS3Private.GetCalls(), ShouldHaveLength, 1)
 			})
 
 			Convey("An image download variant is retrieved from the image API", func() {
@@ -168,7 +147,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			})
 		})
 
-		Convey("And a nil-vault event handler (developer env), when Handle is triggered", func() {
+		Convey("And an event handler (developer env), when Handle is triggered", func() {
 			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
@@ -179,15 +158,13 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				AuthToken:       testAuthToken,
 				S3Public:        mockS3Public,
 				S3Private:       mockS3Private,
-				VaultCli:        nil,
-				VaultPath:       "",
 				ImageAPICli:     mockImageAPI,
 				PublicBucketURL: testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 			So(err, ShouldBeNil)
 
-			Convey("The file is obtained from the private bucket and decrypted with the psk obtained from Vault", func() {
+			Convey("The file is obtained from the private bucket and moved", func() {
 				So(mockS3Private.GetCalls(), ShouldHaveLength, 1)
 				So(mockS3Private.GetCalls()[0].Key, ShouldEqual, testEvent.SrcPath)
 			})
@@ -226,114 +203,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			})
 		})
 
-		Convey("And an event handler with a failing vault client, when Handle is triggered", func() {
-			mockVaultFail := &mock.VaultClientMock{
-				ReadKeyFunc: func(path string, key string) (string, error) {
-					return "", errVault
-				},
-			}
-			eventHandler := event.ImagePublishedHandler{
-				AuthToken:   testAuthToken,
-				S3Public:    mockS3Public,
-				S3Private:   mockS3Private,
-				VaultCli:    mockVaultFail,
-				VaultPath:   testVaultPath,
-				ImageAPICli: mockImageAPI,
-			}
-			err := eventHandler.Handle(testCtx, &testEvent)
-
-			Convey("Vault ReadKey is called and the error is returned", func() {
-				So(err, ShouldResemble, errVault)
-				So(mockVaultFail.ReadKeyCalls(), ShouldHaveLength, 1)
-			})
-
-			Convey("The download variant is retrieved from the API and updated with a state of failed_publish", func() {
-				So(mockImageAPI.GetDownloadVariantCalls(), ShouldHaveLength, 1)
-				So(mockImageAPI.GetDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
-				So(mockImageAPI.GetDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
-
-				So(mockImageAPI.PutDownloadVariantCalls(), ShouldHaveLength, 1)
-				So(mockImageAPI.PutDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
-				So(mockImageAPI.PutDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
-
-				updatedImage := mockImageAPI.PutDownloadVariantCalls()[0].Data
-				So(updatedImage.State, ShouldEqual, failedState)
-				So(updatedImage.Error, ShouldEqual, "error reading key from vault")
-			})
-		})
-
-		Convey("And an event handler with a vault client that returns an invalid psk, when Handle is triggered", func() {
-			mockVaultFail := &mock.VaultClientMock{
-				ReadKeyFunc: func(path string, key string) (string, error) {
-					return "invalidPSK", nil
-				},
-			}
-			eventHandler := event.ImagePublishedHandler{
-				AuthToken:   testAuthToken,
-				S3Public:    mockS3Public,
-				S3Private:   mockS3Private,
-				VaultCli:    mockVaultFail,
-				VaultPath:   testVaultPath,
-				ImageAPICli: mockImageAPI,
-			}
-			err := eventHandler.Handle(testCtx, &testEvent)
-
-			Convey("Vault ReadKey is called and the decoding error is returned", func() {
-				So(err, ShouldNotBeNil)
-				So(mockVaultFail.ReadKeyCalls(), ShouldHaveLength, 1)
-			})
-
-			Convey("The download variant is retrieved from the API and updated with a state of failed_publish", func() {
-				So(mockImageAPI.GetDownloadVariantCalls(), ShouldHaveLength, 1)
-				So(mockImageAPI.GetDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
-				So(mockImageAPI.GetDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
-
-				So(mockImageAPI.PutDownloadVariantCalls(), ShouldHaveLength, 1)
-				So(mockImageAPI.PutDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
-				So(mockImageAPI.PutDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
-
-				updatedImage := mockImageAPI.PutDownloadVariantCalls()[0].Data
-				So(updatedImage.State, ShouldEqual, failedState)
-				So(updatedImage.Error, ShouldEqual, "error reading key from vault")
-			})
-		})
-
 		Convey("And an event handler with an S3Private client that fails to obtain the source file, when Handle is triggered", func() {
-			mockS3Private.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
-				return nil, nil, errS3Private
-			}
-			eventHandler := event.ImagePublishedHandler{
-				AuthToken:   testAuthToken,
-				S3Public:    mockS3Public,
-				S3Private:   mockS3Private,
-				VaultCli:    mockVault,
-				VaultPath:   testVaultPath,
-				ImageAPICli: mockImageAPI,
-			}
-			err := eventHandler.Handle(testCtx, &testEvent)
-
-			Convey("S3Private is called and the same error is returned", func() {
-				So(err, ShouldResemble, errS3Private)
-				So(mockVault.ReadKeyCalls(), ShouldHaveLength, 1)
-				So(mockS3Private.GetWithPSKCalls(), ShouldHaveLength, 1)
-			})
-
-			Convey("The download variant is retrieved from the API and updated with a state of failed_publish", func() {
-				So(mockImageAPI.GetDownloadVariantCalls(), ShouldHaveLength, 1)
-				So(mockImageAPI.GetDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
-				So(mockImageAPI.GetDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
-
-				So(mockImageAPI.PutDownloadVariantCalls(), ShouldHaveLength, 1)
-				So(mockImageAPI.PutDownloadVariantCalls()[0].Variant, ShouldEqual, testEvent.ImageVariant)
-				So(mockImageAPI.PutDownloadVariantCalls()[0].ServiceAuthToken, ShouldResemble, testAuthToken)
-
-				updatedImage := mockImageAPI.PutDownloadVariantCalls()[0].Data
-				So(updatedImage.State, ShouldEqual, failedState)
-				So(updatedImage.Error, ShouldEqual, "error getting s3 object reader")
-			})
-		})
-
-		Convey("And a nil-vault event handler (developer env) with an S3Uploaded client that fails to obtain the source file, when Handle is triggered", func() {
 			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
 				return nil, nil, errS3Private
 			}
@@ -341,8 +211,6 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				AuthToken:   testAuthToken,
 				S3Public:    mockS3Public,
 				S3Private:   mockS3Private,
-				VaultCli:    nil,
-				VaultPath:   "",
 				ImageAPICli: mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
@@ -368,7 +236,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler with an image client that fails to retrieve a variant, when Handle is triggered", func() {
-			mockS3Private.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
 			mockImageAPIFail := &mock.ImageAPIClientMock{
@@ -387,8 +255,6 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				AuthToken:       testAuthToken,
 				S3Public:        mockS3Public,
 				S3Private:       mockS3Private,
-				VaultCli:        mockVault,
-				VaultPath:       testVaultPath,
 				ImageAPICli:     mockImageAPIFail,
 				PublicBucketURL: testPublicBucketURL,
 			}
@@ -415,7 +281,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler with an S3Public client that fails to upload the file, when Handle is triggered", func() {
-			mockS3Private.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
 			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
@@ -424,22 +290,19 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			eventHandler := event.ImagePublishedHandler{
 				S3Public:    mockS3Public,
 				S3Private:   mockS3Private,
-				VaultCli:    mockVault,
-				VaultPath:   testVaultPath,
 				ImageAPICli: mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
 			Convey("S3Private is called and the same error is returned", func() {
 				So(err, ShouldResemble, errS3Public)
-				So(mockVault.ReadKeyCalls(), ShouldHaveLength, 1)
-				So(mockS3Private.GetWithPSKCalls(), ShouldHaveLength, 1)
+				So(mockS3Private.GetCalls(), ShouldHaveLength, 1)
 				So(mockS3Public.BucketNameCalls(), ShouldHaveLength, 2)
 			})
 		})
 
 		Convey("And an event handler with an image client that fails to update a variant, when Handle is triggered", func() {
-			mockS3Private.GetWithPSKFunc = func(key string, psk []byte) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
 			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
@@ -463,8 +326,6 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				AuthToken:       testAuthToken,
 				S3Public:        mockS3Public,
 				S3Private:       mockS3Private,
-				VaultCli:        mockVault,
-				VaultPath:       testVaultPath,
 				ImageAPICli:     mockImageAPIFail,
 				PublicBucketURL: testPublicBucketURL,
 			}
@@ -487,24 +348,6 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				updatedImage := mockImageAPIFail.PutImageCalls()[0].Data
 				So(updatedImage.State, ShouldEqual, failedState)
 				So(updatedImage.Error, ShouldEqual, fmt.Sprintf("error putting updated image variant '%s' to API", testEvent.ImageVariant))
-			})
-		})
-
-		Convey("And an event with no path supplied, when Handle is triggered", func() {
-			eventHandler := event.ImagePublishedHandler{
-				AuthToken:       testAuthToken,
-				S3Private:       mockS3Private,
-				S3Public:        mockS3Public,
-				VaultCli:        mockVault,
-				VaultPath:       testVaultPath,
-				ImageAPICli:     mockImageAPI,
-				PublicBucketURL: testPublicBucketURL,
-			}
-			err := eventHandler.Handle(testCtx, &testEventNoSrcPath)
-
-			Convey("The image download variant is put to the image API with a state of imported", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldResemble, "vault filename required but was empty")
 			})
 		})
 

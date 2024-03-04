@@ -15,8 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 
-	vault "github.com/ONSdigital/dp-vault"
-
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
@@ -28,7 +26,7 @@ import (
 
 type fakeServiceContainer struct {
 	server     *dphttp.Server
-	decryptReq map[string]string
+	moveReq map[string]string
 }
 
 func (e *fakeServiceContainer) DoGetHTTPServer(bindAddr string, r http.Handler) service.HTTPServer {
@@ -41,15 +39,6 @@ func (e *fakeServiceContainer) DoGetHTTPServer(bindAddr string, r http.Handler) 
 func (e *fakeServiceContainer) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (service.HealthChecker, error) {
 	h := healthcheck.New(healthcheck.VersionInfo{}, time.Second, time.Second)
 	return &h, nil
-}
-
-func (e *fakeServiceContainer) DoGetVault(cfg *config.Config) (event.VaultClient, error) {
-	v, err := vault.CreateClient(cfg.VaultToken, cfg.VaultAddress, cfg.VaultRetries)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	return v, nil
 }
 
 func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
@@ -67,8 +56,8 @@ func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *confi
 			state.Update("OK", "Files Service API all good", 0)
 			return nil
 		},
-		MarkFileDecryptedFunc: func(ctx context.Context, path string, etag string) error {
-			e.decryptReq[path] = "DECRYPTED"
+		MarkFileMovedFunc: func(ctx context.Context, path string, etag string) error {
+			e.moveReq[path] = "MOVED"
 			return nil
 		},
 	}
@@ -104,7 +93,7 @@ func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Conte
 	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encryptionEnabled bool) (event.S3Writer, error) {
+func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error) {
 	s, _ := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(localStackHost),
 		Region:           aws.String(awsRegion),
@@ -112,7 +101,7 @@ func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string, encry
 		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
 	})
 
-	return s3client.NewUploaderWithSession(bucketName, encryptionEnabled, s), nil
+	return s3client.NewUploaderWithSession(bucketName, s), nil
 }
 
 func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
@@ -130,8 +119,8 @@ func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (fi
 	return dps3v2.NewClientWithSession(bucketName, s), nil
 }
 
-func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, encryptionEnabled bool, s *session.Session) event.S3Reader {
-	return s3client.NewClientWithSession(bucketName, encryptionEnabled, s)
+func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
+	return s3client.NewClientWithSession(bucketName, s)
 }
 
 func (e *fakeServiceContainer) Shutdown(ctx context.Context) error {

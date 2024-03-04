@@ -3,7 +3,7 @@
 ## Introduction
 The Static File Publisher API is part of the [Static Files System](https://github.com/ONSdigital/dp-static-files-compose).
 
-This service is responsible for decrypting files that have been published.
+This service is responsible for moving files that have been published.
 
 It receives messages on two Kafka topics `static-file-published` (which has been deprecated, but not yet removed) and
 `static-file-published-v2` which is the new topic that the [Files API](https://github.com/ONSdigital/dp-files-api) sends
@@ -11,14 +11,9 @@ publication messages on.
 
 ### Version 2 Functionality
 
-When a publication message is received the service get the encryption key for the file from Vault.
-
-The encryption key is used to get the unencrypted content of the file that has been published and make a copy of the content
-in it unencrypted state on the public S3 bucket.
-
-Once the file has been succesfully decrypted the service makes a HTTP API call back to [Files API](https://github.com/ONSdigital/dp-files-api)
-to inform it that the file has been decrypted. once this has been done [Download Service](https://github.com/ONSdigital/dp-download-service)
-stops streaming the file and starts redirecting requests for the decrypted files direct to the public bucket.
+Once the file has been succesfully moved the service makes a HTTP API call back to [Files API](https://github.com/ONSdigital/dp-files-api)
+to inform it that the file has been moved. once this has been done [Download Service](https://github.com/ONSdigital/dp-download-service)
+stops streaming the file and starts redirecting requests for the moved files direct to the public bucket.
 
 ## Getting started
 
@@ -41,9 +36,6 @@ Then you will need to introduce the source and destination paths, and the messag
 | HEALTHCHECK_INTERVAL           | 30s                      | Time between self-healthchecks (`time.Duration` format)                                                            |
 | HEALTHCHECK_CRITICAL_TIMEOUT   | 90s                      | Time to wait until an unhealthy dependent propagates its state to make this app unhealthy (`time.Duration` format) |
 | FILES_API_URL                  |                          | The URL of the dp-files-api                                                                                        |
-| VAULT_TOKEN                    | -                        | Vault token required for the client to talk to vault. (Use `make debug` to create a vault token)                   |
-| VAULT_ADDR                     | -                        | The vault address                                                                                                  |
-| VAULT_RETRIES                  | 3                        | Number of times that a connection to vault will be retried if it fails                                             |
 | IMAGE_API_URL                  | http://localhost:24700   | The image api url                                                                                                  |
 | KAFKA_ADDR                     | localhost:9092           | The list of kafka broker hosts                                                                                     |
 | KAFKA_VERSION                  | `1.0.2`                  | The version of Kafka                                                                                               |

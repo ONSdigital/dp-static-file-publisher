@@ -24,7 +24,6 @@ type Service struct {
 	KafkaFilePublishedConsumer  KafkaConsumer
 	S3Public                    event.S3Writer
 	S3Private                   event.S3Reader
-	VaultCli                    event.VaultClient
 	FilesClient                 file.FilesService
 }
 
@@ -41,13 +40,6 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	// Get HTTP Router, Server and API
 	svc.Router = mux.NewRouter()
 	svc.Server = serviceList.GetHTTPServer(cfg.BindAddr, svc.Router)
-
-	// Get Vault Client
-	svc.VaultCli, err = serviceList.GetVault(cfg)
-	if err != nil {
-		log.Fatal(ctx, "could not instantiate vault client", err)
-		return nil, err
-	}
 
 	// Get Image API Client
 	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
@@ -69,8 +61,6 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		AuthToken:       cfg.ServiceAuthToken,
 		S3Private:       svc.S3Private,
 		S3Public:        svc.S3Public,
-		VaultCli:        svc.VaultCli,
-		VaultPath:       cfg.VaultPath,
 		ImageAPICli:     svc.ImageAPICli,
 		PublicBucketURL: cfg.PublicBucketURL,
 	}
@@ -89,7 +79,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		log.Fatal(ctx, "Could not instantiate KafkaFilePublishedConsumer", err)
 		return nil, err
 	}
-	dc, err := getDecrypterCopier(ctx, cfg, serviceList, svc)
+	dc, err := getMoverCopier(ctx, cfg, serviceList, svc)
 	if err != nil {
 		return nil, err
 	}
@@ -125,22 +115,22 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	return svc, nil
 }
 
-func getDecrypterCopier(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, svc *Service) (file.DecrypterCopier, error) {
+func getMoverCopier(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, svc *Service) (file.MoverCopier, error) {
 	publicClient, err := serviceList.GetS3ClientV2(cfg, cfg.PublicBucketName)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate public S3 v2 client", err)
-		return file.DecrypterCopier{}, err
+		return file.MoverCopier{}, err
 	}
 
 	privateClient, err := serviceList.GetS3ClientV2(cfg, cfg.PrivateBucketName)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate private S3 v2 client", err)
-		return file.DecrypterCopier{}, err
+		return file.MoverCopier{}, err
 	}
 
 	svc.FilesClient = serviceList.GetFilesService(ctx, cfg)
 
-	return file.NewDecrypterCopier(publicClient, privateClient, svc.VaultCli, cfg.VaultPath, svc.FilesClient), nil
+	return file.NewMoverCopier(publicClient, privateClient, svc.FilesClient), nil
 }
 
 // Close gracefully shuts the service down in the required order, with timeout
@@ -224,14 +214,6 @@ func (svc *Service) Close(ctx context.Context) error {
 // registerCheckers adds all the necessary checkers to healthcheck. Please, only call this function after all dependencies are instanciated
 func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	hasErrors := false
-
-	// nolint:typecheck // disabled due to failing in CI, but works locally on mac
-	if svc.VaultCli != nil {
-		if err = svc.HealthCheck.AddCheck("Vault", svc.VaultCli.Checker); err != nil {
-			hasErrors = true
-			log.Error(ctx, "failed to add vault client checker", err)
-		}
-	}
 
 	if err = svc.HealthCheck.AddCheck("Image API", svc.ImageAPICli.Checker); err != nil {
 		hasErrors = true
