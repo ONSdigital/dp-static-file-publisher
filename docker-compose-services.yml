@@ -23,8 +23,8 @@ services:
       KAFKA_CFG_MESSAGE_MAX_BYTES: 20000000
     healthcheck:
       test: [ "CMD-SHELL", "kafka-topics.sh --list  --bootstrap-server kafka:9092" ]
-      interval: 120s
-      timeout: 120s
+      interval: 150s
+      timeout: 150s
       retries: 10
 
   localstack:
