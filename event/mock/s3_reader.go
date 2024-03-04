@@ -70,11 +70,6 @@ type S3ReaderMock struct {
 			// Key is the key argument value.
 			Key string
 		}
-		// Get holds details about calls to the Get method.
-		Get []struct {
-			// Key is the key argument value.
-			Key string
-		}
 		// Session holds details about calls to the Session method.
 		Session []struct {
 		}
@@ -82,7 +77,6 @@ type S3ReaderMock struct {
 	lockBucketName sync.RWMutex
 	lockChecker    sync.RWMutex
 	lockGet        sync.RWMutex
-	lockGet sync.RWMutex
 	lockSession    sync.RWMutex
 }
 
