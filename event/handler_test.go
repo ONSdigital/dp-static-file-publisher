@@ -3,7 +3,6 @@ package event_test
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -20,9 +19,9 @@ import (
 )
 
 const (
-	testAuthToken            = "auth-123"
-	testPublicBucketURL      = "http://some.bucket.url"
-	failedState              = "failed_publish"
+	testAuthToken       = "auth-123"
+	testPublicBucketURL = "http://some.bucket.url"
+	failedState         = "failed_publish"
 )
 
 var (

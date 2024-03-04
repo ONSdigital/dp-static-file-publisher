@@ -9,7 +9,6 @@ import (
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
-	eventMock "github.com/ONSdigital/dp-static-file-publisher/event/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,16 +17,16 @@ import (
 )
 
 const (
-	errMsg    = "s3 is broken"
+	errMsg = "s3 is broken"
 )
 
 var (
-	s3Client    *fileMock.S3ClientV2Mock
-	fileClient  *fileMock.FilesServiceMock
+	s3Client   *fileMock.S3ClientV2Mock
+	fileClient *fileMock.FilesServiceMock
 
 	nopCloser            = io.NopCloser(strings.NewReader("testing"))
 	fileDoesNotExistFunc = func(key string) (bool, error) { return false, nil }
-	validGetFunc  = func(key string) (io.ReadCloser, *int64, error) { return nopCloser, nil, nil }
+	validGetFunc         = func(key string) (io.ReadCloser, *int64, error) { return nopCloser, nil, nil }
 	validUploadFunc      = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 		return &s3manager.UploadOutput{ETag: aws.String("1234567890")}, nil
 	}

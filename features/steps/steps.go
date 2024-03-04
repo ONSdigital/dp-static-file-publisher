@@ -3,7 +3,6 @@ package steps
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io"
 
@@ -136,6 +135,16 @@ func (c *FilePublisherComponent) thereIsASingleChunkFileInThePrivateBucketWithCo
 	expectedContentLength = len(fileContent.Content)
 	expectedContent = fileContent.Content
 
+	_, err := client.UploadPart(context.Background(), &s3client.UploadPartRequest{
+		UploadKey:   filename,
+		Type:        "text/plain",
+		ChunkNumber: 1,
+		TotalChunks: 1,
+		FileName:    filename,
+	},
+		[]byte(fileContent.Content),
+	)
+
 	assert.NoError(c.ApiFeature, err)
 
 	return c.ApiFeature.StepError()
@@ -168,7 +177,6 @@ func (c *FilePublisherComponent) thereIsAMultichunkFileInThePrivateBucket(filena
 			FileName:    filename,
 		},
 			b,
-			decodeString,
 		)
 
 		assert.NoError(c.ApiFeature, err)
