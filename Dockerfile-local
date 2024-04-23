@@ -1,6 +1,9 @@
 FROM golang:1.21.7-bullseye as build
 
-WORKDIR /service
-CMD tail -f /dev/null
+ENV GOCACHE=/go/.go/cache GOPATH=/go/.go/path TZ=Europe/London
 
-FROM build as test
+RUN GOBIN=/bin go install github.com/cespare/reflex@latest
+
+# Map between the working directories of dev and live 
+RUN ln -s /go /dp-static-file-publisher
+WORKDIR /dp-static-file-publisher
