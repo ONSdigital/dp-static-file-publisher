@@ -3,12 +3,6 @@ job "dp-static-file-publisher" {
   region      = "eu"
   type        = "service"
 
-  // Make sure that this API runs on publishing nodes only
-  constraint {
-    attribute = "${node.class}"
-    value     = "publishing"
-  }
-
   update {
     stagger          = "60s"
     min_healthy_time = "30s"
@@ -19,6 +13,22 @@ job "dp-static-file-publisher" {
 
   group "publishing" {
     count = "{{PUBLISHING_TASK_COUNT}}"
+
+    spread {
+      attribute = "${node.unique.id}"
+      weight    = 100
+      # with `target` omitted, Nomad will spread allocations evenly across all values of the attribute.
+    }
+    spread {
+      attribute = "${attr.platform.aws.placement.availability-zone}"
+      weight    = 100
+      # with `target` omitted, Nomad will spread allocations evenly across all values of the attribute.
+    }
+    
+    constraint {
+      attribute = "${node.class}"
+      value     = "publishing"
+    }
 
     restart {
       attempts = 3
