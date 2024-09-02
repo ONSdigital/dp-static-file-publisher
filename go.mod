@@ -1,6 +1,6 @@
 module github.com/ONSdigital/dp-static-file-publisher
 
-go 1.21
+go 1.22
 
 replace (
 	// for linter warning in CI
