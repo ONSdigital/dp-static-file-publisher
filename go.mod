@@ -15,6 +15,7 @@ replace (
 	google.golang.org/grpc => google.golang.org/grpc v1.58.3
 	// To fix: [CVE-2024-24786] CWE-835: Loop with Unreachable Exit Condition ('Infinite Loop')
 	google.golang.org/protobuf => google.golang.org/protobuf v1.33.0
+	github.com/gorilla/schema => github.com/gorilla/schema v1.4.1
 )
 
 exclude (
