@@ -2,7 +2,7 @@ package schema
 
 import (
 	"github.com/ONSdigital/go-ns/avro"
-	_ "github.com/gorilla/schema" //added in order to pass the audit checks so we don't have to use `replace` directive
+	_ "github.com/gorilla/schema"
 )
 
 var imagePublishedEvent = `{
