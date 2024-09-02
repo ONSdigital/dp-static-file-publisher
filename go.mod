@@ -70,6 +70,7 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-memdb v1.3.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
