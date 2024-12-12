@@ -35,7 +35,7 @@ require (
 	github.com/ONSdigital/dp-kafka/v3 v3.3.1
 	github.com/ONSdigital/dp-net v1.5.0
 	github.com/ONSdigital/dp-net/v2 v2.11.0
-	github.com/ONSdigital/dp-s3 v1.6.0
+	github.com/ONSdigital/dp-s3 v1.10.0
 	github.com/ONSdigital/dp-s3/v2 v2.0.0-beta.3
 	github.com/ONSdigital/go-ns v0.0.0-20210410105122-6d6a140e952e
 	github.com/ONSdigital/log.go/v2 v2.4.1
@@ -50,7 +50,6 @@ require (
 
 require (
 	github.com/ONSdigital/dp-mongodb-in-memory v1.2.0 // indirect
-	github.com/ONSdigital/s3crypto v0.0.0-20180725145621-f8943119a487 // indirect
 	github.com/Shopify/sarama v1.30.1 // indirect
 	github.com/chromedp/cdproto v0.0.0-20211126220118-81fa0469ad77 // indirect
 	github.com/chromedp/chromedp v0.7.6 // indirect
@@ -70,7 +69,6 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
-	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-memdb v1.3.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect

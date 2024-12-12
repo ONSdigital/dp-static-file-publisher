@@ -190,7 +190,7 @@ func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.
 
 // DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
 func (e *Init) DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error) {
-	return dps3.NewUploader(awsRegion, bucketName, false)
+	return dps3.NewUploader(awsRegion, bucketName)
 }
 
 func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
@@ -220,5 +220,5 @@ func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, e
 // DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)
 // for the provided bucket name, using an existing AWS session
 func (e *Init) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
-	return dps3.NewClientWithSession(bucketName, false, s)
+	return dps3.NewClientWithSession(bucketName, s)
 }
