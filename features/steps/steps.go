@@ -8,7 +8,7 @@ import (
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
-	s3client "github.com/ONSdigital/dp-s3/v2"
+	dps3 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
 	"github.com/stretchr/testify/assert"
@@ -84,7 +84,7 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 }
 
 func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PublicBucketName, c.session)
+	client := dps3.NewClientWithSession(c.config.PublicBucketName, c.session)
 	result, _, err := client.Get(filename)
 
 	b, _ := io.ReadAll(result)
@@ -104,7 +104,7 @@ func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenMoved(
 }
 
 func (c *FilePublisherComponent) thePrivateBucketStillHasAFileCalled(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
+	client := dps3.NewClientWithSession(c.config.PrivateBucketName, c.session)
 	result, err := client.Head(filename)
 
 	assert.Equal(c.ApiFeature, expectedContentLength, int(*result.ContentLength))
@@ -116,7 +116,7 @@ func (c *FilePublisherComponent) thePrivateBucketStillHasAFileCalled(filename st
 }
 
 func (c *FilePublisherComponent) thePublicBucketContainsAMovedFileCalled(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PublicBucketName, c.session)
+	client := dps3.NewClientWithSession(c.config.PublicBucketName, c.session)
 	result, err := client.Head(filename)
 
 	assert.NoError(c.ApiFeature, err)
@@ -130,12 +130,12 @@ func (c *FilePublisherComponent) thePublicBucketContainsAMovedFileCalled(filenam
 }
 
 func (c *FilePublisherComponent) thereIsASingleChunkFileInThePrivateBucketWithContent(filename string, fileContent *godog.DocString) error {
-	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
+	client := dps3.NewClientWithSession(c.config.PrivateBucketName, c.session)
 
 	expectedContentLength = len(fileContent.Content)
 	expectedContent = fileContent.Content
 
-	_, err := client.UploadPart(context.Background(), &s3client.UploadPartRequest{
+	_, err := client.UploadPart(context.Background(), &dps3.UploadPartRequest{
 		UploadKey:   filename,
 		Type:        "text/plain",
 		ChunkNumber: 1,
@@ -151,7 +151,7 @@ func (c *FilePublisherComponent) thereIsASingleChunkFileInThePrivateBucketWithCo
 }
 
 func (c *FilePublisherComponent) thereIsAMultichunkFileInThePrivateBucket(filename string) error {
-	client := s3client.NewClientWithSession(c.config.PrivateBucketName, c.session)
+	client := dps3.NewClientWithSession(c.config.PrivateBucketName, c.session)
 
 	expectedContentLength = 6 * 1024 * 1024
 
@@ -169,7 +169,7 @@ func (c *FilePublisherComponent) thereIsAMultichunkFileInThePrivateBucket(filena
 			b = content[(5 * 1024 * 1024):]
 		}
 
-		_, err := client.UploadPart(context.Background(), &s3client.UploadPartRequest{
+		_, err := client.UploadPart(context.Background(), &dps3.UploadPartRequest{
 			UploadKey:   filename,
 			Type:        "text/plain",
 			ChunkNumber: int64(i),

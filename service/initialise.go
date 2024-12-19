@@ -14,8 +14,7 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
 	dphttp "github.com/ONSdigital/dp-net/http"
-	dps3 "github.com/ONSdigital/dp-s3"
-	dps3v2 "github.com/ONSdigital/dp-s3/v2"
+	dps3 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -191,11 +190,6 @@ func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.
 	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.StaticFilePublishedTopic)
 }
 
-// DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
-func (e *Init) DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error) {
-	return dps3.NewUploader(awsRegion, bucketName)
-}
-
 func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
 	var s *session.Session
 	var err error
@@ -220,17 +214,11 @@ func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, e
 		return nil, err
 	}
 
-	return dps3v2.NewClientWithSession(bucketName, s), nil
+	return dps3.NewClientWithSession(bucketName, s), nil
 }
 
 // DoGetS3ClientWithSession creates a new S3Client (extension of S3Client with Upload operations)
 // for the provided bucket name, using an existing AWS session
 func (e *Init) DoGetS3ClientV2WithSession(bucketName string, s *session.Session) (file.S3ClientV2, error) {
-	return dps3v2.NewClientWithSession(bucketName, s), nil
-}
-
-// DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)
-// for the provided bucket name, using an existing AWS session
-func (e *Init) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
-	return dps3.NewClientWithSession(bucketName, s)
+	return dps3.NewClientWithSession(bucketName, s), nil
 }

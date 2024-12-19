@@ -35,7 +35,6 @@ require (
 	github.com/ONSdigital/dp-kafka/v3 v3.3.1
 	github.com/ONSdigital/dp-net v1.5.0
 	github.com/ONSdigital/dp-net/v2 v2.11.2
-	github.com/ONSdigital/dp-s3 v1.10.0
 	github.com/ONSdigital/dp-s3/v2 v2.1.0
 	github.com/ONSdigital/go-ns v0.0.0-20210410105122-6d6a140e952e
 	github.com/ONSdigital/log.go/v2 v2.4.3
