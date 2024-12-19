@@ -16,22 +16,22 @@ var _ file.FilesService = &FilesServiceMock{}
 
 // FilesServiceMock is a mock implementation of file.FilesService.
 //
-// 	func TestSomethingThatUsesFilesService(t *testing.T) {
+//	func TestSomethingThatUsesFilesService(t *testing.T) {
 //
-// 		// make and configure a mocked file.FilesService
-// 		mockedFilesService := &FilesServiceMock{
-// 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-// 				panic("mock out the Checker method")
-// 			},
-// 			MarkFileMovedFunc: func(ctx context.Context, path string, etag string) error {
-// 				panic("mock out the MarkFileMoved method")
-// 			},
-// 		}
+//		// make and configure a mocked file.FilesService
+//		mockedFilesService := &FilesServiceMock{
+//			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+//				panic("mock out the Checker method")
+//			},
+//			MarkFileMovedFunc: func(ctx context.Context, path string, etag string) error {
+//				panic("mock out the MarkFileMoved method")
+//			},
+//		}
 //
-// 		// use mockedFilesService in code that requires file.FilesService
-// 		// and then make assertions.
+//		// use mockedFilesService in code that requires file.FilesService
+//		// and then make assertions.
 //
-// 	}
+//	}
 type FilesServiceMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
@@ -58,7 +58,7 @@ type FilesServiceMock struct {
 			Etag string
 		}
 	}
-	lockChecker           sync.RWMutex
+	lockChecker       sync.RWMutex
 	lockMarkFileMoved sync.RWMutex
 }
 
@@ -82,7 +82,8 @@ func (mock *FilesServiceMock) Checker(ctx context.Context, state *healthcheck.Ch
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedFilesService.CheckerCalls())
+//
+//	len(mockedFilesService.CheckerCalls())
 func (mock *FilesServiceMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
@@ -119,7 +120,8 @@ func (mock *FilesServiceMock) MarkFileMoved(ctx context.Context, path string, et
 
 // MarkFileMovedCalls gets all the calls that were made to MarkFileMoved.
 // Check the length with:
-//     len(mockedFilesService.MarkFileMovedCalls())
+//
+//	len(mockedFilesService.MarkFileMovedCalls())
 func (mock *FilesServiceMock) MarkFileMovedCalls() []struct {
 	Ctx  context.Context
 	Path string
