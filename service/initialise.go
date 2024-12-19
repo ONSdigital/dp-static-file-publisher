@@ -103,13 +103,16 @@ func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context,
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
-func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.S3Reader, s3Public event.S3Writer, err error) {
-	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName)
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private file.S3ClientV2, s3Public file.S3ClientV2, err error) {
+	s3Public, err = e.Init.DoGetS3ClientV2(cfg.AwsRegion, cfg.PublicBucketName)
 	if err != nil {
 		return nil, nil, err
 	}
 	e.S3Public = true
-	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, s3Public.Session())
+	s3Private, err = e.Init.DoGetS3ClientV2WithSession(cfg.PrivateBucketName, s3Public.Session())
+	if err != nil {
+		return nil, nil, err
+	}
 	e.S3Private = true
 	return
 }
@@ -197,6 +200,9 @@ func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, e
 	var s *session.Session
 	var err error
 	cfg, _ := config.Get()
+	// If running locally using localstack, `Endpoint` needs to be defined and `S3ForcePathStyle`
+	// needs to be set to `true`. This ensures the client makes requests to path style urls rather
+	// than virtual hosted style see https://docs.localstack.cloud/user-guide/aws/s3/#path-style-and-virtual-hosted-style-requests
 	if cfg.LocalS3URL != "" {
 		s, err = session.NewSession(&aws.Config{
 			Endpoint:         aws.String(cfg.LocalS3URL),
@@ -214,6 +220,12 @@ func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, e
 		return nil, err
 	}
 
+	return dps3v2.NewClientWithSession(bucketName, s), nil
+}
+
+// DoGetS3ClientWithSession creates a new S3Client (extension of S3Client with Upload operations)
+// for the provided bucket name, using an existing AWS session
+func (e *Init) DoGetS3ClientV2WithSession(bucketName string, s *session.Session) (file.S3ClientV2, error) {
 	return dps3v2.NewClientWithSession(bucketName, s), nil
 }
 
