@@ -7,6 +7,8 @@ replace (
 	github.com/blizzy78/varnamelen => github.com/blizzy78/varnamelen v0.8.0
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.24+incompatible
 	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20210802184156-9742bd7fca1c+incompatible
+	// To fix: [CVE-2024-37298] CWE-770: Allocation of Resources Without Limits or Throttling
+	github.com/gorilla/schema => github.com/gorilla/schema v1.4.1
 	// to avoid the following vulnerabilities:
 	//     - CVE-2022-29153 # pkg:golang/github.com/hashicorp/consul/api@v1.1.0
 	//     - sonatype-2021-1401 # pkg:golang/github.com/miekg/dns@v1.0.14
@@ -36,7 +38,7 @@ require (
 	github.com/ONSdigital/dp-net v1.5.0
 	github.com/ONSdigital/dp-net/v2 v2.11.2
 	github.com/ONSdigital/dp-s3/v2 v2.1.0
-	github.com/ONSdigital/go-ns v0.0.0-20210410105122-6d6a140e952e
+	github.com/ONSdigital/go-ns v0.0.0-20191104121206-f144c4ec2e58
 	github.com/ONSdigital/log.go/v2 v2.4.3
 	github.com/aws/aws-sdk-go v1.48.9
 	github.com/cucumber/godog v0.12.4
@@ -70,7 +72,6 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
-	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-memdb v1.3.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
