@@ -62,7 +62,7 @@ func Get() (*Config, error) {
 		ImageFilePublishedTopic:    "static-file-published",
 		StaticFilePublishedTopic:   "static-file-published-v2",
 		ConsumerGroup:              "dp-static-file-publisher",
-		AwsRegion:                  "eu-west-1",
+		AwsRegion:                  "eu-west-2",
 		PrivateBucketName:          "csv-exported",
 		PublicBucketName:           "static-develop",
 		PublicBucketURL:            "https://static-develop.s3.eu-west-2.amazonaws.com",

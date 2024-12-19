@@ -106,6 +106,10 @@ func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (fi
 	return dps3.NewClientWithSession(bucketName, s), nil
 }
 
+func (e *fakeServiceContainer) DoGetS3ClientV2WithSession(bucketName string, s *session.Session) (file.S3ClientV2, error) {
+	return dps3.NewClientWithSession(bucketName, s), nil
+}
+
 func (e *fakeServiceContainer) Shutdown(ctx context.Context) error {
 	return nil
 }
