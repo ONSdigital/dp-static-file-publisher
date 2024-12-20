@@ -17,31 +17,31 @@ var _ event.ImageAPIClient = &ImageAPIClientMock{}
 
 // ImageAPIClientMock is a mock implementation of event.ImageAPIClient.
 //
-// 	func TestSomethingThatUsesImageAPIClient(t *testing.T) {
+//	func TestSomethingThatUsesImageAPIClient(t *testing.T) {
 //
-// 		// make and configure a mocked event.ImageAPIClient
-// 		mockedImageAPIClient := &ImageAPIClientMock{
-// 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-// 				panic("mock out the Checker method")
-// 			},
-// 			GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
-// 				panic("mock out the GetDownloadVariant method")
-// 			},
-// 			GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
-// 				panic("mock out the GetImage method")
-// 			},
-// 			PutDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string, data image.ImageDownload) (image.ImageDownload, error) {
-// 				panic("mock out the PutDownloadVariant method")
-// 			},
-// 			PutImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, data image.Image) (image.Image, error) {
-// 				panic("mock out the PutImage method")
-// 			},
-// 		}
+//		// make and configure a mocked event.ImageAPIClient
+//		mockedImageAPIClient := &ImageAPIClientMock{
+//			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+//				panic("mock out the Checker method")
+//			},
+//			GetDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string) (image.ImageDownload, error) {
+//				panic("mock out the GetDownloadVariant method")
+//			},
+//			GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {
+//				panic("mock out the GetImage method")
+//			},
+//			PutDownloadVariantFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, variant string, data image.ImageDownload) (image.ImageDownload, error) {
+//				panic("mock out the PutDownloadVariant method")
+//			},
+//			PutImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string, data image.Image) (image.Image, error) {
+//				panic("mock out the PutImage method")
+//			},
+//		}
 //
-// 		// use mockedImageAPIClient in code that requires event.ImageAPIClient
-// 		// and then make assertions.
+//		// use mockedImageAPIClient in code that requires event.ImageAPIClient
+//		// and then make assertions.
 //
-// 	}
+//	}
 type ImageAPIClientMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
@@ -155,7 +155,8 @@ func (mock *ImageAPIClientMock) Checker(ctx context.Context, state *healthcheck.
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedImageAPIClient.CheckerCalls())
+//
+//	len(mockedImageAPIClient.CheckerCalls())
 func (mock *ImageAPIClientMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
@@ -198,7 +199,8 @@ func (mock *ImageAPIClientMock) GetDownloadVariant(ctx context.Context, userAuth
 
 // GetDownloadVariantCalls gets all the calls that were made to GetDownloadVariant.
 // Check the length with:
-//     len(mockedImageAPIClient.GetDownloadVariantCalls())
+//
+//	len(mockedImageAPIClient.GetDownloadVariantCalls())
 func (mock *ImageAPIClientMock) GetDownloadVariantCalls() []struct {
 	Ctx              context.Context
 	UserAuthToken    string
@@ -247,7 +249,8 @@ func (mock *ImageAPIClientMock) GetImage(ctx context.Context, userAuthToken stri
 
 // GetImageCalls gets all the calls that were made to GetImage.
 // Check the length with:
-//     len(mockedImageAPIClient.GetImageCalls())
+//
+//	len(mockedImageAPIClient.GetImageCalls())
 func (mock *ImageAPIClientMock) GetImageCalls() []struct {
 	Ctx              context.Context
 	UserAuthToken    string
@@ -298,7 +301,8 @@ func (mock *ImageAPIClientMock) PutDownloadVariant(ctx context.Context, userAuth
 
 // PutDownloadVariantCalls gets all the calls that were made to PutDownloadVariant.
 // Check the length with:
-//     len(mockedImageAPIClient.PutDownloadVariantCalls())
+//
+//	len(mockedImageAPIClient.PutDownloadVariantCalls())
 func (mock *ImageAPIClientMock) PutDownloadVariantCalls() []struct {
 	Ctx              context.Context
 	UserAuthToken    string
@@ -351,7 +355,8 @@ func (mock *ImageAPIClientMock) PutImage(ctx context.Context, userAuthToken stri
 
 // PutImageCalls gets all the calls that were made to PutImage.
 // Check the length with:
-//     len(mockedImageAPIClient.PutImageCalls())
+//
+//	len(mockedImageAPIClient.PutImageCalls())
 func (mock *ImageAPIClientMock) PutImageCalls() []struct {
 	Ctx              context.Context
 	UserAuthToken    string

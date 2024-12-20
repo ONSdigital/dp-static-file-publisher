@@ -18,28 +18,28 @@ var _ event.S3Reader = &S3ReaderMock{}
 
 // S3ReaderMock is a mock implementation of event.S3Reader.
 //
-// 	func TestSomethingThatUsesS3Reader(t *testing.T) {
+//	func TestSomethingThatUsesS3Reader(t *testing.T) {
 //
-// 		// make and configure a mocked event.S3Reader
-// 		mockedS3Reader := &S3ReaderMock{
-// 			BucketNameFunc: func() string {
-// 				panic("mock out the BucketName method")
-// 			},
-// 			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-// 				panic("mock out the Checker method")
-// 			},
-// 			GetFunc: func(key string) (io.ReadCloser, *int64, error) {
-// 				panic("mock out the Get method")
-// 			},
-// 			SessionFunc: func() *session.Session {
-// 				panic("mock out the Session method")
-// 			},
-// 		}
+//		// make and configure a mocked event.S3Reader
+//		mockedS3Reader := &S3ReaderMock{
+//			BucketNameFunc: func() string {
+//				panic("mock out the BucketName method")
+//			},
+//			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
+//				panic("mock out the Checker method")
+//			},
+//			GetFunc: func(key string) (io.ReadCloser, *int64, error) {
+//				panic("mock out the Get method")
+//			},
+//			SessionFunc: func() *session.Session {
+//				panic("mock out the Session method")
+//			},
+//		}
 //
-// 		// use mockedS3Reader in code that requires event.S3Reader
-// 		// and then make assertions.
+//		// use mockedS3Reader in code that requires event.S3Reader
+//		// and then make assertions.
 //
-// 	}
+//	}
 type S3ReaderMock struct {
 	// BucketNameFunc mocks the BucketName method.
 	BucketNameFunc func() string
@@ -95,7 +95,8 @@ func (mock *S3ReaderMock) BucketName() string {
 
 // BucketNameCalls gets all the calls that were made to BucketName.
 // Check the length with:
-//     len(mockedS3Reader.BucketNameCalls())
+//
+//	len(mockedS3Reader.BucketNameCalls())
 func (mock *S3ReaderMock) BucketNameCalls() []struct {
 } {
 	var calls []struct {
@@ -126,7 +127,8 @@ func (mock *S3ReaderMock) Checker(ctx context.Context, state *healthcheck.CheckS
 
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
-//     len(mockedS3Reader.CheckerCalls())
+//
+//	len(mockedS3Reader.CheckerCalls())
 func (mock *S3ReaderMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
@@ -159,7 +161,8 @@ func (mock *S3ReaderMock) Get(key string) (io.ReadCloser, *int64, error) {
 
 // GetCalls gets all the calls that were made to Get.
 // Check the length with:
-//     len(mockedS3Reader.GetCalls())
+//
+//	len(mockedS3Reader.GetCalls())
 func (mock *S3ReaderMock) GetCalls() []struct {
 	Key string
 } {
@@ -187,7 +190,8 @@ func (mock *S3ReaderMock) Session() *session.Session {
 
 // SessionCalls gets all the calls that were made to Session.
 // Check the length with:
-//     len(mockedS3Reader.SessionCalls())
+//
+//	len(mockedS3Reader.SessionCalls())
 func (mock *S3ReaderMock) SessionCalls() []struct {
 } {
 	var calls []struct {

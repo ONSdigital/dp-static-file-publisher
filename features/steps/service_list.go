@@ -91,7 +91,7 @@ func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Conte
 	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
+func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string) (file.S3Client, error) {
 	s, err := session.NewSession(&aws.Config{
 		Region:           aws.String(awsRegion),
 		Endpoint:         aws.String(localStackHost),
@@ -106,7 +106,7 @@ func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (fi
 	return dps3.NewClientWithSession(bucketName, s), nil
 }
 
-func (e *fakeServiceContainer) DoGetS3ClientV2WithSession(bucketName string, s *session.Session) (file.S3ClientV2, error) {
+func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, s *session.Session) (file.S3Client, error) {
 	return dps3.NewClientWithSession(bucketName, s), nil
 }
 

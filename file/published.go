@@ -14,8 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-//go:generate moq -out mock/s3client.go -pkg mock . S3ClientV2
-type S3ClientV2 interface {
+//go:generate moq -out mock/s3client.go -pkg mock . S3Client
+type S3Client interface {
 	BucketName() string
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	FileExists(key string) (bool, error)
@@ -30,13 +30,13 @@ type FilesService interface {
 	MarkFileMoved(ctx context.Context, path string, etag string) error
 }
 
-func NewMoverCopier(public, private S3ClientV2, filesClient FilesService) MoverCopier {
+func NewMoverCopier(public, private S3Client, filesClient FilesService) MoverCopier {
 	return MoverCopier{public, private, filesClient}
 }
 
 type MoverCopier struct {
-	PublicClient  S3ClientV2
-	PrivateClient S3ClientV2
+	PublicClient  S3Client
+	PrivateClient S3Client
 	FilesService  FilesService
 }
 

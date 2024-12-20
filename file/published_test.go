@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	s3Client   *fileMock.S3ClientV2Mock
+	s3Client   *fileMock.S3ClientMock
 	fileClient *fileMock.FilesServiceMock
 
 	nopCloser            = io.NopCloser(strings.NewReader("testing"))
@@ -44,7 +44,7 @@ var (
 func TestHandleFilePublishMessage(t *testing.T) {
 	ctx := context.Background()
 
-	s3Client = &fileMock.S3ClientV2Mock{
+	s3Client = &fileMock.S3ClientMock{
 		FileExistsFunc: fileDoesNotExistFunc,
 	}
 	fileClient = &fileMock.FilesServiceMock{}

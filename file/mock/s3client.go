@@ -13,16 +13,16 @@ import (
 	"sync"
 )
 
-// Ensure, that S3ClientV2Mock does implement file.S3ClientV2.
+// Ensure, that S3ClientMock does implement file.S3Client.
 // If this is not the case, regenerate this file with moq.
-var _ file.S3ClientV2 = &S3ClientV2Mock{}
+var _ file.S3Client = &S3ClientMock{}
 
-// S3ClientV2Mock is a mock implementation of file.S3ClientV2.
+// S3ClientMock is a mock implementation of file.S3Client.
 //
-//	func TestSomethingThatUsesS3ClientV2(t *testing.T) {
+//	func TestSomethingThatUsesS3Client(t *testing.T) {
 //
-//		// make and configure a mocked file.S3ClientV2
-//		mockedS3ClientV2 := &S3ClientV2Mock{
+//		// make and configure a mocked file.S3Client
+//		mockedS3Client := &S3ClientMock{
 //			BucketNameFunc: func() string {
 //				panic("mock out the BucketName method")
 //			},
@@ -43,11 +43,11 @@ var _ file.S3ClientV2 = &S3ClientV2Mock{}
 //			},
 //		}
 //
-//		// use mockedS3ClientV2 in code that requires file.S3ClientV2
+//		// use mockedS3Client in code that requires file.S3Client
 //		// and then make assertions.
 //
 //	}
-type S3ClientV2Mock struct {
+type S3ClientMock struct {
 	// BucketNameFunc mocks the BucketName method.
 	BucketNameFunc func() string
 
@@ -108,9 +108,9 @@ type S3ClientV2Mock struct {
 }
 
 // BucketName calls BucketNameFunc.
-func (mock *S3ClientV2Mock) BucketName() string {
+func (mock *S3ClientMock) BucketName() string {
 	if mock.BucketNameFunc == nil {
-		panic("S3ClientV2Mock.BucketNameFunc: method is nil but S3ClientV2.BucketName was just called")
+		panic("S3ClientMock.BucketNameFunc: method is nil but S3Client.BucketName was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -123,8 +123,8 @@ func (mock *S3ClientV2Mock) BucketName() string {
 // BucketNameCalls gets all the calls that were made to BucketName.
 // Check the length with:
 //
-//	len(mockedS3ClientV2.BucketNameCalls())
-func (mock *S3ClientV2Mock) BucketNameCalls() []struct {
+//	len(mockedS3Client.BucketNameCalls())
+func (mock *S3ClientMock) BucketNameCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -135,9 +135,9 @@ func (mock *S3ClientV2Mock) BucketNameCalls() []struct {
 }
 
 // Checker calls CheckerFunc.
-func (mock *S3ClientV2Mock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
+func (mock *S3ClientMock) Checker(ctx context.Context, state *healthcheck.CheckState) error {
 	if mock.CheckerFunc == nil {
-		panic("S3ClientV2Mock.CheckerFunc: method is nil but S3ClientV2.Checker was just called")
+		panic("S3ClientMock.CheckerFunc: method is nil but S3Client.Checker was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
@@ -155,8 +155,8 @@ func (mock *S3ClientV2Mock) Checker(ctx context.Context, state *healthcheck.Chec
 // CheckerCalls gets all the calls that were made to Checker.
 // Check the length with:
 //
-//	len(mockedS3ClientV2.CheckerCalls())
-func (mock *S3ClientV2Mock) CheckerCalls() []struct {
+//	len(mockedS3Client.CheckerCalls())
+func (mock *S3ClientMock) CheckerCalls() []struct {
 	Ctx   context.Context
 	State *healthcheck.CheckState
 } {
@@ -171,9 +171,9 @@ func (mock *S3ClientV2Mock) CheckerCalls() []struct {
 }
 
 // FileExists calls FileExistsFunc.
-func (mock *S3ClientV2Mock) FileExists(key string) (bool, error) {
+func (mock *S3ClientMock) FileExists(key string) (bool, error) {
 	if mock.FileExistsFunc == nil {
-		panic("S3ClientV2Mock.FileExistsFunc: method is nil but S3ClientV2.FileExists was just called")
+		panic("S3ClientMock.FileExistsFunc: method is nil but S3Client.FileExists was just called")
 	}
 	callInfo := struct {
 		Key string
@@ -189,8 +189,8 @@ func (mock *S3ClientV2Mock) FileExists(key string) (bool, error) {
 // FileExistsCalls gets all the calls that were made to FileExists.
 // Check the length with:
 //
-//	len(mockedS3ClientV2.FileExistsCalls())
-func (mock *S3ClientV2Mock) FileExistsCalls() []struct {
+//	len(mockedS3Client.FileExistsCalls())
+func (mock *S3ClientMock) FileExistsCalls() []struct {
 	Key string
 } {
 	var calls []struct {
@@ -203,9 +203,9 @@ func (mock *S3ClientV2Mock) FileExistsCalls() []struct {
 }
 
 // Get calls GetFunc.
-func (mock *S3ClientV2Mock) Get(key string) (io.ReadCloser, *int64, error) {
+func (mock *S3ClientMock) Get(key string) (io.ReadCloser, *int64, error) {
 	if mock.GetFunc == nil {
-		panic("S3ClientV2Mock.GetFunc: method is nil but S3ClientV2.Get was just called")
+		panic("S3ClientMock.GetFunc: method is nil but S3Client.Get was just called")
 	}
 	callInfo := struct {
 		Key string
@@ -221,8 +221,8 @@ func (mock *S3ClientV2Mock) Get(key string) (io.ReadCloser, *int64, error) {
 // GetCalls gets all the calls that were made to Get.
 // Check the length with:
 //
-//	len(mockedS3ClientV2.GetCalls())
-func (mock *S3ClientV2Mock) GetCalls() []struct {
+//	len(mockedS3Client.GetCalls())
+func (mock *S3ClientMock) GetCalls() []struct {
 	Key string
 } {
 	var calls []struct {
@@ -235,9 +235,9 @@ func (mock *S3ClientV2Mock) GetCalls() []struct {
 }
 
 // Session calls SessionFunc.
-func (mock *S3ClientV2Mock) Session() *session.Session {
+func (mock *S3ClientMock) Session() *session.Session {
 	if mock.SessionFunc == nil {
-		panic("S3ClientV2Mock.SessionFunc: method is nil but S3ClientV2.Session was just called")
+		panic("S3ClientMock.SessionFunc: method is nil but S3Client.Session was just called")
 	}
 	callInfo := struct {
 	}{}
@@ -250,8 +250,8 @@ func (mock *S3ClientV2Mock) Session() *session.Session {
 // SessionCalls gets all the calls that were made to Session.
 // Check the length with:
 //
-//	len(mockedS3ClientV2.SessionCalls())
-func (mock *S3ClientV2Mock) SessionCalls() []struct {
+//	len(mockedS3Client.SessionCalls())
+func (mock *S3ClientMock) SessionCalls() []struct {
 } {
 	var calls []struct {
 	}
@@ -262,9 +262,9 @@ func (mock *S3ClientV2Mock) SessionCalls() []struct {
 }
 
 // Upload calls UploadFunc.
-func (mock *S3ClientV2Mock) Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+func (mock *S3ClientMock) Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
 	if mock.UploadFunc == nil {
-		panic("S3ClientV2Mock.UploadFunc: method is nil but S3ClientV2.Upload was just called")
+		panic("S3ClientMock.UploadFunc: method is nil but S3Client.Upload was just called")
 	}
 	callInfo := struct {
 		Input   *s3manager.UploadInput
@@ -282,8 +282,8 @@ func (mock *S3ClientV2Mock) Upload(input *s3manager.UploadInput, options ...func
 // UploadCalls gets all the calls that were made to Upload.
 // Check the length with:
 //
-//	len(mockedS3ClientV2.UploadCalls())
-func (mock *S3ClientV2Mock) UploadCalls() []struct {
+//	len(mockedS3Client.UploadCalls())
+func (mock *S3ClientMock) UploadCalls() []struct {
 	Input   *s3manager.UploadInput
 	Options []func(*s3manager.Uploader)
 } {
