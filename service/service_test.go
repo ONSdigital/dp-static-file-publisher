@@ -120,7 +120,7 @@ func TestRun(t *testing.T) {
 			}, nil
 		}
 
-		Convey("Given that initialising the S3 client V2 returns an error", func() {
+		Convey("Given that initialising the S3 client returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
 				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOK,
