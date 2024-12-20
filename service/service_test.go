@@ -120,7 +120,7 @@ func TestRun(t *testing.T) {
 			}, nil
 		}
 
-		Convey("Given that initialising the S3 client returns an error", func() {
+		Convey("Given that initialising the S3 client V2 returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc:     funcDoGetHTTPServerNil,
 				DoGetImageAPIClientFunc: funcDoGetImageAPIClientFuncOK,
@@ -157,32 +157,6 @@ func TestRun(t *testing.T) {
 				So(svcList.S3Public, ShouldBeTrue)
 				So(svcList.S3Private, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeFalse)
-			})
-		})
-
-		Convey("Given that initialising the S3 V2 client returns an error", func() {
-			s3v2clientErr := errors.New("could not create S3 client v2")
-
-			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
-				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
-				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
-				DoGetS3ClientV2WithSessionFunc:       funcDoGetS3ClientV2WithSessionOK,
-				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
-				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
-			}
-			svcErrors := make(chan error, 1)
-			svcList := service.NewServiceList(initMock)
-			_, err := service.Run(ctx, cfg, svcList, testBuildTime, testGitCommit, testVersion, svcErrors)
-
-			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
-				So(err, ShouldResemble, s3v2clientErr)
-				So(svcList.KafkaImagePublishedConsumer, ShouldBeTrue)
-				So(svcList.S3Public, ShouldBeTrue)
-				So(svcList.S3Private, ShouldBeTrue)
-				So(svcList.S3ClientV2, ShouldBeFalse)
-
 			})
 		})
 
