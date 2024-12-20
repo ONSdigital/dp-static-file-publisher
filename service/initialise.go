@@ -102,7 +102,7 @@ func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context,
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
-func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private file.S3Client, s3Public file.S3Client, err error) {
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private, s3Public file.S3Client, err error) {
 	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName)
 	if err != nil {
 		return nil, nil, err
