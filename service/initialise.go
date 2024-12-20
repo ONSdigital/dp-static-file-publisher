@@ -14,8 +14,7 @@ import (
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
 	dphttp "github.com/ONSdigital/dp-net/http"
-	dps3 "github.com/ONSdigital/dp-s3"
-	dps3v2 "github.com/ONSdigital/dp-s3/v2"
+	dps3 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -30,7 +29,7 @@ type ExternalServiceList struct {
 	KafkaFilePublishedConsumer  bool
 	S3Private                   bool
 	S3Public                    bool
-	S3ClientV2                  bool
+	S3Client                    bool
 	Init                        Initialiser
 }
 
@@ -43,7 +42,7 @@ func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 		KafkaFilePublishedConsumer:  false,
 		S3Private:                   false,
 		S3Public:                    false,
-		S3ClientV2:                  false,
+		S3Client:                    false,
 		FilesService:                false,
 		Init:                        initialiser,
 	}
@@ -103,25 +102,28 @@ func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context,
 }
 
 // GetS3Clients returns S3 clients private and public. They share the same AWS session.
-func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private event.S3Reader, s3Public event.S3Writer, err error) {
+func (e *ExternalServiceList) GetS3Clients(cfg *config.Config) (s3Private, s3Public file.S3Client, err error) {
 	s3Public, err = e.Init.DoGetS3Client(cfg.AwsRegion, cfg.PublicBucketName)
 	if err != nil {
 		return nil, nil, err
 	}
 	e.S3Public = true
-	s3Private = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, s3Public.Session())
+	s3Private, err = e.Init.DoGetS3ClientWithSession(cfg.PrivateBucketName, s3Public.Session())
+	if err != nil {
+		return nil, nil, err
+	}
 	e.S3Private = true
 	return
 }
 
-// GetS3ClientV2 returns S3 clients private and public. They share the same AWS session.
-func (e *ExternalServiceList) GetS3ClientV2(cfg *config.Config, bucketName string) (file.S3ClientV2, error) {
-	s3ClientV2, err := e.Init.DoGetS3ClientV2(cfg.AwsRegion, bucketName)
+// GetS3Client returns S3 clients private and public. They share the same AWS session.
+func (e *ExternalServiceList) GetS3Client(cfg *config.Config, bucketName string) (file.S3Client, error) {
+	s3Client, err := e.Init.DoGetS3Client(cfg.AwsRegion, bucketName)
 	if err != nil {
 		return nil, err
 	}
-	e.S3ClientV2 = true
-	return s3ClientV2, nil
+	e.S3Client = true
+	return s3Client, nil
 }
 
 // DoGetHTTPServer creates an HTTP Server with the provided bind address and router
@@ -188,15 +190,13 @@ func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.
 	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.StaticFilePublishedTopic)
 }
 
-// DoGetS3Client creates a new S3Client for the provided AWS region and bucket name.
-func (e *Init) DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error) {
-	return dps3.NewUploader(awsRegion, bucketName, false)
-}
-
-func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
+func (e *Init) DoGetS3Client(awsRegion, bucketName string) (file.S3Client, error) {
 	var s *session.Session
 	var err error
 	cfg, _ := config.Get()
+	// If running locally using localstack, `Endpoint` needs to be defined and `S3ForcePathStyle`
+	// needs to be set to `true`. This ensures the client makes requests to path style urls rather
+	// than virtual hosted style see https://docs.localstack.cloud/user-guide/aws/s3/#path-style-and-virtual-hosted-style-requests
 	if cfg.LocalS3URL != "" {
 		s, err = session.NewSession(&aws.Config{
 			Endpoint:         aws.String(cfg.LocalS3URL),
@@ -214,11 +214,11 @@ func (e *Init) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, e
 		return nil, err
 	}
 
-	return dps3v2.NewClientWithSession(bucketName, s), nil
+	return dps3.NewClientWithSession(bucketName, s), nil
 }
 
-// DoGetS3ClientWithSession creates a new S3Clienter (extension of S3Client with Upload operations)
+// DoGetS3ClientWithSession creates a new S3Client (extension of S3Client with Upload operations)
 // for the provided bucket name, using an existing AWS session
-func (e *Init) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
-	return dps3.NewClientWithSession(bucketName, false, s)
+func (e *Init) DoGetS3ClientWithSession(bucketName string, s *session.Session) (file.S3Client, error) {
+	return dps3.NewClientWithSession(bucketName, s), nil
 }

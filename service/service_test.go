@@ -1,10 +1,8 @@
 package service_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"testing"
@@ -12,7 +10,6 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
@@ -45,7 +42,7 @@ var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (s
 	return nil, errKafkaConsumer
 }
 
-var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string) (event.S3Writer, error) {
+var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string) (file.S3Client, error) {
 	return nil, errS3
 }
 
@@ -68,10 +65,10 @@ func TestRun(t *testing.T) {
 		}
 
 		s3Session := &session.Session{}
-		s3ClientMock := &eventMock.S3WriterMock{
+		s3ClientMock := &fileMock.S3ClientMock{
 			SessionFunc: func() *session.Session { return s3Session },
 		}
-		s3PrivateMock := &eventMock.S3ReaderMock{}
+		s3PrivateMock := &fileMock.S3ClientMock{}
 
 		serverWg := &sync.WaitGroup{}
 		serverMock := &serviceMock.HTTPServerMock{
@@ -96,12 +93,12 @@ func TestRun(t *testing.T) {
 			return filesSvcClientMock
 		}
 
-		funcDoGetS3ClientOK := func(awsRegion string, bucketName string) (event.S3Writer, error) {
+		funcDoGetS3ClientOK := func(awsRegion string, bucketName string) (file.S3Client, error) {
 			return s3ClientMock, nil
 		}
 
-		funcDoGetS3UploaderWithSessionOK := func(bucketName string, s *session.Session) event.S3Reader {
-			return s3PrivateMock
+		funcDoGetS3ClientWithSessionOK := func(bucketName string, s *session.Session) (file.S3Client, error) {
+			return s3PrivateMock, nil
 		}
 
 		funcDoGetHealthcheckOK := func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
@@ -120,18 +117,6 @@ func TestRun(t *testing.T) {
 			return &serviceMock.KafkaConsumerMock{
 				RegisterBatchHandlerFunc: func(ctx context.Context, h kafka.BatchHandler) error { return nil },
 				StartFunc:                func() error { return nil },
-			}, nil
-		}
-
-		funcDoGetS3ClientV2OK := func(awsRegion string, bucketName string) (file.S3ClientV2, error) {
-			return &fileMock.S3ClientV2Mock{
-				GetFunc: func(key string) (io.ReadCloser, *int64, error) {
-					i := int64(0)
-					return io.NopCloser(bytes.NewReader([]byte(""))), &i, nil
-				},
-				UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-					return &s3manager.UploadOutput{}, nil
-				},
 			}, nil
 		}
 
@@ -159,7 +144,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerErr,
 			}
 			svcErrors := make(chan error, 1)
@@ -175,45 +160,15 @@ func TestRun(t *testing.T) {
 			})
 		})
 
-		Convey("Given that initialising the S3 V2 client returns an error", func() {
-			s3v2clientErr := errors.New("could not create S3 client v2")
-
-			initMock := &serviceMock.InitialiserMock{
-				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
-				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
-				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
-				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
-				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
-				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
-				DoGetS3ClientV2Func: func(awsRegion string, bucketName string) (file.S3ClientV2, error) {
-					return nil, s3v2clientErr
-				},
-			}
-			svcErrors := make(chan error, 1)
-			svcList := service.NewServiceList(initMock)
-			_, err := service.Run(ctx, cfg, svcList, testBuildTime, testGitCommit, testVersion, svcErrors)
-
-			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
-				So(err, ShouldResemble, s3v2clientErr)
-				So(svcList.KafkaImagePublishedConsumer, ShouldBeTrue)
-				So(svcList.S3Public, ShouldBeTrue)
-				So(svcList.S3Private, ShouldBeTrue)
-				So(svcList.S3ClientV2, ShouldBeFalse)
-
-			})
-		})
-
 		Convey("Given that initialising healthcheck returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckErr,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
-				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
@@ -237,12 +192,11 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return nil, expectedError
 				},
-				DoGetS3ClientV2Func:   funcDoGetS3ClientV2OK,
 				DoGetFilesServiceFunc: funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
@@ -270,9 +224,8 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
-				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMockAddFail, nil
@@ -303,10 +256,9 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
-				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)
@@ -349,10 +301,9 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3UploaderWithSessionOK,
+				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
-				DoGetS3ClientV2Func:                  funcDoGetS3ClientV2OK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 			}
 			svcErrors := make(chan error, 1)

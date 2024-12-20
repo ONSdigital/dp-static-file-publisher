@@ -6,11 +6,10 @@ import (
 	"time"
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
-	dps3v2 "github.com/ONSdigital/dp-s3/v2"
+	dps3 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 
-	s3client "github.com/ONSdigital/dp-s3"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 
@@ -92,18 +91,7 @@ func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Conte
 	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string) (event.S3Writer, error) {
-	s, _ := session.NewSession(&aws.Config{
-		Endpoint:         aws.String(localStackHost),
-		Region:           aws.String(awsRegion),
-		S3ForcePathStyle: aws.Bool(true),
-		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
-	})
-
-	return s3client.NewUploaderWithSession(bucketName, false, s), nil
-}
-
-func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (file.S3ClientV2, error) {
+func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string) (file.S3Client, error) {
 	s, err := session.NewSession(&aws.Config{
 		Region:           aws.String(awsRegion),
 		Endpoint:         aws.String(localStackHost),
@@ -115,11 +103,11 @@ func (e *fakeServiceContainer) DoGetS3ClientV2(awsRegion, bucketName string) (fi
 		return nil, err
 	}
 
-	return dps3v2.NewClientWithSession(bucketName, s), nil
+	return dps3.NewClientWithSession(bucketName, s), nil
 }
 
-func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, s *session.Session) event.S3Reader {
-	return s3client.NewClientWithSession(bucketName, false, s)
+func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, s *session.Session) (file.S3Client, error) {
+	return dps3.NewClientWithSession(bucketName, s), nil
 }
 
 func (e *fakeServiceContainer) Shutdown(ctx context.Context) error {

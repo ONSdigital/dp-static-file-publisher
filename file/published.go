@@ -10,14 +10,18 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	"github.com/ONSdigital/log.go/v2/log"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-//go:generate moq -out mock/s3client.go -pkg mock . S3ClientV2
-type S3ClientV2 interface {
-	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
-	Get(key string) (io.ReadCloser, *int64, error)
+//go:generate moq -out mock/s3client.go -pkg mock . S3Client
+type S3Client interface {
+	BucketName() string
+	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	FileExists(key string) (bool, error)
+	Get(key string) (io.ReadCloser, *int64, error)
+	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
+	Session() *session.Session
 }
 
 //go:generate moq -out mock/filesservice.go -pkg mock . FilesService
@@ -26,13 +30,13 @@ type FilesService interface {
 	MarkFileMoved(ctx context.Context, path string, etag string) error
 }
 
-func NewMoverCopier(public, private S3ClientV2, filesClient FilesService) MoverCopier {
+func NewMoverCopier(public, private S3Client, filesClient FilesService) MoverCopier {
 	return MoverCopier{public, private, filesClient}
 }
 
 type MoverCopier struct {
-	PublicClient  S3ClientV2
-	PrivateClient S3ClientV2
+	PublicClient  S3Client
+	PrivateClient S3Client
 	FilesService  FilesService
 }
 
