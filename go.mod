@@ -1,14 +1,12 @@
 module github.com/ONSdigital/dp-static-file-publisher
 
-go 1.22
+go 1.23
 
 replace (
 	// for linter warning in CI
 	github.com/blizzy78/varnamelen => github.com/blizzy78/varnamelen v0.8.0
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.24+incompatible
 	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20210802184156-9742bd7fca1c+incompatible
-	// To fix: [CVE-2024-37298] CWE-770: Allocation of Resources Without Limits or Throttling
-	github.com/gorilla/schema => github.com/gorilla/schema v1.4.1
 	// to avoid the following vulnerabilities:
 	//     - CVE-2022-29153 # pkg:golang/github.com/hashicorp/consul/api@v1.1.0
 	//     - sonatype-2021-1401 # pkg:golang/github.com/miekg/dns@v1.0.14
