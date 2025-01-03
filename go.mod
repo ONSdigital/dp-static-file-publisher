@@ -2,28 +2,11 @@ module github.com/ONSdigital/dp-static-file-publisher
 
 go 1.23
 
-replace (
-	// for linter warning in CI
-	github.com/blizzy78/varnamelen => github.com/blizzy78/varnamelen v0.8.0
-	github.com/coreos/etcd => github.com/coreos/etcd v3.3.24+incompatible
-	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v3.2.1-0.20210802184156-9742bd7fca1c+incompatible
-	// to avoid the following vulnerabilities:
-	//     - CVE-2022-29153 # pkg:golang/github.com/hashicorp/consul/api@v1.1.0
-	//     - sonatype-2021-1401 # pkg:golang/github.com/miekg/dns@v1.0.14
-	github.com/spf13/cobra => github.com/spf13/cobra v1.4.0
-	// To avoid CVE-2023-32731
-	google.golang.org/grpc => google.golang.org/grpc v1.58.3
-	// To fix: [CVE-2024-24786] CWE-835: Loop with Unreachable Exit Condition ('Infinite Loop')
-	google.golang.org/protobuf => google.golang.org/protobuf v1.33.0
-)
-
 exclude (
-	// to avoid 'sonatype-2020-1055' non-CVE Vulnerability
-	github.com/go-ldap/ldap/v3 v3.1.3
-	// to avoid 'sonatype-2021-4899' non-CVE Vulnerability
-	github.com/gorilla/sessions v1.2.1
-	// to avoid CVE-2022-21698
-	github.com/prometheus/client_golang v0.9.2
+	github.com/hashicorp/consul/api v1.1.0
+	github.com/prometheus/client_golang v0.9.3
+	google.golang.org/protobuf v1.24.0
+	google.golang.org/protobuf v1.25.0
 )
 
 require (
