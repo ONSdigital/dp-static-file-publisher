@@ -9,9 +9,10 @@ import (
 	dps3 "github.com/ONSdigital/dp-s3/v2"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
@@ -19,7 +20,6 @@ import (
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/event/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type fakeServiceContainer struct {
@@ -91,23 +91,27 @@ func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Conte
 	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *fakeServiceContainer) DoGetS3Client(awsRegion, bucketName string) (file.S3Client, error) {
-	s, err := session.NewSession(&aws.Config{
-		Region:           aws.String(awsRegion),
-		Endpoint:         aws.String(localStackHost),
-		S3ForcePathStyle: aws.Bool(true),
-		Credentials:      credentials.NewStaticCredentials("test", "test", ""),
-	})
+func (e *fakeServiceContainer) DoGetS3Client(ctx context.Context, awsRegion, bucketName string) (file.S3Client, error) {
+	AWSConfig, err := awsConfig.LoadDefaultConfig(
+		ctx,
+		awsConfig.WithRegion(awsRegion),
+		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("test", "test", "")),
+	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return dps3.NewClientWithSession(bucketName, s), nil
+	client := dps3.NewClientWithConfig(bucketName, AWSConfig, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(localStackHost)
+		options.UsePathStyle = true
+	})
+
+	return client, nil
 }
 
-func (e *fakeServiceContainer) DoGetS3ClientWithSession(bucketName string, s *session.Session) (file.S3Client, error) {
-	return dps3.NewClientWithSession(bucketName, s), nil
+func (e *fakeServiceContainer) DoGetS3ClientWithConfig(bucketName string, cfg aws.Config) (file.S3Client, error) {
+	return dps3.NewClientWithConfig(bucketName, cfg), nil
 }
 
 func (e *fakeServiceContainer) Shutdown(ctx context.Context) error {

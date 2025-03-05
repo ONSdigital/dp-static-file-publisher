@@ -7,8 +7,9 @@ import (
 	"context"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 	"sync"
 )
@@ -29,16 +30,16 @@ var _ file.S3Client = &S3ClientMock{}
 //			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
-//			FileExistsFunc: func(key string) (bool, error) {
+//			ConfigFunc: func() aws.Config {
+//				panic("mock out the Config method")
+//			},
+//			FileExistsFunc: func(ctx context.Context, key string) (bool, error) {
 //				panic("mock out the FileExists method")
 //			},
-//			GetFunc: func(key string) (io.ReadCloser, *int64, error) {
+//			GetFunc: func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 //				panic("mock out the Get method")
 //			},
-//			SessionFunc: func() *session.Session {
-//				panic("mock out the Session method")
-//			},
-//			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+//			UploadFunc: func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 //				panic("mock out the Upload method")
 //			},
 //		}
@@ -54,17 +55,17 @@ type S3ClientMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
+	// ConfigFunc mocks the Config method.
+	ConfigFunc func() aws.Config
+
 	// FileExistsFunc mocks the FileExists method.
-	FileExistsFunc func(key string) (bool, error)
+	FileExistsFunc func(ctx context.Context, key string) (bool, error)
 
 	// GetFunc mocks the Get method.
-	GetFunc func(key string) (io.ReadCloser, *int64, error)
-
-	// SessionFunc mocks the Session method.
-	SessionFunc func() *session.Session
+	GetFunc func(ctx context.Context, key string) (io.ReadCloser, *int64, error)
 
 	// UploadFunc mocks the Upload method.
-	UploadFunc func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
+	UploadFunc func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -78,32 +79,38 @@ type S3ClientMock struct {
 			// State is the state argument value.
 			State *healthcheck.CheckState
 		}
+		// Config holds details about calls to the Config method.
+		Config []struct {
+		}
 		// FileExists holds details about calls to the FileExists method.
 		FileExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Key is the key argument value.
 			Key string
 		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Key is the key argument value.
 			Key string
 		}
-		// Session holds details about calls to the Session method.
-		Session []struct {
-		}
 		// Upload holds details about calls to the Upload method.
 		Upload []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Input is the input argument value.
-			Input *s3manager.UploadInput
+			Input *s3.PutObjectInput
 			// Options is the options argument value.
-			Options []func(*s3manager.Uploader)
+			Options []func(*manager.Uploader)
 		}
 	}
 	lockBucketName sync.RWMutex
 	lockChecker    sync.RWMutex
+	lockConfig     sync.RWMutex
 	lockFileExists sync.RWMutex
 	lockGet        sync.RWMutex
-	lockSession    sync.RWMutex
 	lockUpload     sync.RWMutex
 }
 
@@ -170,20 +177,49 @@ func (mock *S3ClientMock) CheckerCalls() []struct {
 	return calls
 }
 
+// Config calls ConfigFunc.
+func (mock *S3ClientMock) Config() aws.Config {
+	if mock.ConfigFunc == nil {
+		panic("S3ClientMock.ConfigFunc: method is nil but S3Client.Config was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockConfig.Lock()
+	mock.calls.Config = append(mock.calls.Config, callInfo)
+	mock.lockConfig.Unlock()
+	return mock.ConfigFunc()
+}
+
+// ConfigCalls gets all the calls that were made to Config.
+// Check the length with:
+//
+//	len(mockedS3Client.ConfigCalls())
+func (mock *S3ClientMock) ConfigCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockConfig.RLock()
+	calls = mock.calls.Config
+	mock.lockConfig.RUnlock()
+	return calls
+}
+
 // FileExists calls FileExistsFunc.
-func (mock *S3ClientMock) FileExists(key string) (bool, error) {
+func (mock *S3ClientMock) FileExists(ctx context.Context, key string) (bool, error) {
 	if mock.FileExistsFunc == nil {
 		panic("S3ClientMock.FileExistsFunc: method is nil but S3Client.FileExists was just called")
 	}
 	callInfo := struct {
+		Ctx context.Context
 		Key string
 	}{
+		Ctx: ctx,
 		Key: key,
 	}
 	mock.lockFileExists.Lock()
 	mock.calls.FileExists = append(mock.calls.FileExists, callInfo)
 	mock.lockFileExists.Unlock()
-	return mock.FileExistsFunc(key)
+	return mock.FileExistsFunc(ctx, key)
 }
 
 // FileExistsCalls gets all the calls that were made to FileExists.
@@ -191,9 +227,11 @@ func (mock *S3ClientMock) FileExists(key string) (bool, error) {
 //
 //	len(mockedS3Client.FileExistsCalls())
 func (mock *S3ClientMock) FileExistsCalls() []struct {
+	Ctx context.Context
 	Key string
 } {
 	var calls []struct {
+		Ctx context.Context
 		Key string
 	}
 	mock.lockFileExists.RLock()
@@ -203,19 +241,21 @@ func (mock *S3ClientMock) FileExistsCalls() []struct {
 }
 
 // Get calls GetFunc.
-func (mock *S3ClientMock) Get(key string) (io.ReadCloser, *int64, error) {
+func (mock *S3ClientMock) Get(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 	if mock.GetFunc == nil {
 		panic("S3ClientMock.GetFunc: method is nil but S3Client.Get was just called")
 	}
 	callInfo := struct {
+		Ctx context.Context
 		Key string
 	}{
+		Ctx: ctx,
 		Key: key,
 	}
 	mock.lockGet.Lock()
 	mock.calls.Get = append(mock.calls.Get, callInfo)
 	mock.lockGet.Unlock()
-	return mock.GetFunc(key)
+	return mock.GetFunc(ctx, key)
 }
 
 // GetCalls gets all the calls that were made to Get.
@@ -223,9 +263,11 @@ func (mock *S3ClientMock) Get(key string) (io.ReadCloser, *int64, error) {
 //
 //	len(mockedS3Client.GetCalls())
 func (mock *S3ClientMock) GetCalls() []struct {
+	Ctx context.Context
 	Key string
 } {
 	var calls []struct {
+		Ctx context.Context
 		Key string
 	}
 	mock.lockGet.RLock()
@@ -234,49 +276,24 @@ func (mock *S3ClientMock) GetCalls() []struct {
 	return calls
 }
 
-// Session calls SessionFunc.
-func (mock *S3ClientMock) Session() *session.Session {
-	if mock.SessionFunc == nil {
-		panic("S3ClientMock.SessionFunc: method is nil but S3Client.Session was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockSession.Lock()
-	mock.calls.Session = append(mock.calls.Session, callInfo)
-	mock.lockSession.Unlock()
-	return mock.SessionFunc()
-}
-
-// SessionCalls gets all the calls that were made to Session.
-// Check the length with:
-//
-//	len(mockedS3Client.SessionCalls())
-func (mock *S3ClientMock) SessionCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockSession.RLock()
-	calls = mock.calls.Session
-	mock.lockSession.RUnlock()
-	return calls
-}
-
 // Upload calls UploadFunc.
-func (mock *S3ClientMock) Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+func (mock *S3ClientMock) Upload(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 	if mock.UploadFunc == nil {
 		panic("S3ClientMock.UploadFunc: method is nil but S3Client.Upload was just called")
 	}
 	callInfo := struct {
-		Input   *s3manager.UploadInput
-		Options []func(*s3manager.Uploader)
+		Ctx     context.Context
+		Input   *s3.PutObjectInput
+		Options []func(*manager.Uploader)
 	}{
+		Ctx:     ctx,
 		Input:   input,
 		Options: options,
 	}
 	mock.lockUpload.Lock()
 	mock.calls.Upload = append(mock.calls.Upload, callInfo)
 	mock.lockUpload.Unlock()
-	return mock.UploadFunc(input, options...)
+	return mock.UploadFunc(ctx, input, options...)
 }
 
 // UploadCalls gets all the calls that were made to Upload.
@@ -284,12 +301,14 @@ func (mock *S3ClientMock) Upload(input *s3manager.UploadInput, options ...func(*
 //
 //	len(mockedS3Client.UploadCalls())
 func (mock *S3ClientMock) UploadCalls() []struct {
-	Input   *s3manager.UploadInput
-	Options []func(*s3manager.Uploader)
+	Ctx     context.Context
+	Input   *s3.PutObjectInput
+	Options []func(*manager.Uploader)
 } {
 	var calls []struct {
-		Input   *s3manager.UploadInput
-		Options []func(*s3manager.Uploader)
+		Ctx     context.Context
+		Input   *s3.PutObjectInput
+		Options []func(*manager.Uploader)
 	}
 	mock.lockUpload.RLock()
 	calls = mock.calls.Upload

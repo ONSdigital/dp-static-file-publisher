@@ -10,6 +10,7 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
+	"github.com/aws/aws-sdk-go-v2/aws"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
@@ -18,7 +19,6 @@ import (
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
 	serviceMock "github.com/ONSdigital/dp-static-file-publisher/service/mock"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -42,7 +42,7 @@ var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (s
 	return nil, errKafkaConsumer
 }
 
-var funcDoGetS3ClientFuncErr = func(awsRegion string, bucketName string) (file.S3Client, error) {
+var funcDoGetS3ClientFuncErr = func(ctx context.Context, awsRegion string, bucketName string) (file.S3Client, error) {
 	return nil, errS3
 }
 
@@ -64,9 +64,9 @@ func TestRun(t *testing.T) {
 			StartFunc:    func(ctx context.Context) {},
 		}
 
-		s3Session := &session.Session{}
+		AWSConfig := aws.Config{}
 		s3ClientMock := &fileMock.S3ClientMock{
-			SessionFunc: func() *session.Session { return s3Session },
+			ConfigFunc: func() aws.Config { return AWSConfig },
 		}
 		s3PrivateMock := &fileMock.S3ClientMock{}
 
@@ -93,11 +93,11 @@ func TestRun(t *testing.T) {
 			return filesSvcClientMock
 		}
 
-		funcDoGetS3ClientOK := func(awsRegion string, bucketName string) (file.S3Client, error) {
+		funcDoGetS3ClientOK := func(ctx context.Context, awsRegion string, bucketName string) (file.S3Client, error) {
 			return s3ClientMock, nil
 		}
 
-		funcDoGetS3ClientWithSessionOK := func(bucketName string, s *session.Session) (file.S3Client, error) {
+		funcDoGetS3ClientWithConfigOK := func(bucketName string, c aws.Config) (file.S3Client, error) {
 			return s3PrivateMock, nil
 		}
 
@@ -144,7 +144,7 @@ func TestRun(t *testing.T) {
 				DoGetHTTPServerFunc:                  funcDoGetHTTPServerNil,
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
+				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerErr,
 			}
 			svcErrors := make(chan error, 1)
@@ -166,7 +166,7 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
+				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckErr,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
@@ -192,7 +192,7 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
+				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
 					return nil, expectedError
@@ -224,7 +224,7 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
+				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
@@ -256,7 +256,7 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
+				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,
@@ -301,7 +301,7 @@ func TestRun(t *testing.T) {
 				DoGetImageAPIClientFunc:              funcDoGetImageAPIClientFuncOK,
 				DoGetKafkaImagePublishedConsumerFunc: funcDoGetKafkaConsumerOK,
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
-				DoGetS3ClientWithSessionFunc:         funcDoGetS3ClientWithSessionOK,
+				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
 				DoGetKafkaFilePublishedConsumerFunc:  funcDoGetKafkaConsumerOK,
 				DoGetFilesServiceFunc:                funcDoGetFilesClientFuncOK,

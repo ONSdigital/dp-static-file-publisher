@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/ONSdigital/dp-api-clients-go/image"
-
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/event/mock"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -92,11 +92,11 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		}
 
 		Convey("And a successful event handler, when Handle is triggered", func() {
-			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
-			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-				return &s3manager.UploadOutput{}, nil
+			mockS3Public.UploadFunc = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
+				return &manager.UploadOutput{}, nil
 			}
 			eventHandler := event.ImagePublishedHandler{
 				AuthToken:       testAuthToken,
@@ -121,7 +121,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 
 			Convey("The file is uploaded to the public bucket", func() {
 				So(mockS3Public.UploadCalls(), ShouldHaveLength, 1)
-				So(*mockS3Public.UploadCalls()[0].Input, ShouldResemble, s3manager.UploadInput{
+				So(*mockS3Public.UploadCalls()[0].Input, ShouldResemble, s3.PutObjectInput{
 					Body:   testFileContent,
 					Bucket: &testPublicBucket,
 					Key:    &testEvent.DstPath,
@@ -147,11 +147,11 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler (developer env), when Handle is triggered", func() {
-			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
-			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-				return &s3manager.UploadOutput{}, nil
+			mockS3Public.UploadFunc = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
+				return &manager.UploadOutput{}, nil
 			}
 			eventHandler := event.ImagePublishedHandler{
 				AuthToken:       testAuthToken,
@@ -177,7 +177,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 
 			Convey("The file is uploaded to the public bucket", func() {
 				So(mockS3Public.UploadCalls(), ShouldHaveLength, 1)
-				So(*mockS3Public.UploadCalls()[0].Input, ShouldResemble, s3manager.UploadInput{
+				So(*mockS3Public.UploadCalls()[0].Input, ShouldResemble, s3.PutObjectInput{
 					Body:   testFileContent,
 					Bucket: &testPublicBucket,
 					Key:    &testEvent.DstPath,
@@ -203,7 +203,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler with an S3Private client that fails to obtain the source file, when Handle is triggered", func() {
-			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return nil, nil, errS3Private
 			}
 			eventHandler := event.ImagePublishedHandler{
@@ -235,7 +235,7 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler with an image client that fails to retrieve a variant, when Handle is triggered", func() {
-			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
 			mockImageAPIFail := &mock.ImageAPIClientMock{
@@ -280,10 +280,10 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler with an S3Public client that fails to upload the file, when Handle is triggered", func() {
-			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
-			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+			mockS3Public.UploadFunc = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 				return nil, errS3Public
 			}
 			eventHandler := event.ImagePublishedHandler{
@@ -301,11 +301,11 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 		})
 
 		Convey("And an event handler with an image client that fails to update a variant, when Handle is triggered", func() {
-			mockS3Private.GetFunc = func(key string) (io.ReadCloser, *int64, error) {
+			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
-			mockS3Public.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-				return &s3manager.UploadOutput{}, nil
+			mockS3Public.UploadFunc = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
+				return &manager.UploadOutput{}, nil
 			}
 			mockImageAPIFail := &mock.ImageAPIClientMock{
 				GetImageFunc: func(ctx context.Context, userAuthToken string, serviceAuthToken string, collectionID string, imageID string) (image.Image, error) {

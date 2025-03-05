@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 
 	kafka "github.com/ONSdigital/dp-kafka/v3"
@@ -84,8 +86,11 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 }
 
 func (c *FilePublisherComponent) theContentOfFileInThePublicBucketMatchesTheOriginalPlainTextContent(filename string) error {
-	client := dps3.NewClientWithSession(c.config.PublicBucketName, c.session)
-	result, _, err := client.Get(filename)
+	client := dps3.NewClientWithConfig(c.config.PublicBucketName, *c.AWSConfig, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(localStackHost)
+		options.UsePathStyle = true
+	})
+	result, _, err := client.Get(context.Background(), filename)
 
 	b, _ := io.ReadAll(result)
 
@@ -104,8 +109,11 @@ func (c *FilePublisherComponent) theFilesAPIShouldBeInformedTheFileHasBeenMoved(
 }
 
 func (c *FilePublisherComponent) thePrivateBucketStillHasAFileCalled(filename string) error {
-	client := dps3.NewClientWithSession(c.config.PrivateBucketName, c.session)
-	result, err := client.Head(filename)
+	client := dps3.NewClientWithConfig(c.config.PrivateBucketName, *c.AWSConfig, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(localStackHost)
+		options.UsePathStyle = true
+	})
+	result, err := client.Head(context.Background(), filename)
 
 	assert.Equal(c.ApiFeature, expectedContentLength, int(*result.ContentLength))
 	assert.Equal(c.ApiFeature, "text/plain", *result.ContentType)
@@ -116,8 +124,12 @@ func (c *FilePublisherComponent) thePrivateBucketStillHasAFileCalled(filename st
 }
 
 func (c *FilePublisherComponent) thePublicBucketContainsAMovedFileCalled(filename string) error {
-	client := dps3.NewClientWithSession(c.config.PublicBucketName, c.session)
-	result, err := client.Head(filename)
+	client := dps3.NewClientWithConfig(c.config.PublicBucketName, *c.AWSConfig, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(localStackHost)
+		options.UsePathStyle = true
+	})
+
+	result, err := client.Head(context.Background(), filename)
 
 	assert.NoError(c.ApiFeature, err)
 
@@ -130,7 +142,10 @@ func (c *FilePublisherComponent) thePublicBucketContainsAMovedFileCalled(filenam
 }
 
 func (c *FilePublisherComponent) thereIsASingleChunkFileInThePrivateBucketWithContent(filename string, fileContent *godog.DocString) error {
-	client := dps3.NewClientWithSession(c.config.PrivateBucketName, c.session)
+	client := dps3.NewClientWithConfig(c.config.PrivateBucketName, *c.AWSConfig, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(localStackHost)
+		options.UsePathStyle = true
+	})
 
 	expectedContentLength = len(fileContent.Content)
 	expectedContent = fileContent.Content
@@ -151,7 +166,10 @@ func (c *FilePublisherComponent) thereIsASingleChunkFileInThePrivateBucketWithCo
 }
 
 func (c *FilePublisherComponent) thereIsAMultichunkFileInThePrivateBucket(filename string) error {
-	client := dps3.NewClientWithSession(c.config.PrivateBucketName, c.session)
+	client := dps3.NewClientWithConfig(c.config.PrivateBucketName, *c.AWSConfig, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(localStackHost)
+		options.UsePathStyle = true
+	})
 
 	expectedContentLength = 6 * 1024 * 1024
 
@@ -172,7 +190,7 @@ func (c *FilePublisherComponent) thereIsAMultichunkFileInThePrivateBucket(filena
 		_, err := client.UploadPart(context.Background(), &dps3.UploadPartRequest{
 			UploadKey:   filename,
 			Type:        "text/plain",
-			ChunkNumber: int64(i),
+			ChunkNumber: int32(i),
 			TotalChunks: 2,
 			FileName:    filename,
 		},

@@ -4,24 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"io"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	"github.com/ONSdigital/log.go/v2/log"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 //go:generate moq -out mock/s3client.go -pkg mock . S3Client
 type S3Client interface {
 	BucketName() string
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
-	FileExists(key string) (bool, error)
-	Get(key string) (io.ReadCloser, *int64, error)
-	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
-	Session() *session.Session
+	FileExists(ctx context.Context, key string) (bool, error)
+	Get(ctx context.Context, key string) (io.ReadCloser, *int64, error)
+	Upload(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error)
+	Config() aws.Config
 }
 
 //go:generate moq -out mock/filesservice.go -pkg mock . FilesService
@@ -70,7 +71,7 @@ func (d MoverCopier) HandleFilePublishMessage(ctx context.Context, msgs []kafka.
 	return nil
 }
 
-func (d MoverCopier) notifyFileAPIMovementComplete(ctx context.Context, uploadResponse *s3manager.UploadOutput, fp Published, logData log.Data) error {
+func (d MoverCopier) notifyFileAPIMovementComplete(ctx context.Context, uploadResponse *manager.UploadOutput, fp Published, logData log.Data) error {
 	err := d.FilesService.MarkFileMoved(ctx, fp.Path, *uploadResponse.ETag)
 	if err != nil {
 		logData["file_path"] = fp.Path
@@ -80,13 +81,13 @@ func (d MoverCopier) notifyFileAPIMovementComplete(ctx context.Context, uploadRe
 	return nil
 }
 
-func (d MoverCopier) moveAndCopyFile(ctx context.Context, fp Published, logData log.Data) (*s3manager.UploadOutput, error) {
-	reader, _, err := d.PrivateClient.Get(fp.Path)
+func (d MoverCopier) moveAndCopyFile(ctx context.Context, fp Published, logData log.Data) (*manager.UploadOutput, error) {
+	reader, _, err := d.PrivateClient.Get(ctx, fp.Path)
 	if err != nil {
 		return nil, NewCommitError(ctx, err, "Reading file from private s3 bucket", logData)
 	}
 
-	uploadResponse, err := d.PublicClient.Upload(&s3manager.UploadInput{
+	uploadResponse, err := d.PublicClient.Upload(ctx, &s3.PutObjectInput{
 		Key:         &fp.Path,
 		ContentType: &fp.Type,
 		Body:        reader,
@@ -98,7 +99,7 @@ func (d MoverCopier) moveAndCopyFile(ctx context.Context, fp Published, logData 
 }
 
 func (d MoverCopier) ensurePublicFileDoesNotAlreadyExists(ctx context.Context, fp Published, logData log.Data) error {
-	fileExists, err := d.PublicClient.FileExists(fp.Path)
+	fileExists, err := d.PublicClient.FileExists(ctx, fp.Path)
 	if err != nil {
 		return NewCommitError(ctx, err, "failed to check if file exists", logData)
 	}

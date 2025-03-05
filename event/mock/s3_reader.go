@@ -7,7 +7,7 @@ import (
 	"context"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"io"
 	"sync"
 )
@@ -28,11 +28,11 @@ var _ event.S3Reader = &S3ReaderMock{}
 //			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
-//			GetFunc: func(key string) (io.ReadCloser, *int64, error) {
-//				panic("mock out the Get method")
+//			ConfigFunc: func() aws.Config {
+//				panic("mock out the Config method")
 //			},
-//			SessionFunc: func() *session.Session {
-//				panic("mock out the Session method")
+//			GetFunc: func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
+//				panic("mock out the Get method")
 //			},
 //		}
 //
@@ -47,11 +47,11 @@ type S3ReaderMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
-	// GetFunc mocks the Get method.
-	GetFunc func(key string) (io.ReadCloser, *int64, error)
+	// ConfigFunc mocks the Config method.
+	ConfigFunc func() aws.Config
 
-	// SessionFunc mocks the Session method.
-	SessionFunc func() *session.Session
+	// GetFunc mocks the Get method.
+	GetFunc func(ctx context.Context, key string) (io.ReadCloser, *int64, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -65,19 +65,21 @@ type S3ReaderMock struct {
 			// State is the state argument value.
 			State *healthcheck.CheckState
 		}
+		// Config holds details about calls to the Config method.
+		Config []struct {
+		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Key is the key argument value.
 			Key string
-		}
-		// Session holds details about calls to the Session method.
-		Session []struct {
 		}
 	}
 	lockBucketName sync.RWMutex
 	lockChecker    sync.RWMutex
+	lockConfig     sync.RWMutex
 	lockGet        sync.RWMutex
-	lockSession    sync.RWMutex
 }
 
 // BucketName calls BucketNameFunc.
@@ -143,20 +145,49 @@ func (mock *S3ReaderMock) CheckerCalls() []struct {
 	return calls
 }
 
+// Config calls ConfigFunc.
+func (mock *S3ReaderMock) Config() aws.Config {
+	if mock.ConfigFunc == nil {
+		panic("S3ReaderMock.ConfigFunc: method is nil but S3Reader.Config was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockConfig.Lock()
+	mock.calls.Config = append(mock.calls.Config, callInfo)
+	mock.lockConfig.Unlock()
+	return mock.ConfigFunc()
+}
+
+// ConfigCalls gets all the calls that were made to Config.
+// Check the length with:
+//
+//	len(mockedS3Reader.ConfigCalls())
+func (mock *S3ReaderMock) ConfigCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockConfig.RLock()
+	calls = mock.calls.Config
+	mock.lockConfig.RUnlock()
+	return calls
+}
+
 // Get calls GetFunc.
-func (mock *S3ReaderMock) Get(key string) (io.ReadCloser, *int64, error) {
+func (mock *S3ReaderMock) Get(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 	if mock.GetFunc == nil {
 		panic("S3ReaderMock.GetFunc: method is nil but S3Reader.Get was just called")
 	}
 	callInfo := struct {
+		Ctx context.Context
 		Key string
 	}{
+		Ctx: ctx,
 		Key: key,
 	}
 	mock.lockGet.Lock()
 	mock.calls.Get = append(mock.calls.Get, callInfo)
 	mock.lockGet.Unlock()
-	return mock.GetFunc(key)
+	return mock.GetFunc(ctx, key)
 }
 
 // GetCalls gets all the calls that were made to Get.
@@ -164,40 +195,15 @@ func (mock *S3ReaderMock) Get(key string) (io.ReadCloser, *int64, error) {
 //
 //	len(mockedS3Reader.GetCalls())
 func (mock *S3ReaderMock) GetCalls() []struct {
+	Ctx context.Context
 	Key string
 } {
 	var calls []struct {
+		Ctx context.Context
 		Key string
 	}
 	mock.lockGet.RLock()
 	calls = mock.calls.Get
 	mock.lockGet.RUnlock()
-	return calls
-}
-
-// Session calls SessionFunc.
-func (mock *S3ReaderMock) Session() *session.Session {
-	if mock.SessionFunc == nil {
-		panic("S3ReaderMock.SessionFunc: method is nil but S3Reader.Session was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockSession.Lock()
-	mock.calls.Session = append(mock.calls.Session, callInfo)
-	mock.lockSession.Unlock()
-	return mock.SessionFunc()
-}
-
-// SessionCalls gets all the calls that were made to Session.
-// Check the length with:
-//
-//	len(mockedS3Reader.SessionCalls())
-func (mock *S3ReaderMock) SessionCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockSession.RLock()
-	calls = mock.calls.Session
-	mock.lockSession.RUnlock()
 	return calls
 }

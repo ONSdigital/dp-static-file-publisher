@@ -3,6 +3,9 @@ package event
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 	"time"
 
@@ -11,8 +14,6 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/schema"
 	"github.com/ONSdigital/log.go/v2/log"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 //go:generate moq -out mock/s3_reader.go -pkg mock . S3Reader
@@ -36,17 +37,17 @@ type ImagePublishedHandler struct {
 // S3Writer defines the required methods from dp-s3 to interact with a particular bucket of AWS S3
 type S3Writer interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
-	Session() *session.Session
+	Config() aws.Config
 	BucketName() string
-	Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
+	Upload(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error)
 }
 
 // S3Reader defines the required methods from dp-s3 to read data to an AWS S3 Bucket
 type S3Reader interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
-	Session() *session.Session
+	Config() aws.Config
 	BucketName() string
-	Get(key string) (io.ReadCloser, *int64, error)
+	Get(ctx context.Context, key string) (io.ReadCloser, *int64, error)
 }
 
 // ImageAPIClient defines the required methods from image API client
@@ -81,7 +82,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	privatePath := event.SrcPath
 
 	// Move image from private bucket
-	reader, err := h.getS3Reader(privatePath)
+	reader, err := h.getS3Reader(ctx, privatePath)
 	if err != nil {
 		log.Error(ctx, "error getting s3 object reader", err, logData)
 		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "error getting s3 object reader")
@@ -94,7 +95,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 
 	// Upload file to public bucket
 	log.Info(ctx, "uploading private file to s3", logData)
-	err = h.uploadToS3(event.DstPath, reader)
+	err = h.uploadToS3(ctx, event.DstPath, reader)
 	if err != nil {
 		log.Error(ctx, "error uploading to s3", err, logData)
 		h.setVariantStatusToFailed(ctx, event.ImageID, imageDownload, "failed to upload image to s3")
@@ -140,22 +141,22 @@ func (h *ImagePublishedHandler) KafkaHandler(ctx context.Context, msgs []kafka.M
 }
 
 // Get an S3 reader
-func (h *ImagePublishedHandler) getS3Reader(imagePath string) (reader io.ReadCloser, err error) {
-	reader, _, err = h.S3Private.Get(imagePath)
+func (h *ImagePublishedHandler) getS3Reader(ctx context.Context, imagePath string) (reader io.ReadCloser, err error) {
+	reader, _, err = h.S3Private.Get(ctx, imagePath)
 	return
 }
 
 // Upload to public S3 from a reader
-func (h *ImagePublishedHandler) uploadToS3(thePath string, reader io.Reader) error {
+func (h *ImagePublishedHandler) uploadToS3(ctx context.Context, thePath string, reader io.Reader) error {
 	publicBucket := h.S3Public.BucketName()
-	uploadInput := &s3manager.UploadInput{
+	uploadInput := &s3.PutObjectInput{
 		Body:   reader,
 		Bucket: &publicBucket,
 		Key:    &thePath,
 	}
 
 	// Upload file to public bucket
-	_, err := h.S3Public.Upload(uploadInput)
+	_, err := h.S3Public.Upload(ctx, uploadInput)
 	if err != nil {
 		return err
 	}

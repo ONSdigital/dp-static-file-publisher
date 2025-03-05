@@ -7,8 +7,9 @@ import (
 	"context"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"sync"
 )
 
@@ -28,10 +29,10 @@ var _ event.S3Writer = &S3WriterMock{}
 //			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
-//			SessionFunc: func() *session.Session {
-//				panic("mock out the Session method")
+//			ConfigFunc: func() aws.Config {
+//				panic("mock out the Config method")
 //			},
-//			UploadFunc: func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+//			UploadFunc: func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 //				panic("mock out the Upload method")
 //			},
 //		}
@@ -47,11 +48,11 @@ type S3WriterMock struct {
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
-	// SessionFunc mocks the Session method.
-	SessionFunc func() *session.Session
+	// ConfigFunc mocks the Config method.
+	ConfigFunc func() aws.Config
 
 	// UploadFunc mocks the Upload method.
-	UploadFunc func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error)
+	UploadFunc func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -65,20 +66,22 @@ type S3WriterMock struct {
 			// State is the state argument value.
 			State *healthcheck.CheckState
 		}
-		// Session holds details about calls to the Session method.
-		Session []struct {
+		// Config holds details about calls to the Config method.
+		Config []struct {
 		}
 		// Upload holds details about calls to the Upload method.
 		Upload []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Input is the input argument value.
-			Input *s3manager.UploadInput
+			Input *s3.PutObjectInput
 			// Options is the options argument value.
-			Options []func(*s3manager.Uploader)
+			Options []func(*manager.Uploader)
 		}
 	}
 	lockBucketName sync.RWMutex
 	lockChecker    sync.RWMutex
-	lockSession    sync.RWMutex
+	lockConfig     sync.RWMutex
 	lockUpload     sync.RWMutex
 }
 
@@ -145,49 +148,51 @@ func (mock *S3WriterMock) CheckerCalls() []struct {
 	return calls
 }
 
-// Session calls SessionFunc.
-func (mock *S3WriterMock) Session() *session.Session {
-	if mock.SessionFunc == nil {
-		panic("S3WriterMock.SessionFunc: method is nil but S3Writer.Session was just called")
+// Config calls ConfigFunc.
+func (mock *S3WriterMock) Config() aws.Config {
+	if mock.ConfigFunc == nil {
+		panic("S3WriterMock.ConfigFunc: method is nil but S3Writer.Config was just called")
 	}
 	callInfo := struct {
 	}{}
-	mock.lockSession.Lock()
-	mock.calls.Session = append(mock.calls.Session, callInfo)
-	mock.lockSession.Unlock()
-	return mock.SessionFunc()
+	mock.lockConfig.Lock()
+	mock.calls.Config = append(mock.calls.Config, callInfo)
+	mock.lockConfig.Unlock()
+	return mock.ConfigFunc()
 }
 
-// SessionCalls gets all the calls that were made to Session.
+// ConfigCalls gets all the calls that were made to Config.
 // Check the length with:
 //
-//	len(mockedS3Writer.SessionCalls())
-func (mock *S3WriterMock) SessionCalls() []struct {
+//	len(mockedS3Writer.ConfigCalls())
+func (mock *S3WriterMock) ConfigCalls() []struct {
 } {
 	var calls []struct {
 	}
-	mock.lockSession.RLock()
-	calls = mock.calls.Session
-	mock.lockSession.RUnlock()
+	mock.lockConfig.RLock()
+	calls = mock.calls.Config
+	mock.lockConfig.RUnlock()
 	return calls
 }
 
 // Upload calls UploadFunc.
-func (mock *S3WriterMock) Upload(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+func (mock *S3WriterMock) Upload(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 	if mock.UploadFunc == nil {
 		panic("S3WriterMock.UploadFunc: method is nil but S3Writer.Upload was just called")
 	}
 	callInfo := struct {
-		Input   *s3manager.UploadInput
-		Options []func(*s3manager.Uploader)
+		Ctx     context.Context
+		Input   *s3.PutObjectInput
+		Options []func(*manager.Uploader)
 	}{
+		Ctx:     ctx,
 		Input:   input,
 		Options: options,
 	}
 	mock.lockUpload.Lock()
 	mock.calls.Upload = append(mock.calls.Upload, callInfo)
 	mock.lockUpload.Unlock()
-	return mock.UploadFunc(input, options...)
+	return mock.UploadFunc(ctx, input, options...)
 }
 
 // UploadCalls gets all the calls that were made to Upload.
@@ -195,12 +200,14 @@ func (mock *S3WriterMock) Upload(input *s3manager.UploadInput, options ...func(*
 //
 //	len(mockedS3Writer.UploadCalls())
 func (mock *S3WriterMock) UploadCalls() []struct {
-	Input   *s3manager.UploadInput
-	Options []func(*s3manager.Uploader)
+	Ctx     context.Context
+	Input   *s3.PutObjectInput
+	Options []func(*manager.Uploader)
 } {
 	var calls []struct {
-		Input   *s3manager.UploadInput
-		Options []func(*s3manager.Uploader)
+		Ctx     context.Context
+		Input   *s3.PutObjectInput
+		Options []func(*manager.Uploader)
 	}
 	mock.lockUpload.RLock()
 	calls = mock.calls.Upload

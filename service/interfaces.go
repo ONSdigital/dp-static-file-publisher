@@ -10,7 +10,7 @@ import (
 	kafka "github.com/ONSdigital/dp-kafka/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
@@ -25,8 +25,8 @@ type Initialiser interface {
 	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
 	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
 	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
-	DoGetS3Client(awsRegion, bucketName string) (file.S3Client, error)
-	DoGetS3ClientWithSession(bucketName string, s *session.Session) (file.S3Client, error)
+	DoGetS3Client(ctx context.Context, awsRegion, bucketName string) (file.S3Client, error)
+	DoGetS3ClientWithConfig(bucketName string, cfg aws.Config) (file.S3Client, error)
 	DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService
 }
 
