@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -104,6 +105,9 @@ func deleteObjectsInBucket(bucketName string, client *s3.Client) {
 			Bucket: aws.String(bucketName),
 			Key:    object.Key,
 		}
-		_, _ = client.DeleteObject(context.Background(), deleteObjectInput)
+		_, err := client.DeleteObject(context.Background(), deleteObjectInput)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to delete object in localstack s3: %s", err.Error()))
+		}
 	}
 }
