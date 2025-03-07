@@ -102,7 +102,7 @@ func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context,
 	return filePublishedConsumer, nil
 }
 
-// GetS3Clients returns S3 clients private and public. They share the same AWS session.
+// GetS3Clients returns S3 clients private and public. They share the same AWS config.
 func (e *ExternalServiceList) GetS3Clients(ctx context.Context, cfg *config.Config) (s3Private, s3Public file.S3Client, err error) {
 	s3Public, err = e.Init.DoGetS3Client(ctx, cfg.AwsRegion, cfg.PublicBucketName)
 	if err != nil {
@@ -117,7 +117,7 @@ func (e *ExternalServiceList) GetS3Clients(ctx context.Context, cfg *config.Conf
 	return
 }
 
-// GetS3Client returns S3 clients private and public. They share the same AWS session.
+// GetS3Client returns S3 clients private and public. They share the same AWS config.
 func (e *ExternalServiceList) GetS3Client(ctx context.Context, cfg *config.Config, bucketName string) (file.S3Client, error) {
 	s3Client, err := e.Init.DoGetS3Client(ctx, cfg.AwsRegion, bucketName)
 	if err != nil {
@@ -228,8 +228,8 @@ func (e *Init) DoGetS3Client(ctx context.Context, awsRegion, bucketName string) 
 	return client, nil
 }
 
-// DoGetS3ClientWithSession creates a new S3Client (extension of S3Client with Upload operations)
-// for the provided bucket name, using an existing AWS session
+// DoGetS3ClientWithConfig creates a new S3Client (extension of S3Client with Upload operations)
+// for the provided bucket name, using an existing AWS config
 func (e *Init) DoGetS3ClientWithConfig(bucketName string, cfg aws.Config) (file.S3Client, error) {
 	return dps3.NewClientWithConfig(bucketName, cfg), nil
 }
