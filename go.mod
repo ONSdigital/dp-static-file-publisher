@@ -1,6 +1,6 @@
 module github.com/ONSdigital/dp-static-file-publisher
 
-go 1.23
+go 1.24
 
 require (
 	github.com/ONSdigital/dp-api-clients-go v1.43.0
