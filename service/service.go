@@ -45,7 +45,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
 
 	// Get S3 Clients
-	svc.S3Private, svc.S3Public, err = serviceList.GetS3Clients(cfg)
+	svc.S3Private, svc.S3Public, err = serviceList.GetS3Clients(ctx, cfg)
 	if err != nil {
 		log.Fatal(ctx, "could not instantiate S3 clients", err)
 		return nil, err
@@ -116,13 +116,13 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 }
 
 func getMoverCopier(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceList, svc *Service) (file.MoverCopier, error) {
-	publicClient, err := serviceList.GetS3Client(cfg, cfg.PublicBucketName)
+	publicClient, err := serviceList.GetS3Client(ctx, cfg, cfg.PublicBucketName)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate public S3 client", err)
 		return file.MoverCopier{}, err
 	}
 
-	privateClient, err := serviceList.GetS3Client(cfg, cfg.PrivateBucketName)
+	privateClient, err := serviceList.GetS3Client(ctx, cfg, cfg.PrivateBucketName)
 	if err != nil {
 		log.Fatal(ctx, "Could not instantiate private S3 client", err)
 		return file.MoverCopier{}, err

@@ -11,8 +11,9 @@ import (
 	"github.com/ONSdigital/dp-kafka/v3/avro"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -25,10 +26,10 @@ var (
 	fileClient *fileMock.FilesServiceMock
 
 	nopCloser            = io.NopCloser(strings.NewReader("testing"))
-	fileDoesNotExistFunc = func(key string) (bool, error) { return false, nil }
-	validGetFunc         = func(key string) (io.ReadCloser, *int64, error) { return nopCloser, nil, nil }
-	validUploadFunc      = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
-		return &s3manager.UploadOutput{ETag: aws.String("1234567890")}, nil
+	fileDoesNotExistFunc = func(ctx context.Context, key string) (bool, error) { return false, nil }
+	validGetFunc         = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) { return nopCloser, nil, nil }
+	validUploadFunc      = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
+		return &manager.UploadOutput{ETag: aws.String("1234567890")}, nil
 	}
 
 	errFiles           = errors.New("files error")
@@ -65,7 +66,9 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	})
 
 	Convey("Given files in the private bucket could not be read", t, func() {
-		s3Client.GetFunc = func(key string) (io.ReadCloser, *int64, error) { return nil, nil, errors.New(errMsg) }
+		s3Client.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
+			return nil, nil, errors.New(errMsg)
+		}
 		s3Client.FileExistsFunc = fileDoesNotExistFunc
 
 		Convey("Attempting to get a file from private s3 bucket", func() {
@@ -79,7 +82,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 	Convey("Given files sent the public bucket could not be written", t, func() {
 		s3Client.GetFunc = validGetFunc
-		s3Client.UploadFunc = func(input *s3manager.UploadInput, options ...func(*s3manager.Uploader)) (*s3manager.UploadOutput, error) {
+		s3Client.UploadFunc = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 			return nil, errors.New(errMsg)
 		}
 
@@ -94,7 +97,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 	Convey("Given there already is a file in the public bucket with the provided path", t, func() {
 		s3Client.GetFunc = validGetFunc
-		s3Client.FileExistsFunc = func(key string) (bool, error) { return true, nil }
+		s3Client.FileExistsFunc = func(ctx context.Context, key string) (bool, error) { return true, nil }
 
 		Convey("When the duplicate file is sent for movement", func() {
 			err := generateMoverCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
@@ -107,7 +110,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 	Convey("Given there is a error checking the head of the file in the public bucket", t, func() {
 		s3Client.GetFunc = validGetFunc
-		s3Client.FileExistsFunc = func(key string) (bool, error) { return false, errors.New(errMsg) }
+		s3Client.FileExistsFunc = func(ctx context.Context, key string) (bool, error) { return false, errors.New(errMsg) }
 
 		Convey("When Head error is returned", func() {
 			err := generateMoverCopier().HandleFilePublishMessage(ctx, []kafka.Message{generateMockMessage()})
