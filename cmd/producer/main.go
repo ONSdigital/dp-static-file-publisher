@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	dpkafka "github.com/ONSdigital/dp-kafka/v2"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/schema"
@@ -28,27 +28,29 @@ func main() {
 	}
 
 	// Create Kafka Producer
-	pChannels := dpkafka.CreateProducerChannels()
-	pConfig := &dpkafka.ProducerConfig{
-		KafkaVersion: &cfg.KafkaVersion,
+	pConfig := &kafka.ProducerConfig{
+		BrokerAddrs:     cfg.KafkaConfig.Addr,
+		Topic:           cfg.KafkaConfig.ImageFilePublishedTopic,
+		KafkaVersion:    &cfg.KafkaConfig.Version,
+		MaxMessageBytes: &cfg.KafkaConfig.MaxBytes,
 	}
-	if cfg.KafkaSecProtocol == "TLS" {
-		pConfig.SecurityConfig = dpkafka.GetSecurityConfig(
-			cfg.KafkaSecCACerts,
-			cfg.KafkaSecClientCert,
-			cfg.KafkaSecClientKey,
-			cfg.KafkaSecSkipVerify,
+	if cfg.KafkaConfig.SecProtocol == "TLS" {
+		pConfig.SecurityConfig = kafka.GetSecurityConfig(
+			cfg.KafkaConfig.SecCACerts,
+			cfg.KafkaConfig.SecClientCert,
+			cfg.KafkaConfig.SecClientKey,
+			cfg.KafkaConfig.SecSkipVerify,
 		)
 	}
 
-	kafkaProducer, err := dpkafka.NewProducer(ctx, cfg.KafkaAddr, cfg.ImageFilePublishedTopic, pChannels, pConfig)
+	kafkaProducer, err := kafka.NewProducer(ctx, pConfig)
 	if err != nil {
 		log.Error(ctx, "fatal error trying to create kafka producer", err, log.Data{"topic": cfg.ImageFilePublishedTopic})
 		os.Exit(1)
 	}
 
 	// kafka error logging go-routines
-	kafkaProducer.Channels().LogErrors(ctx, "kafka producer")
+	kafkaProducer.LogErrors(ctx)
 
 	time.Sleep(500 * time.Millisecond)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -64,7 +66,7 @@ func main() {
 
 		// Send bytes to Output channel, after calling Initialise just in case it is not initialised.
 		kafkaProducer.Initialise(ctx) //nolint
-		kafkaProducer.Channels().Output <- bytes
+		kafkaProducer.Channels().Output <- kafka.BytesMessage{Value: bytes, Context: ctx}
 	}
 }
 

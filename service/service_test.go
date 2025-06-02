@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
-	"github.com/ONSdigital/dp-kafka/v3/kafkatest"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
+	"github.com/ONSdigital/dp-kafka/v4/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go-v2/aws"
 
@@ -38,7 +38,7 @@ var funcDoGetHealthcheckErr = func(cfg *config.Config, buildTime string, gitComm
 	return nil, errHealthcheck
 }
 
-var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+var funcDoGetKafkaConsumerErr = func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	return nil, errKafkaConsumer
 }
 
@@ -85,7 +85,7 @@ func TestRun(t *testing.T) {
 			},
 		}
 
-		funcDoGetImageAPIClientFuncOK := func(cfg *config.Config) event.ImageAPIClient {
+		funcDoGetImageAPIClientFuncOK := func(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
 			return imageAPIClientMock
 		}
 
@@ -113,8 +113,8 @@ func TestRun(t *testing.T) {
 			return failingServerMock
 		}
 
-		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
-			return &serviceMock.KafkaConsumerMock{
+		funcDoGetKafkaConsumerOK := func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
+			return &kafkatest.IConsumerGroupMock{
 				RegisterBatchHandlerFunc: func(ctx context.Context, h kafka.BatchHandler) error { return nil },
 				StartFunc:                func() error { return nil },
 			}, nil
@@ -194,7 +194,7 @@ func TestRun(t *testing.T) {
 				DoGetS3ClientFunc:                    funcDoGetS3ClientOK,
 				DoGetS3ClientWithConfigFunc:          funcDoGetS3ClientWithConfigOK,
 				DoGetHealthCheckFunc:                 funcDoGetHealthcheckOK,
-				DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaFilePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 					return nil, expectedError
 				},
 				DoGetFilesServiceFunc: funcDoGetFilesClientFuncOK,
@@ -357,7 +357,7 @@ func TestClose(t *testing.T) {
 				return nil
 			},
 			StateWaitFunc: func(state kafka.State) {},
-			CloseFunc: func(ctx context.Context) error {
+			CloseFunc: func(ctx context.Context, optFuncs ...kafka.OptFunc) error {
 				if !hcStopped || !serverStopped {
 					return errors.New("Kafka Consumer stopped before healthcheck or HTTP server")
 				}
@@ -373,7 +373,7 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 					return kafkaConsumerMock, nil
 				},
 			}
@@ -408,7 +408,7 @@ func TestClose(t *testing.T) {
 			}
 
 			failingKafkaConsumerMock := &kafkatest.IConsumerGroupMock{
-				CloseFunc: func(ctx context.Context) error {
+				CloseFunc: func(ctx context.Context, optFuncs ...kafka.OptFunc) error {
 					return errors.New("Failed to stop Kafka Consumer")
 				},
 				StopFunc: func() error {
@@ -424,7 +424,7 @@ func TestClose(t *testing.T) {
 				DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 					return hcMock, nil
 				},
-				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+				DoGetKafkaImagePublishedConsumerFunc: func(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 					return failingKafkaConsumerMock, nil
 				},
 			}

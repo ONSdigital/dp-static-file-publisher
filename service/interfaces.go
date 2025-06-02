@@ -7,7 +7,7 @@ import (
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,9 +22,9 @@ import (
 type Initialiser interface {
 	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
-	DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient
-	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
-	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error)
+	DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient
+	DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
+	DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error)
 	DoGetS3Client(ctx context.Context, awsRegion, bucketName string) (file.S3Client, error)
 	DoGetS3ClientWithConfig(bucketName string, cfg aws.Config) (file.S3Client, error)
 	DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService
@@ -50,5 +50,5 @@ type KafkaConsumer interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Stop() error
 	StateWait(state kafka.State)
-	Close(ctx context.Context) (err error)
+	Close(ctx context.Context, opts ...kafka.OptFunc) (err error)
 }

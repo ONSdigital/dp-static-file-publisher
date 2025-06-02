@@ -6,7 +6,7 @@ package mock
 import (
 	"context"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
 	"sync"
 )
@@ -24,7 +24,7 @@ var _ service.KafkaConsumer = &KafkaConsumerMock{}
 //			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
-//			CloseFunc: func(ctx context.Context) error {
+//			CloseFunc: func(ctx context.Context, opts ...kafka.OptFunc) error {
 //				panic("mock out the Close method")
 //			},
 //			RegisterBatchHandlerFunc: func(ctx context.Context, batchHandler kafka.BatchHandler) error {
@@ -50,7 +50,7 @@ type KafkaConsumerMock struct {
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
 	// CloseFunc mocks the Close method.
-	CloseFunc func(ctx context.Context) error
+	CloseFunc func(ctx context.Context, opts ...kafka.OptFunc) error
 
 	// RegisterBatchHandlerFunc mocks the RegisterBatchHandler method.
 	RegisterBatchHandlerFunc func(ctx context.Context, batchHandler kafka.BatchHandler) error
@@ -77,6 +77,8 @@ type KafkaConsumerMock struct {
 		Close []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Opts is the opts argument value.
+			Opts []kafka.OptFunc
 		}
 		// RegisterBatchHandler holds details about calls to the RegisterBatchHandler method.
 		RegisterBatchHandler []struct {
@@ -142,19 +144,21 @@ func (mock *KafkaConsumerMock) CheckerCalls() []struct {
 }
 
 // Close calls CloseFunc.
-func (mock *KafkaConsumerMock) Close(ctx context.Context) error {
+func (mock *KafkaConsumerMock) Close(ctx context.Context, opts ...kafka.OptFunc) error {
 	if mock.CloseFunc == nil {
 		panic("KafkaConsumerMock.CloseFunc: method is nil but KafkaConsumer.Close was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx  context.Context
+		Opts []kafka.OptFunc
 	}{
-		Ctx: ctx,
+		Ctx:  ctx,
+		Opts: opts,
 	}
 	mock.lockClose.Lock()
 	mock.calls.Close = append(mock.calls.Close, callInfo)
 	mock.lockClose.Unlock()
-	return mock.CloseFunc(ctx)
+	return mock.CloseFunc(ctx, opts...)
 }
 
 // CloseCalls gets all the calls that were made to Close.
@@ -162,10 +166,12 @@ func (mock *KafkaConsumerMock) Close(ctx context.Context) error {
 //
 //	len(mockedKafkaConsumer.CloseCalls())
 func (mock *KafkaConsumerMock) CloseCalls() []struct {
-	Ctx context.Context
+	Ctx  context.Context
+	Opts []kafka.OptFunc
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx  context.Context
+		Opts []kafka.OptFunc
 	}
 	mock.lockClose.RLock()
 	calls = mock.calls.Close

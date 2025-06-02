@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
@@ -20,8 +20,8 @@ type Service struct {
 	ServiceList                 *ExternalServiceList
 	HealthCheck                 HealthChecker
 	ImageAPICli                 event.ImageAPIClient
-	KafkaImagePublishedConsumer KafkaConsumer
-	KafkaFilePublishedConsumer  KafkaConsumer
+	KafkaImagePublishedConsumer kafka.IConsumerGroup
+	KafkaFilePublishedConsumer  kafka.IConsumerGroup
 	S3Public                    event.S3Writer
 	S3Private                   event.S3Reader
 	FilesClient                 file.FilesService
@@ -32,8 +32,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	log.Info(ctx, "got service configuration", log.Data{"config": cfg})
 
 	svc = &Service{
-		Config: cfg,
-		// HealthCheck: hc,
+		Config:      cfg,
 		ServiceList: serviceList,
 	}
 
@@ -42,7 +41,7 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 	svc.Server = serviceList.GetHTTPServer(cfg.BindAddr, svc.Router)
 
 	// Get Image API Client
-	svc.ImageAPICli = serviceList.GetImageAPIClient(cfg)
+	svc.ImageAPICli = serviceList.GetImageAPIClient(ctx, cfg)
 
 	// Get S3 Clients
 	svc.S3Private, svc.S3Public, err = serviceList.GetS3Clients(ctx, cfg)

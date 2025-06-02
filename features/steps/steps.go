@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
-	"github.com/ONSdigital/dp-kafka/v3/avro"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	kafka "github.com/ONSdigital/dp-kafka/v4"
+	"github.com/ONSdigital/dp-kafka/v4/avro"
 	dps3 "github.com/ONSdigital/dp-s3/v3"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
@@ -74,7 +75,7 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 		SizeInBytes: "TODO get size of file from file",
 	}
 
-	err = pub.Send(schema, msg)
+	err = pub.Send(ctx, schema, msg)
 
 	if err != nil {
 		log.Error(ctx, "Publish send", err)

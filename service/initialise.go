@@ -4,18 +4,18 @@ import (
 	"context"
 	"net/http"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
+	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	"github.com/ONSdigital/dp-api-clients-go/image"
-	files "github.com/ONSdigital/dp-api-clients-go/v2/files"
+	"github.com/ONSdigital/dp-api-clients-go/v2/files"
+	"github.com/ONSdigital/dp-api-clients-go/v2/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
-	dphttp "github.com/ONSdigital/dp-net/http"
 	dps3 "github.com/ONSdigital/dp-s3/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
@@ -69,8 +69,8 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 }
 
 // GetImageAPIClient creates an ImageAPI client and sets the ImageAPI flag to true
-func (e *ExternalServiceList) GetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
-	imageAPI := e.Init.DoGetImageAPIClient(cfg)
+func (e *ExternalServiceList) GetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
+	imageAPI := e.Init.DoGetImageAPIClient(ctx, cfg)
 	e.ImageAPI = true
 	return imageAPI
 }
@@ -83,7 +83,7 @@ func (e *ExternalServiceList) GetFilesService(ctx context.Context, cfg *config.C
 }
 
 // GetKafkaImagePublishedConsumer creates a Kafka consumer and sets the consumer flag to true
-func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	imagePublishedConsumer, err := e.Init.DoGetKafkaImagePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -93,7 +93,7 @@ func (e *ExternalServiceList) GetKafkaImagePublishedConsumer(ctx context.Context
 }
 
 // GetKafkaFilePublishedConsumer creates a Kafka consumer and sets the consumer flag to true
-func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+func (e *ExternalServiceList) GetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	filePublishedConsumer, err := e.Init.DoGetKafkaFilePublishedConsumer(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (e *Init) DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, versio
 }
 
 // DoGetImageAPIClient returns an Image API client
-func (e *Init) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
+func (e *Init) DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
 	return image.NewAPIClient(cfg.ImageAPIURL)
 }
 
@@ -156,11 +156,11 @@ func (e *Init) DoGetFilesService(_ context.Context, cfg *config.Config) file.Fil
 }
 
 // DoGetKafkaImagePublishedConsumer returns a Kafka Consumer group
-func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+func (e *Init) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.ImageFilePublishedTopic)
 }
 
-func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, topic string) (KafkaConsumer, error) {
+func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, topic string) (kafka.IConsumerGroup, error) {
 	kafkaOffset := kafka.OffsetOldest
 
 	gc := kafka.ConsumerGroupConfig{
@@ -187,7 +187,7 @@ func (e *Init) DoGetKafkaTopicConsumer(ctx context.Context, cfg *config.Config, 
 	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (KafkaConsumer, error) {
+func (e *Init) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	return e.DoGetKafkaTopicConsumer(ctx, cfg, cfg.StaticFilePublishedTopic)
 }
 

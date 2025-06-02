@@ -7,10 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
-	"github.com/ONSdigital/dp-kafka/v3/avro"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
+	"github.com/ONSdigital/dp-kafka/v4/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
+	"github.com/ONSdigital/dp-static-file-publisher/schema"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -52,8 +53,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 
 	Convey("Given invalid message content", t, func() {
 
-		msg := MockMessage{}
-		msg.Data = []byte("Testing")
+		msg, _ := kafkatest.NewMessage([]byte("Testing"), 0)
 
 		Convey("When the message is handled", func() {
 			err := generateMoverCopier().HandleFilePublishMessage(ctx, []kafka.Message{msg})
@@ -175,33 +175,10 @@ func generateMoverCopier() file.MoverCopier {
 	return file.NewMoverCopier(s3Client, s3Client, fileClient)
 }
 
-func generateMockMessage() MockMessage {
-	schema := &avro.Schema{
-		Definition: `{
-					"type": "record",
-					"name": "file-published",
-					"fields": [
-					  {"name": "path", "type": "string"},
-					  {"name": "etag", "type": "string"},
-					  {"name": "type", "type": "string"},
-					  {"name": "sizeInBytes", "type": "string"}
-					]
-				  }`,
-	}
+func generateMockMessage() *kafkatest.Message {
 
-	c, _ := schema.Marshal(file.Published{"test/file.txt", "plain/test", "1234567890", "123"})
+	c, _ := schema.ImagePublishedEvent.Marshal(file.Published{"test/file.txt", "plain/test", "1234567890", "123"})
+	msg, _ := kafkatest.NewMessage(c, 0)
 
-	return MockMessage{Data: c}
+	return msg
 }
-
-type MockMessage struct {
-	Data []byte
-}
-
-func (m MockMessage) GetData() []byte             { return m.Data }
-func (m MockMessage) Offset() int64               { return 1 }
-func (m MockMessage) UpstreamDone() chan struct{} { return nil }
-func (m MockMessage) Mark()                       {}
-func (m MockMessage) Commit()                     {}
-func (m MockMessage) Release()                    {}
-func (m MockMessage) CommitAndRelease()           {}

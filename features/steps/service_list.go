@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
 	dps3 "github.com/ONSdigital/dp-s3/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
@@ -39,7 +39,7 @@ func (e *fakeServiceContainer) DoGetHealthCheck(cfg *config.Config, buildTime, g
 	return &h, nil
 }
 
-func (e *fakeServiceContainer) DoGetImageAPIClient(cfg *config.Config) event.ImageAPIClient {
+func (e *fakeServiceContainer) DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
 	return &mock.ImageAPIClientMock{
 		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 			state.Update("OK", "Image API all good", 0)
@@ -61,7 +61,7 @@ func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *confi
 	}
 }
 
-func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	kafkaOffset := kafka.OffsetOldest
 
 	gc := kafka.ConsumerGroupConfig{
@@ -76,7 +76,7 @@ func (e *fakeServiceContainer) DoGetKafkaImagePublishedConsumer(ctx context.Cont
 	return kafka.NewConsumerGroup(ctx, &gc)
 }
 
-func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (service.KafkaConsumer, error) {
+func (e *fakeServiceContainer) DoGetKafkaFilePublishedConsumer(ctx context.Context, cfg *config.Config) (kafka.IConsumerGroup, error) {
 	kafkaOffset := kafka.OffsetOldest
 
 	gc := kafka.ConsumerGroupConfig{

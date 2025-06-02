@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/ONSdigital/dp-api-clients-go/image"
+	"github.com/ONSdigital/dp-api-clients-go/v2/image"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	kafka "github.com/ONSdigital/dp-kafka/v3"
+	kafka "github.com/ONSdigital/dp-kafka/v4"
 	"github.com/ONSdigital/dp-static-file-publisher/schema"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/aws/aws-sdk-go-v2/aws"
