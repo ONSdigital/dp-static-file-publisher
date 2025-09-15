@@ -2,10 +2,6 @@ module github.com/ONSdigital/dp-static-file-publisher
 
 go 1.24
 
-exclude github.com/hashicorp/consul/api v1.1.0 // [CVE-2022-29153] CWE-918
-
-exclude github.com/hashicorp/consul/sdk v0.16.2 // [CVE-2022-29153] CWE-918
-
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.266.0
 	github.com/ONSdigital/dp-component-test v0.20.0
