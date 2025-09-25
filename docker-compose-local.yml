@@ -4,7 +4,7 @@ services:
   dp-static-file-publisher:
     build:
       context: ./
-      dockerfile: Dockerfile-local
+      dockerfile: Dockerfile.local
     ports:
       - "24900:24900"
     volumes:
