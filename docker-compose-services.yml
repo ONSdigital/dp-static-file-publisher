@@ -2,7 +2,7 @@ version: "3.3"
 
 services:
   zookeeper:
-    image: 'bitnami/zookeeper:3.7.2'
+    image: 'bitnamilegacy/zookeeper:3.7.2'
     restart: unless-stopped
     ports:
       - '2181:2181'
@@ -10,7 +10,7 @@ services:
       ALLOW_ANONYMOUS_LOGIN: 'yes'
 
   kafka:
-    image: 'bitnami/kafka:3.5.1'
+    image: 'bitnamilegacy/kafka:3.5.1'
     restart: unless-stopped
     ports:
       - '9092:9092'
