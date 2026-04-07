@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	kafka "github.com/ONSdigital/dp-kafka/v4"
-	"github.com/ONSdigital/dp-kafka/v4/avro"
+	kafka "github.com/ONSdigital/dp-kafka/v5"
+	"github.com/ONSdigital/dp-kafka/v5/avro"
 	dps3 "github.com/ONSdigital/dp-s3/v3"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
@@ -81,7 +81,10 @@ func (c *FilePublisherComponent) aMessageToPublishTheFileIsSent(file string) err
 		log.Error(ctx, "Publish send", err)
 	}
 
-	c.Initialiser()
+	_, err = c.Initialiser()
+	if err != nil {
+		log.Error(ctx, "Initialiser", err)
+	}
 
 	return c.ApiFeature.StepError()
 }

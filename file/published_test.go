@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	kafka "github.com/ONSdigital/dp-kafka/v4"
-	"github.com/ONSdigital/dp-kafka/v4/kafkatest"
+	kafka "github.com/ONSdigital/dp-kafka/v5"
+	"github.com/ONSdigital/dp-kafka/v5/kafkatest"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fileMock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
 	"github.com/ONSdigital/dp-static-file-publisher/schema"
@@ -40,7 +40,6 @@ var (
 	validFilesClient = func(ctx context.Context, path string, etag string) error {
 		return nil
 	}
-	serviceAuthToken = "Why can't I paste!"
 )
 
 func TestHandleFilePublishMessage(t *testing.T) {
@@ -52,8 +51,7 @@ func TestHandleFilePublishMessage(t *testing.T) {
 	fileClient = &fileMock.FilesServiceMock{}
 
 	Convey("Given invalid message content", t, func() {
-
-		msg, _ := kafkatest.NewMessage([]byte("Testing"), 0)
+		msg := kafkatest.NewMessage([]byte("Testing"))
 
 		Convey("When the message is handled", func() {
 			err := generateMoverCopier().HandleFilePublishMessage(ctx, []kafka.Message{msg})
@@ -175,10 +173,7 @@ func generateMoverCopier() file.MoverCopier {
 	return file.NewMoverCopier(s3Client, s3Client, fileClient)
 }
 
-func generateMockMessage() *kafkatest.Message {
-
+func generateMockMessage() *kafkatest.MessageMock {
 	c, _ := schema.ImagePublishedEvent.Marshal(file.Published{"test/file.txt", "plain/test", "1234567890", "123"})
-	msg, _ := kafkatest.NewMessage(c, 0)
-
-	return msg
+	return kafkatest.NewMessage(c)
 }

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	kafka "github.com/ONSdigital/dp-kafka/v4"
+	kafka "github.com/ONSdigital/dp-kafka/v5"
 	dps3 "github.com/ONSdigital/dp-s3/v3"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	fmock "github.com/ONSdigital/dp-static-file-publisher/file/mock"
@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dphttp "github.com/ONSdigital/dp-net/v2/http"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/dp-static-file-publisher/config"
 	"github.com/ONSdigital/dp-static-file-publisher/event"
 	"github.com/ONSdigital/dp-static-file-publisher/event/mock"
@@ -28,8 +28,8 @@ type fakeServiceContainer struct {
 }
 
 func (e *fakeServiceContainer) DoGetHTTPServer(bindAddr string, r http.Handler) service.HTTPServer {
-	e.server.Server.Addr = ":26900"
-	e.server.Server.Handler = r
+	e.server.Addr = ":26900"
+	e.server.Handler = r
 
 	return e.server
 }
@@ -42,8 +42,7 @@ func (e *fakeServiceContainer) DoGetHealthCheck(cfg *config.Config, buildTime, g
 func (e *fakeServiceContainer) DoGetImageAPIClient(ctx context.Context, cfg *config.Config) event.ImageAPIClient {
 	return &mock.ImageAPIClientMock{
 		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-			state.Update("OK", "Image API all good", 0)
-			return nil
+			return state.Update("OK", "Image API all good", 0)
 		},
 	}
 }
@@ -51,8 +50,7 @@ func (e *fakeServiceContainer) DoGetImageAPIClient(ctx context.Context, cfg *con
 func (e *fakeServiceContainer) DoGetFilesService(ctx context.Context, cfg *config.Config) file.FilesService {
 	return &fmock.FilesServiceMock{
 		CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
-			state.Update("OK", "Files Service API all good", 0)
-			return nil
+			return state.Update("OK", "Files Service API all good", 0)
 		},
 		MarkFileMovedFunc: func(ctx context.Context, path string, etag string) error {
 			e.moveReq[path] = "MOVED"

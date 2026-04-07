@@ -16,5 +16,5 @@ run:
   args:
     - -exc
     - |
-      /start_docker
+      /start_docker.sh
       dp-static-file-publisher/ci/scripts/component.sh

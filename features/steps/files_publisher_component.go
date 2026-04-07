@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	componenttest "github.com/ONSdigital/dp-component-test"
-	dphttp "github.com/ONSdigital/dp-net/v2/http"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/dp-static-file-publisher/service"
 	"github.com/ONSdigital/log.go/v2/log"
 )
@@ -87,7 +87,8 @@ func (c *FilePublisherComponent) Reset() {
 
 func (c *FilePublisherComponent) Close() error {
 	if c.svc != nil {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 		return c.svc.Close(ctx)
 	}
 	return nil

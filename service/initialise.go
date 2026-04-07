@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	kafka "github.com/ONSdigital/dp-kafka/v4"
-	dphttp "github.com/ONSdigital/dp-net/v2/http"
+	kafka "github.com/ONSdigital/dp-kafka/v5"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/dp-static-file-publisher/file"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"

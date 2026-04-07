@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -29,7 +28,7 @@ var (
 	testPublicBucket  string        = "publicBucket"
 	testSize          int64         = 1234
 	fileBytes         []byte        = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
-	testFileContent   io.ReadCloser = ioutil.NopCloser(bytes.NewReader(fileBytes))
+	testFileContent   io.ReadCloser = io.NopCloser(bytes.NewReader(fileBytes))
 	errS3Private                    = errors.New("S3Private error")
 	errS3Public                     = errors.New("S3Public error")
 	errImageAPI                     = errors.New("imageAPI error")
@@ -51,8 +50,6 @@ var (
 	}
 )
 
-var testEventNoSrcPath = event.ImagePublished{}
-
 var testCtx = context.Background()
 
 var testEvent = event.ImagePublished{
@@ -63,9 +60,7 @@ var testEvent = event.ImagePublished{
 }
 
 func TestImagePublishedHandler_Handle(t *testing.T) {
-
 	Convey("Given S3 mocks", t, func() {
-
 		mockS3Private := &mock.S3ReaderMock{
 			BucketNameFunc: func() string {
 				return testPrivateBucket
@@ -349,7 +344,5 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				So(updatedImage.Error, ShouldEqual, fmt.Sprintf("error putting updated image variant '%s' to API", testEvent.ImageVariant))
 			})
 		})
-
 	})
-
 }
