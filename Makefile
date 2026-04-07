@@ -40,4 +40,4 @@ docker-local:
 	docker-compose -f docker-compose-services.yml -f docker-compose-local.yml exec dp-static-file-publisher bash
 
 lint:
-	golangci-lint run ./... --timeout 10m --tests=false --exclude-dirs=features
+	golangci-lint run ./...
