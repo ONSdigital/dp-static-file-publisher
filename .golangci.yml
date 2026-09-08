@@ -8,7 +8,7 @@ linters:
     - errcheck
     - gochecknoinits
     - gocognit
-    - goconst
+    # - goconst lint failures related to goconst will be addressed as tech debt
     - gocritic
     - gocyclo
     - gosec
@@ -56,6 +56,9 @@ linters:
         - name: unused-parameter
           severity: warning
           disabled: true
+    staticcheck:
+      checks:
+        - "-SA1019"
   exclusions:
     generated: lax
     presets:

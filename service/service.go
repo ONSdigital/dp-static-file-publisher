@@ -57,11 +57,11 @@ func Run(ctx context.Context, cfg *config.Config, serviceList *ExternalServiceLi
 		return nil, err
 	}
 	handler := &event.ImagePublishedHandler{
-		AuthToken:       cfg.ServiceAuthToken,
-		S3Private:       svc.S3Private,
-		S3Public:        svc.S3Public,
-		ImageAPICli:     svc.ImageAPICli,
-		PublicBucketURL: cfg.PublicBucketURL,
+		ServiceAuthToken: cfg.ServiceAuthToken,
+		S3Private:        svc.S3Private,
+		S3Public:         svc.S3Public,
+		ImageAPICli:      svc.ImageAPICli,
+		PublicBucketURL:  cfg.PublicBucketURL,
 	}
 	if err = svc.KafkaImagePublishedConsumer.RegisterBatchHandler(ctx, handler.KafkaHandler); err != nil {
 		log.Fatal(ctx, "failed to register image published message handler", err)

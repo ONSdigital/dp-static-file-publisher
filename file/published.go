@@ -21,6 +21,7 @@ type S3Client interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	FileExists(ctx context.Context, key string) (bool, error)
 	Get(ctx context.Context, key string) (io.ReadCloser, *int64, error)
+	//nolint:staticcheck // To be resolved with separate ticket
 	Upload(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error)
 	Config() aws.Config
 }

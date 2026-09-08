@@ -178,7 +178,11 @@ func (c *FilePublisherComponent) thereIsAMultichunkFileInThePrivateBucket(filena
 	expectedContentLength = 6 * 1024 * 1024
 
 	content := make([]byte, expectedContentLength)
-	rand.Read(content)
+	_, err := rand.Read(content)
+
+	if err != nil {
+		log.Error(context.Background(), "Error reading random bytes", err)
+	}
 
 	expectedContent = string(content)
 

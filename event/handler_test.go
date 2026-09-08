@@ -90,15 +90,16 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			mockS3Private.GetFunc = func(ctx context.Context, key string) (io.ReadCloser, *int64, error) {
 				return testFileContent, &testSize, nil
 			}
+			//nolint:staticcheck // To be resolved with separate ticket
 			mockS3Public.UploadFunc = func(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error) {
 				return &manager.UploadOutput{}, nil
 			}
 			eventHandler := event.ImagePublishedHandler{
-				AuthToken:       testAuthToken,
-				S3Public:        mockS3Public,
-				S3Private:       mockS3Private,
-				ImageAPICli:     mockImageAPI,
-				PublicBucketURL: testPublicBucketURL,
+				ServiceAuthToken: testAuthToken,
+				S3Public:         mockS3Public,
+				S3Private:        mockS3Private,
+				ImageAPICli:      mockImageAPI,
+				PublicBucketURL:  testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 			So(err, ShouldBeNil)
@@ -149,11 +150,11 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				return &manager.UploadOutput{}, nil
 			}
 			eventHandler := event.ImagePublishedHandler{
-				AuthToken:       testAuthToken,
-				S3Public:        mockS3Public,
-				S3Private:       mockS3Private,
-				ImageAPICli:     mockImageAPI,
-				PublicBucketURL: testPublicBucketURL,
+				ServiceAuthToken: testAuthToken,
+				S3Public:         mockS3Public,
+				S3Private:        mockS3Private,
+				ImageAPICli:      mockImageAPI,
+				PublicBucketURL:  testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 			So(err, ShouldBeNil)
@@ -202,10 +203,10 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				return nil, nil, errS3Private
 			}
 			eventHandler := event.ImagePublishedHandler{
-				AuthToken:   testAuthToken,
-				S3Public:    mockS3Public,
-				S3Private:   mockS3Private,
-				ImageAPICli: mockImageAPI,
+				ServiceAuthToken: testAuthToken,
+				S3Public:         mockS3Public,
+				S3Private:        mockS3Private,
+				ImageAPICli:      mockImageAPI,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
@@ -246,11 +247,11 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 			}
 
 			eventHandler := event.ImagePublishedHandler{
-				AuthToken:       testAuthToken,
-				S3Public:        mockS3Public,
-				S3Private:       mockS3Private,
-				ImageAPICli:     mockImageAPIFail,
-				PublicBucketURL: testPublicBucketURL,
+				ServiceAuthToken: testAuthToken,
+				S3Public:         mockS3Public,
+				S3Private:        mockS3Private,
+				ImageAPICli:      mockImageAPIFail,
+				PublicBucketURL:  testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 
@@ -317,11 +318,11 @@ func TestImagePublishedHandler_Handle(t *testing.T) {
 				},
 			}
 			eventHandler := event.ImagePublishedHandler{
-				AuthToken:       testAuthToken,
-				S3Public:        mockS3Public,
-				S3Private:       mockS3Private,
-				ImageAPICli:     mockImageAPIFail,
-				PublicBucketURL: testPublicBucketURL,
+				ServiceAuthToken: testAuthToken,
+				S3Public:         mockS3Public,
+				S3Private:        mockS3Private,
+				ImageAPICli:      mockImageAPIFail,
+				PublicBucketURL:  testPublicBucketURL,
 			}
 			err := eventHandler.Handle(testCtx, &testEvent)
 

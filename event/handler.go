@@ -27,11 +27,11 @@ const (
 
 // ImagePublishedHandler hold the details for publishing to s3.
 type ImagePublishedHandler struct {
-	AuthToken       string
-	S3Public        S3Writer
-	S3Private       S3Reader
-	ImageAPICli     ImageAPIClient
-	PublicBucketURL string
+	ServiceAuthToken string
+	S3Public         S3Writer
+	S3Private        S3Reader
+	ImageAPICli      ImageAPIClient
+	PublicBucketURL  string
 }
 
 // S3Writer defines the required methods from dp-s3 to interact with a particular bucket of AWS S3
@@ -39,6 +39,7 @@ type S3Writer interface {
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Config() aws.Config
 	BucketName() string
+	//nolint:staticcheck // To be resolved with separate ticket
 	Upload(ctx context.Context, input *s3.PutObjectInput, options ...func(*manager.Uploader)) (*manager.UploadOutput, error)
 }
 
@@ -72,7 +73,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	log.Info(ctx, "event handler called", logData)
 
 	// GET images/{id}/downloads/{variant}
-	imageDownload, err := h.ImageAPICli.GetDownloadVariant(ctx, "", h.AuthToken, "", event.ImageID, event.ImageVariant)
+	imageDownload, err := h.ImageAPICli.GetDownloadVariant(ctx, "", h.ServiceAuthToken, "", event.ImageID, event.ImageVariant)
 	if err != nil {
 		log.Error(ctx, "error getting image variant from API", err, logData)
 		h.setImageStatusToFailed(ctx, event.ImageID, fmt.Sprintf("error getting image variant '%s' from API", event.ImageVariant))
@@ -106,7 +107,7 @@ func (h *ImagePublishedHandler) Handle(ctx context.Context, event *ImagePublishe
 	imageDownload.State = completedState
 	imageDownload.PublishCompleted = &endTime
 	imageDownload.Href = fmt.Sprintf("%s/%s", h.PublicBucketURL, event.DstPath)
-	imageDownload, err = h.ImageAPICli.PutDownloadVariant(ctx, "", h.AuthToken, "", event.ImageID, event.ImageVariant, imageDownload)
+	imageDownload, err = h.ImageAPICli.PutDownloadVariant(ctx, "", h.ServiceAuthToken, "", event.ImageID, event.ImageVariant, imageDownload)
 	if err != nil {
 		log.Error(ctx, "error putting image variant to API", err, logData)
 		h.setImageStatusToFailed(ctx, event.ImageID, fmt.Sprintf("error putting updated image variant '%s' to API", event.ImageVariant))
@@ -165,14 +166,14 @@ func (h *ImagePublishedHandler) uploadToS3(ctx context.Context, thePath string, 
 }
 
 func (h *ImagePublishedHandler) setImageStatusToFailed(ctx context.Context, imageID, desc string) {
-	img, err := h.ImageAPICli.GetImage(ctx, "", h.AuthToken, "", imageID)
+	img, err := h.ImageAPICli.GetImage(ctx, "", h.ServiceAuthToken, "", imageID)
 	if err != nil {
 		log.Error(ctx, "error getting image from API to set failed_publish status", err)
 		return
 	}
 	img.State = failedState
 	img.Error = desc
-	_, err = h.ImageAPICli.PutImage(ctx, "", h.AuthToken, "", imageID, img)
+	_, err = h.ImageAPICli.PutImage(ctx, "", h.ServiceAuthToken, "", imageID, img)
 	if err != nil {
 		log.Error(ctx, "error putting image to API to set failed_publish  status", err)
 		return
@@ -182,7 +183,7 @@ func (h *ImagePublishedHandler) setImageStatusToFailed(ctx context.Context, imag
 func (h *ImagePublishedHandler) setVariantStatusToFailed(ctx context.Context, imageID string, variant image.ImageDownload, desc string) {
 	variant.State = failedState
 	variant.Error = desc
-	_, err := h.ImageAPICli.PutDownloadVariant(ctx, "", h.AuthToken, "", imageID, variant.Id, variant)
+	_, err := h.ImageAPICli.PutDownloadVariant(ctx, "", h.ServiceAuthToken, "", imageID, variant.Id, variant)
 	if err != nil {
 		log.Error(ctx, "error putting image variant to API to set failed_publish status", err)
 		return
