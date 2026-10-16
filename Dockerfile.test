@@ -1,9 +1,9 @@
-FROM golang:1.26 AS build
+FROM golang:1.27 AS build
 
 WORKDIR /service
 ADD . /service
 CMD tail -f /dev/null
 
 # TEST
-FROM build as test
+FROM build AS test
 
